@@ -141,12 +141,16 @@ def _threshold_analysis_section(
         lock_path = LOCK_DIR / f"{symbol.lower()}_oco_live_lock.json"
         if lock_path.exists():
             lock = json.loads(lock_path.read_text())
-            thr_json_path = Path(lock["artifacts"].get("model_threshold_json_path", ""))
-            if thr_json_path.exists():
-                thr_cfg = json.loads(thr_json_path.read_text())
-                today_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-                schedule_has_today = today_str in thr_cfg.get("threshold_schedule", {})
-                static_threshold = thr_cfg.get("threshold_exec")
+            artifacts = lock.get("artifacts", {})
+            entry = artifacts.get("model_threshold_json", {})
+            thr_json_txt = str(entry.get("path", "")).strip()
+            if thr_json_txt:
+                thr_json_path = lock_path.parent / thr_json_txt
+                if thr_json_path.exists():
+                    thr_cfg = json.loads(thr_json_path.read_text())
+                    today_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+                    schedule_has_today = today_str in thr_cfg.get("threshold_schedule", {})
+                    static_threshold = thr_cfg.get("threshold_exec")
 
         results.append(
             {

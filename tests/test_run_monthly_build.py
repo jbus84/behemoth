@@ -18,13 +18,20 @@ def _sha(path: Path) -> str:
 
 def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -> None:
     payload = {
+        "schema_version": 2,
         "symbol": symbol,
-        "artifacts": {
+        "deployability": {
             "model_month": month,
-            "model_cbm_path": f"models/oco/{cbm.name}",
-            "model_cbm_sha256": _sha(cbm),
-            "model_threshold_json_path": f"models/oco/{thr.name}",
-            "model_threshold_json_sha256": _sha(thr),
+        },
+        "artifacts": {
+            "model_cbm": {
+                "path": f"models/oco/{cbm.name}",
+                "sha256": _sha(cbm),
+            },
+            "model_threshold_json": {
+                "path": f"models/oco/{thr.name}",
+                "sha256": _sha(thr),
+            },
         },
     }
     (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(

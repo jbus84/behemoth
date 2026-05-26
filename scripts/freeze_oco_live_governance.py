@@ -6,6 +6,9 @@ Creates per-symbol immutable lock manifests containing:
 - config fingerprints (WFO + reduced-core config),
 - data/artifact fingerprints,
 - retrain cadence policy.
+
+Emits schema_version: 2 bundles per ADR 0001:
+docs/adr/0001-deterministic-month-bundles.md
 """
 
 from __future__ import annotations

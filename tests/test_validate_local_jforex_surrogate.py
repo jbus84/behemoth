@@ -25,11 +25,12 @@ def _write_lock(
     reason: str = "",
 ) -> None:
     payload = {
+        "schema_version": 2,
         "symbol": symbol,
-        "historical_backtest": {
-            "deployable": deployable,
-            "non_deployable_reason": reason,
+        "deployability": {
+            "live_deployable": deployable,
         },
+        "artifacts": {},
     }
     (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
         json.dumps(payload),
@@ -60,7 +61,6 @@ def test_build_artifacts_marks_non_deployable_symbols_as_nogo(tmp_path: Path) ->
     row = summary.iloc[0]
     assert row["symbol"] == "USDCAD"
     assert bool(row["historical_deployable"]) is False
-    assert row["non_deployable_reason"] == "no_gate_states"
     assert bool(row["local_jforex_surrogate_pass"]) is False
     assert bool(row["local_jforex_surrogate_no_go"]) is True
     assert row["verdict"] == "NO_GO"

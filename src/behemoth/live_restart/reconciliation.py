@@ -154,8 +154,9 @@ def _iter_promoted_lock_payloads(governance_dir: Path) -> list[tuple[Path, dict[
             continue
         if not isinstance(data, dict):
             continue
-        artifacts = data.get("artifacts", {})
-        if isinstance(artifacts, dict) and bool(artifacts.get("live_deployable", True)) is False:
+        deploy = data.get("deployability", {}) or {}
+        live_deployable = bool(deploy.get("live_deployable", False))
+        if not live_deployable:
             continue
         payloads.append((lock_path, data))
     return payloads
@@ -196,10 +197,10 @@ def load_promoted_symbols(governance_dir: Path) -> list[str]:
 def load_promoted_model_month(governance_dir: Path) -> str | None:
     months: set[str] = set()
     for _lock_path, data in _iter_promoted_lock_payloads(governance_dir):
-        artifacts = data.get("artifacts", {})
-        if not isinstance(artifacts, dict):
+        deploy = data.get("deployability", {}) or {}
+        if not isinstance(deploy, dict):
             continue
-        model_month = str(artifacts.get("model_month", "")).strip()
+        model_month = str(deploy.get("model_month", "")).strip()
         if model_month:
             months.add(model_month)
     if not months:

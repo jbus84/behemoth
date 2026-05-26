@@ -330,7 +330,9 @@ class GovernanceValidator:
         checks: list[Check],
     ) -> None:
         """Validate model month and required artifacts."""
-        model_month = str(artifacts.get("model_month", "")).strip()
+        deploy = backtest if isinstance(backtest, dict) else {}
+        model_month = str(deploy.get("model_month", "")).strip()
+        historical_deployable = bool(deploy.get("live_deployable", False))
         checks.append(Check(
             name="model_month_format",
             ok=bool(_MONTH_RE.match(model_month)),
@@ -348,22 +350,13 @@ class GovernanceValidator:
             lock_path=lock_path,
         ))
 
-        historical_deployable = bool(backtest.get("deployable", True))
-        non_deployable_reason = str(backtest.get("non_deployable_reason", "")).strip()
-        if not historical_deployable:
-            checks.append(Check(
-                name="historical_non_deployable_reason_present",
-                ok=bool(non_deployable_reason),
-                detail=f"non_deployable_reason={non_deployable_reason!r}",
-                symbol=symbol,
-                month=month,
-                lock_path=lock_path,
-            ))
 
         # Validate required artifacts
         for label, path_key, hash_key in _REQUIRED_ARTIFACT_KEYS:
-            path_txt = str(artifacts.get(path_key, "")).strip()
-            hash_txt = str(artifacts.get(hash_key, "")).strip()
+            v2_key = path_key.replace("_path", "").replace("reduced_states_csv", "allowed_states_csv")
+            entry = artifacts.get(v2_key, {}) or {}
+            path_txt = str(entry.get("path", "")).strip()
+            hash_txt = str(entry.get("sha256", "")).strip()
             checks.append(Check(
                 name=f"{label}_artifact_path_present",
                 ok=bool(path_txt),
@@ -382,11 +375,13 @@ class GovernanceValidator:
             ))
             if not path_txt or not hash_txt:
                 continue
+            path_txt = str(Path(lock_path).parent / path_txt)
             self._validate_artifact_file(label, path_txt, hash_txt, symbol, month, lock_path, checks)
 
         # Validate predictions artifact
-        pred_path_txt = str(artifacts.get("predictions_path", "")).strip()
-        pred_hash_txt = str(artifacts.get("predictions_sha256", "")).strip()
+        pred_entry = artifacts.get("predictions", {}) or {}
+        pred_path_txt = str(pred_entry.get("path", "")).strip()
+        pred_hash_txt = str(pred_entry.get("sha256", "")).strip()
         if historical_deployable:
             checks.append(Check(
                 name="predictions_artifact_path_present",
@@ -405,6 +400,7 @@ class GovernanceValidator:
                 lock_path=lock_path,
             ))
             if pred_path_txt and pred_hash_txt:
+                pred_path_txt = str(Path(lock_path).parent / pred_path_txt)
                 self._validate_artifact_file("predictions", pred_path_txt, pred_hash_txt, symbol, month, lock_path, checks)
         else:
             checks.append(Check(
@@ -459,7 +455,7 @@ class GovernanceValidator:
     ) -> None:
         """Validate state universe constraints."""
         rows = lock.get("state_universe", {}).get("rows", [])
-        historical_deployable = bool(backtest.get("deployable", True))
+        historical_deployable = bool((backtest or {}).get("live_deployable", False))
 
         if historical_deployable:
             checks.append(Check(
@@ -504,7 +500,7 @@ class GovernanceValidator:
         checks: list[Check],
     ) -> None:
         """Validate target month matches parent directory."""
-        target_month = str(backtest.get("target_month", "")).strip()
+        target_month = str((backtest or {}).get("model_month", "")).strip()
         checks.append(Check(
             name="historical_target_month_matches_parent",
             ok=(target_month == month),

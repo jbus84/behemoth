@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Build the frozen month-scoped candidate bundle for monthly recertification."""
+"""Build the frozen month-scoped candidate bundle for monthly recertification.
+
+Produces schema_version: 2 bundles per ADR 0001:
+docs/adr/0001-deterministic-month-bundles.md
+"""
 
 from __future__ import annotations
 

@@ -293,17 +293,13 @@ def _read_live_deployment_verdict(
         return False, f"governance lock unreadable: {exc}", lock_path
 
     artifacts = lock.get("artifacts", {}) or {}
-    live_deployable = bool(artifacts.get("live_deployable", False))
+    deploy = lock.get("deployability", {}) or {}
+    live_deployable = bool(deploy.get("live_deployable", False))
+    capacity_pass = deploy.get("capacity_overall_pass")
+    non_deployable_reason = ""
     if live_deployable:
         return True, "", lock_path
 
-    capacity_pass = artifacts.get("capacity_overall_pass")
-    historical = lock.get("historical_backtest", {}) or {}
-    non_deployable_reason = (
-        historical.get("non_deployable_reason", "")
-        or artifacts.get("non_deployable_reason", "")
-        or ""
-    )
     summary = (
         f"governance verdict: live_deployable=false, "
         f"capacity_overall_pass={capacity_pass}"

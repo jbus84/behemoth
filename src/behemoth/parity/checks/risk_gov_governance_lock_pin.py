@@ -15,9 +15,11 @@ def _lock_model_month(lock: dict) -> str | None:
         if isinstance(lock.get("historical_backtest"), dict)
         else {}
     )
+    deploy = lock.get("deployability") if isinstance(lock.get("deployability"), dict) else {}
     month = (
         lock.get("model_month")
         or artifacts.get("model_month")
+        or deploy.get("model_month")
         or historical.get("target_month")
     )
     return str(month).strip() if month else None

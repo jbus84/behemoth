@@ -57,11 +57,13 @@ def _ensure_governance_dir(tmp_path: Path) -> Path:
 
 def _write_live_lock(governance_dir: Path, symbol: str, *, model_month: str, live_deployable: bool = True) -> None:
     payload = {
+        "schema_version": 2,
         "symbol": symbol,
-        "artifacts": {
+        "deployability": {
             "live_deployable": live_deployable,
             "model_month": model_month,
         },
+        "artifacts": {},
     }
     (governance_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
         __import__("json").dumps(payload) + "\n",

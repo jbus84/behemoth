@@ -63,7 +63,7 @@ endef
         stage10 stage11 stage12 stage13 stage14 \
         onboard-symbol retrain-all rebuild-all audit-all \
         clean-data clean-mining-outputs \
-        freeze-oco freeze-oco-history freeze-oco-dukascopy-candidate validate-oco-history \
+        freeze-oco freeze-oco-history freeze-oco-dukascopy-candidate validate-oco-history validate-bundles \
         stage12-api-parity stage12-stage13-cert-artifacts local-jforex-parity local-jforex-parity-matrix \
         local-jforex-parity-ordinal local-jforex-parity-spotlight local-jforex-cert \
         jforex-dukascopy-matrix stage13-dukascopy-cert stage14-jforex-cert \
@@ -286,6 +286,15 @@ validate-oco-history:
 	uv run python scripts/validate_oco_historical_governance.py \
 		--history-dir configs/research/governance/oco_history \
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
+
+validate-bundles:
+	@for dir in configs/research/governance/oco_candidate_builds/*-*/ ; do \
+		if [ -d "$$dir" ]; then \
+			echo "[validate-bundles] validating $$dir"; \
+			uv run python scripts/validate_bundle.py "$$dir" || exit 1; \
+		fi; \
+	done
+	@echo "[validate-bundles] all bundles OK"
 
 stage12-stage13-cert-artifacts:
 	@$(LOAD_SHARED_ENV) uv run python scripts/run_stage12_stage13_certification.py \

@@ -4,6 +4,8 @@
 Single source of truth for turning lock keys into filesystem paths. Every
 producer and consumer goes through here so the lock file's contract is
 enforced in exactly one place.
+
+See docs/adr/0001-deterministic-month-bundles.md for the full design decision.
 """
 
 from __future__ import annotations

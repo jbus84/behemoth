@@ -18,11 +18,12 @@ def _write_lock(path: Path, *, symbol: str, deployable: bool, reason: str = "") 
     path.write_text(
         json.dumps(
             {
+                "schema_version": 2,
                 "symbol": symbol,
-                "historical_backtest": {
-                    "deployable": deployable,
-                    "non_deployable_reason": reason,
+                "deployability": {
+                    "live_deployable": deployable,
                 },
+                "artifacts": {},
             }
         )
         + "\n"
@@ -529,7 +530,6 @@ def test_build_stage13_artifacts_emits_nogo_for_non_deployable_symbols(
     assert bool(signal_check["metric_value"]) is True
     assert signal_check["status"] == "PASS"
     assert "historical non-deployable" in str(signal_check["details"]).lower()
-    assert "historically non-deployable" in str(signal_check["details"])
 
 
 def test_build_stage13_artifacts_rejects_summary_rows_without_target_bundle_provenance(

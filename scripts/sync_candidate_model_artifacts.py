@@ -155,11 +155,13 @@ def run(
                     SyncResult(symbol or "UNKNOWN", "-", "FAIL", "malformed lock metadata")
                 )
                 continue
-            month = str(artifacts.get("model_month", "")).strip()
-            cbm_name = _resolve_artifact_name(artifacts.get("model_cbm_path", ""))
-            thr_name = _resolve_artifact_name(artifacts.get("model_threshold_json_path", ""))
-            expected_cbm_sha = str(artifacts.get("model_cbm_sha256", "")).strip()
-            expected_thr_sha = str(artifacts.get("model_threshold_json_sha256", "")).strip()
+            month = str(payload.get("deployability", {}).get("model_month", "")).strip()
+            cbm_entry = artifacts.get("model_cbm", {})
+            thr_entry = artifacts.get("model_threshold_json", {})
+            cbm_name = _resolve_artifact_name(cbm_entry.get("path", ""))
+            thr_name = _resolve_artifact_name(thr_entry.get("path", ""))
+            expected_cbm_sha = str(cbm_entry.get("sha256", "")).strip()
+            expected_thr_sha = str(thr_entry.get("sha256", "")).strip()
             target_cbm = target_models_dir / cbm_name if cbm_name else None
             target_thr = target_models_dir / thr_name if thr_name else None
 

@@ -354,26 +354,24 @@ def test_validate_lock_state_csv_defaults_to_lock_artifact_latest_month(tmp_path
         return h.hexdigest()
 
     lock = {
+        "schema_version": 2,
         "frozen_at_utc": "2026-02-25T00:00:00+00:00",
         "symbol": "EURUSD",
         "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
-            "wfo_config_path": str(wfo),
-            "wfo_config_sha256": _sha(wfo),
-            "reduced_config_path": str(reduced),
-            "reduced_config_sha256": _sha(reduced),
-            "reduced_states_csv_path": str(states_schedule),
-            "reduced_states_csv_sha256": _sha(states_schedule),
-            "predictions_path": str(preds),
-            "predictions_sha256": _sha(preds),
-            "model_cbm_path": str(model_cbm),
-            "model_cbm_sha256": _sha(model_cbm),
-            "model_threshold_json_path": str(model_thr),
-            "model_threshold_json_sha256": _sha(model_thr),
+            "wfo_config": {"path": str(wfo), "sha256": _sha(wfo)},
+            "reduced_config": {"path": str(reduced), "sha256": _sha(reduced)},
+            "allowed_states_csv": {"path": str(states_schedule), "sha256": _sha(states_schedule)},
+            "predictions": {"path": str(preds), "sha256": _sha(preds)},
+            "model_cbm": {"path": str(model_cbm), "sha256": _sha(model_cbm)},
+            "model_threshold_json": {"path": str(model_thr), "sha256": _sha(model_thr)},
+            "tick_exact_summary": {"path": str(te_summary), "sha256": _sha(te_summary)},
+        },
+        "deployability": {
             "model_month": "2026-02",
-            "tick_exact_summary_path": str(te_summary),
-            "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
+            "capacity_overall_pass": True,
+            "live_deployable": True,
         },
         "locked_runtime": {
             "threshold_mode": "rolling_days",

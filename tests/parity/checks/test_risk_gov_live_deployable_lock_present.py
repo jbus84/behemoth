@@ -12,10 +12,13 @@ def _write_lock(history_dir: Path, month: str, symbol: str, *, live_deployable: 
     month_dir = history_dir / month
     month_dir.mkdir(parents=True, exist_ok=True)
     payload = {
-        "artifacts": {
+        "schema_version": 2,
+        "symbol": symbol,
+        "deployability": {
             "model_month": month,
             "live_deployable": live_deployable,
-        }
+        },
+        "artifacts": {},
     }
     (month_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(json.dumps(payload))
 

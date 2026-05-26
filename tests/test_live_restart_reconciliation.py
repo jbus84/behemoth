@@ -113,11 +113,13 @@ def test_load_promoted_model_month_reads_live_lock_artifacts(tmp_path: Path) -> 
     (governance_dir / "eurusd_oco_live_lock.json").write_text(
         json.dumps(
             {
+                "schema_version": 2,
                 "symbol": "EURUSD",
-                "artifacts": {
+                "deployability": {
                     "live_deployable": True,
                     "model_month": "2026-03",
                 },
+                "artifacts": {},
             }
         )
         + "\n",
@@ -126,11 +128,13 @@ def test_load_promoted_model_month_reads_live_lock_artifacts(tmp_path: Path) -> 
     (governance_dir / "audusd_oco_live_lock.json").write_text(
         json.dumps(
             {
+                "schema_version": 2,
                 "symbol": "AUDUSD",
-                "artifacts": {
+                "deployability": {
                     "live_deployable": False,
                     "model_month": "2026-04",
                 },
+                "artifacts": {},
             }
         )
         + "\n",
