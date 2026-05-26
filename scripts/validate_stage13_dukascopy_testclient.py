@@ -13,6 +13,8 @@ from typing import Any
 
 import pandas as pd
 
+from src.behemoth.core.bundle_paths import lock_filename
+
 
 @dataclass(frozen=True)
 class InputSource:
@@ -97,7 +99,7 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
 
 
 def _load_lock_status(lock_dir: Path, symbol: str) -> dict[str, Any]:
-    path = Path(lock_dir) / f"{symbol.lower()}_oco_live_lock.json"
+    path = Path(lock_dir) / lock_filename(symbol)
     if not path.exists():
         return {"historical_deployable": True, "non_deployable_reason": ""}
     try:

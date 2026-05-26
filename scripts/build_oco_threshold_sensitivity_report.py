@@ -13,6 +13,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.behemoth.core.bundle_paths import lock_filename
+
 try:
     import yaml
 except Exception:
@@ -69,7 +71,7 @@ def _default_paths(symbol: str) -> SymbolPaths:
         f"data/analysis/tick_opportunity_mining/{folder}/{s}_oco_monthly_predictions.parquet"
     )
 
-    lock = Path(f"configs/research/governance/oco/{s_low}_oco_live_lock.json")
+    lock = Path("configs/research/governance/oco") / lock_filename(s_low)
     return SymbolPaths(symbol=s, pred_path=pred, lock_path=lock)
 
 

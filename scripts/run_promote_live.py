@@ -26,7 +26,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths  # noqa: E402
+from src.behemoth.core.bundle_paths import (  # noqa: E402
+    BundleIntegrityError,
+    BundlePaths,
+    iter_locks,
+    lock_filename,
+)
 
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 CERT_SUMMARY_FILENAME = "stage14_jforex_runtime_certification_summary.csv"
@@ -242,7 +247,7 @@ def _copy_candidate_models(model_month: str) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
     lock_dir = _repo_root() / HISTORY_ROOT / model_month
     copied: list[str] = []
-    for lock_path in sorted(lock_dir.glob("*_oco_live_lock.json")):
+    for lock_path in iter_locks(lock_dir):
         try:
             bp = BundlePaths.from_lock(lock_path)
             src = bp.model_cbm()
@@ -304,14 +309,14 @@ def _update_active_governance(model_month: str, go_symbols: list[str]) -> None:
     active_dir = _repo_root() / ACTIVE_ROOT
     active_dir.mkdir(parents=True, exist_ok=True)
 
-    for path in active_dir.glob("*_oco_live_lock.json"):
+    for path in iter_locks(active_dir):
         path.unlink()
     for path in active_dir.glob("*_oco_allowed_states.csv"):
         path.unlink()
 
     for symbol in go_symbols:
         lower = symbol.lower()
-        source_lock = source_dir / f"{lower}_oco_live_lock.json"
+        source_lock = source_dir / lock_filename(symbol)
         if not source_lock.exists():
             raise SystemExit(
                 f"[promote-live] missing archived lock for GO symbol {symbol}: {source_lock}"
@@ -345,10 +350,10 @@ def _rewrite_manifest_paths(value, source_dir: Path, target_dir: Path):
 
 
 def _rewrite_promoted_lock_paths(source_dir: Path, target_dir: Path) -> None:
-    for lock_path in target_dir.rglob("*_oco_live_lock.json"):
+    for lock_path in iter_locks(target_dir):
         with lock_path.open() as f:
             manifest = json.load(f)
-        if int(manifest.get("schema_version", 0)) == 2:
+        if int(manifest.get("schema_version", 0)) == 3:
             # v3 locks use bundle-relative paths; no rewriting needed.
             continue
         rewritten = _rewrite_manifest_paths(manifest, source_dir, target_dir)
@@ -359,54 +364,55 @@ def _rewrite_promoted_lock_paths(source_dir: Path, target_dir: Path) -> None:
 
 def _rebuild_promoted_index(target_root: Path) -> None:
     rows: list[dict[str, object]] = []
-    for lock_path in sorted(target_root.glob("*/*_oco_live_lock.json")):
-        try:
-            bp = BundlePaths.from_lock(lock_path)
-            rows.append(
-                {
-                    "symbol": bp.symbol,
-                    "month": lock_path.parent.name,
-                    "lock_path": str(lock_path),
-                    "allowed_states_path": str(bp.allowed_states_csv()),
-                    "model_cbm_path": str(bp.model_cbm()),
-                    "threshold_json_path": str(bp.model_threshold_json()),
-                    "candidates_count": int(
-                        json.loads(lock_path.read_text(encoding="utf-8"))
-                        .get("state_universe", {})
-                        .get("count", 0)
-                        or 0
-                    ),
-                    "production_cap_pips": float(
-                        json.loads(lock_path.read_text(encoding="utf-8"))
-                        .get("locked_runtime", {})
-                        .get("production_cap_pips", 0.0)
-                        or 0.0
-                    ),
-                    "live_deployable": bp.live_deployable,
-                }
-            )
-        except BundleIntegrityError:
-            # Legacy v1 fallback
-            with lock_path.open() as f:
-                manifest = json.load(f)
-            artifacts = manifest.get("artifacts", {})
-            state_universe = manifest.get("state_universe", {})
-            locked_runtime = manifest.get("locked_runtime", {})
-            rows.append(
-                {
-                    "symbol": str(manifest.get("symbol", "")).upper(),
-                    "month": lock_path.parent.name,
-                    "lock_path": str(lock_path),
-                    "allowed_states_path": str(artifacts.get("reduced_states_csv_path", "")),
-                    "model_cbm_path": str(artifacts.get("model_cbm_path", "")),
-                    "threshold_json_path": str(artifacts.get("model_threshold_json_path", "")),
-                    "candidates_count": int(state_universe.get("count", 0) or 0),
-                    "production_cap_pips": float(
-                        locked_runtime.get("production_cap_pips", 0.0) or 0.0
-                    ),
-                    "live_deployable": bool(artifacts.get("live_deployable", False)),
-                }
-            )
+    for month_dir in sorted(path for path in target_root.iterdir() if path.is_dir()):
+        for lock_path in iter_locks(month_dir):
+            try:
+                bp = BundlePaths.from_lock(lock_path)
+                rows.append(
+                    {
+                        "symbol": bp.symbol,
+                        "month": lock_path.parent.name,
+                        "lock_path": str(lock_path),
+                        "allowed_states_path": str(bp.allowed_states_csv()),
+                        "model_cbm_path": str(bp.model_cbm()),
+                        "threshold_json_path": str(bp.model_threshold_json()),
+                        "candidates_count": int(
+                            json.loads(lock_path.read_text(encoding="utf-8"))
+                            .get("state_universe", {})
+                            .get("count", 0)
+                            or 0
+                        ),
+                        "production_cap_pips": float(
+                            json.loads(lock_path.read_text(encoding="utf-8"))
+                            .get("locked_runtime", {})
+                            .get("production_cap_pips", 0.0)
+                            or 0.0
+                        ),
+                        "live_deployable": bp.live_deployable,
+                    }
+                )
+            except BundleIntegrityError:
+                # Legacy v1 fallback
+                with lock_path.open() as f:
+                    manifest = json.load(f)
+                artifacts = manifest.get("artifacts", {})
+                state_universe = manifest.get("state_universe", {})
+                locked_runtime = manifest.get("locked_runtime", {})
+                rows.append(
+                    {
+                        "symbol": str(manifest.get("symbol", "")).upper(),
+                        "month": lock_path.parent.name,
+                        "lock_path": str(lock_path),
+                        "allowed_states_path": str(artifacts.get("reduced_states_csv_path", "")),
+                        "model_cbm_path": str(artifacts.get("model_cbm_path", "")),
+                        "threshold_json_path": str(artifacts.get("model_threshold_json_path", "")),
+                        "candidates_count": int(state_universe.get("count", 0) or 0),
+                        "production_cap_pips": float(
+                            locked_runtime.get("production_cap_pips", 0.0) or 0.0
+                        ),
+                        "live_deployable": bool(artifacts.get("live_deployable", False)),
+                    }
+                )
 
     index_path = target_root / "index.csv"
     columns = [

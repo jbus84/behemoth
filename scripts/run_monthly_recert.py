@@ -33,6 +33,7 @@ from src.behemoth.core.bundle_paths import (  # noqa: E402
     BundleIntegrityError,
     BundlePaths,
     iter_locks,
+    lock_filename,
 )
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
@@ -295,7 +296,7 @@ def _validate_month_bundle(bundle_dir: Path) -> None:
         )
 
     for symbol in DEFAULT_SYMBOLS:
-        lock_path = bundle_dir / f"{symbol.lower()}_oco_live_lock.json"
+        lock_path = bundle_dir / lock_filename(symbol)
         if not lock_path.is_file():
             raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {lock_path}")
         try:

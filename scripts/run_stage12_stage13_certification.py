@@ -34,7 +34,7 @@ _validate_stage13_dukascopy_testclient = importlib.import_module(
     "scripts.validate_stage13_dukascopy_testclient"
 )
 
-from src.behemoth.core.bundle_paths import BundlePaths  # noqa: E402
+from src.behemoth.core.bundle_paths import BundlePaths, lock_filename  # noqa: E402
 
 DukascopyTestClientArtifactOutputs = (
     _generate_dukascopy_testclient_artifacts.DukascopyTestClientArtifactOutputs
@@ -147,7 +147,7 @@ def _resolve_stage12_predictions_path(
 ) -> Path:
     symbol = _normalize_symbol(symbol)
     if lock_dir is not None:
-        lock_path = Path(lock_dir) / f"{symbol.lower()}_oco_live_lock.json"
+        lock_path = Path(lock_dir) / lock_filename(symbol)
         if lock_path.exists():
             return BundlePaths.from_lock(lock_path).predictions()
     return Path(predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet"

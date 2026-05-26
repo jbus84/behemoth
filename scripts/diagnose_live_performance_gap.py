@@ -25,6 +25,8 @@ from typing import Any
 
 import duckdb
 
+from src.behemoth.core.bundle_paths import lock_filename
+
 # Reduced-core backtest win rates from WFO eval 2025 (locked states only).
 # Update these from: data/analysis/tick_opportunity_mining_dukascopy_candidate/
 #                    wfo_m3to1_oco_fullcap/<SYM>_oco_events_eval2025.parquet
@@ -138,7 +140,7 @@ def _threshold_analysis_section(
         # Check if today's date is in the threshold schedule
         schedule_has_today = False
         static_threshold = None
-        lock_path = LOCK_DIR / f"{symbol.lower()}_oco_live_lock.json"
+        lock_path = LOCK_DIR / lock_filename(symbol)
         if lock_path.exists():
             lock = json.loads(lock_path.read_text())
             artifacts = lock.get("artifacts", {})
@@ -263,7 +265,7 @@ def _candidate_audit_section(con: duckdb.DuckDBPyConnection, run_id: str) -> lis
     results = []
     for symbol, distinct, uids, total in rows:
         locked_states: list[str] = []
-        lock_path = LOCK_DIR / f"{symbol.lower()}_oco_live_lock.json"
+        lock_path = LOCK_DIR / lock_filename(symbol)
         if lock_path.exists():
             lock = json.loads(lock_path.read_text())
             locked_states = [

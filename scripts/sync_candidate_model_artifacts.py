@@ -238,7 +238,7 @@ def run(
                         symbol,
                         "-",
                         "FAIL",
-                        f"missing live lock {lock_dir / f'{symbol.lower()}_oco_live_lock.json'}",
+                        f"missing live lock {lock_dir / lock_filename(symbol)}",
                     )
                 )
     else:
