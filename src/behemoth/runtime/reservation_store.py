@@ -243,7 +243,7 @@ class ReservationStore:
         return len(rows)
 
     def sum_active_account_risk_reserved_loss_ccy(
-        self, *, symbol: str | None = None, include_pending: bool = True, include_open: bool = True
+        self, *, symbol: str | None = None, include_pending: bool = True, include_open: bool = True, family: str | None = None,
     ) -> float:
         statuses: list[str] = []
         if include_pending:
@@ -258,12 +258,15 @@ class ReservationStore:
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
+        if family:
+            query += " AND family = ?"
+            params.append(family)
         row = self._store.execute(query, params).fetchone()
         if not row or row[0] is None:
             return 0.0
         return float(row[0])
 
-    def list_active_account_risk_reservations(self, *, symbol: str | None = None) -> list[ReservationSnapshot]:
+    def list_active_account_risk_reservations(self, *, symbol: str | None = None, family: str | None = None) -> list[ReservationSnapshot]:
         params: list[Any] = []
         query = """
             SELECT reservation_id, created_ts, updated_ts, symbol, candidate_uid, broker_pos_id,
@@ -275,6 +278,9 @@ class ReservationStore:
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
+        if family:
+            query += " AND family = ?"
+            params.append(family)
         query += " ORDER BY created_ts ASC"
         rows = self._store.execute(query, params).fetchall()
         out: list[ReservationSnapshot] = []
