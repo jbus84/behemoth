@@ -11,6 +11,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from src.behemoth.core.bundle_paths import BundlePaths
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,6 +86,109 @@ class ModelRegistry:
     def models_loaded(self) -> dict[str, str]:
         """Return dict of cache_key -> model_month for status reporting."""
         return dict(self._model_months)
+
+    def load_bundle_paths(
+        self,
+        *,
+        symbol: str,
+        bundle_paths: BundlePaths,
+        cache_key: str,
+        locked_runtime_overrides: dict[str, Any] | None = None,
+        expected_month: str | None = None,
+        catboost_cls: type | None = None,
+    ) -> tuple[bool, str]:
+        """Load and validate a governance-locked bundle paths.
+
+        Args:
+            symbol: Trading symbol (e.g., "GBPUSD")
+            bundle_paths: BundlePaths instance with model artifact accessors
+            cache_key: Cache key (symbol or symbol|month)
+            locked_runtime_overrides: Optional overrides from locked_runtime
+            expected_month: Optional expected month; if mismatch, fail
+            catboost_cls: CatBoost class to instantiate; if None, returns False
+
+        Returns:
+            (success, reason_or_month): If success=True, reason is the loaded month.
+                                       If success=False, reason is error code.
+        """
+        if catboost_cls is None:
+            return False, "catboost_unavailable"
+
+        model_path = bundle_paths.model_cbm()
+        thr_path = bundle_paths.model_threshold_json()
+        lock_month = bundle_paths.model_month
+
+        if (not model_path.exists()) or (not thr_path.exists()):
+            logger.error(
+                "Locked artifacts missing for %s: model=%s threshold=%s",
+                symbol,
+                model_path,
+                thr_path,
+            )
+            return False, "artifact_missing"
+
+        # BundlePaths.model_cbm() and model_threshold_json() verify sha256 on call
+        month = model_path.stem.split("_")[-1]
+        if lock_month and (month != lock_month):
+            logger.error(
+                "Locked model month mismatch for %s: lock=%s file=%s",
+                symbol,
+                lock_month,
+                month,
+            )
+            return False, "lock_month_mismatch"
+        if expected_month and month != expected_month:
+            logger.error(
+                "Expected model month mismatch for %s: expected=%s file=%s",
+                symbol,
+                expected_month,
+                month,
+            )
+            return False, "expected_month_mismatch"
+
+        model = catboost_cls()
+        model.load_model(str(model_path))
+        thr_cfg = json.loads(thr_path.read_text())
+
+        # Validate feature schema version
+        feature_schema_version = str(thr_cfg.get("feature_schema_version", "")).strip()
+        if not feature_schema_version:
+            logger.warning(
+                "Threshold JSON missing feature_schema_version for %s — "
+                "this artifact may be incompatible with current feature contract",
+                symbol
+            )
+        else:
+            # Expected version should be documented in governance locks
+            # Current version: 1.0 (16-feature set per CURRENT_FEATURE_SCHEMA)
+            if feature_schema_version != "1.0":
+                logger.error(
+                    "Feature schema version mismatch for %s: threshold=%s expected=1.0",
+                    symbol,
+                    feature_schema_version,
+                )
+                return False, "feature_schema_version_mismatch"
+
+        if locked_runtime_overrides and isinstance(locked_runtime_overrides, dict):
+            thr_cfg.update(
+                {
+                    str(k): v
+                    for k, v in locked_runtime_overrides.items()
+                    if str(k).strip() and v is not None
+                }
+            )
+        thr_month = str(thr_cfg.get("model_month", "")).strip()
+        if thr_month and thr_month != month:
+            logger.error(
+                "Threshold JSON model month mismatch for %s: model=%s threshold=%s",
+                symbol,
+                month,
+                thr_month,
+            )
+            return False, "threshold_month_mismatch"
+        self.set_model_and_threshold(cache_key, model, thr_cfg, month)
+        logger.info("Loaded lock-bound model for %s (month %s): %s", symbol, month, model_path.name)
+        return True, month
 
     def load_model_binding(
         self,
