@@ -444,3 +444,59 @@ def test_bundle_layout_families_distinct_for_same_symbol_and_month() -> None:
         "duplicate rendered paths across families: "
         f"{[p for p in all_relpaths if all_relpaths.count(p) > 1]}"
     )
+
+
+def test_directional_family_round_trip(tmp_path: Path) -> None:
+    """A directional-family lock can be written, read, and validated end-to-end."""
+    import hashlib
+    import json
+    import subprocess
+    import sys
+
+    from src.behemoth.core.bundle_paths import BundlePaths, bundle_layout_for
+
+    bundle_dir = tmp_path / "2026-04"
+    (bundle_dir / "models").mkdir(parents=True)
+
+    layout = bundle_layout_for("directional")
+    fmt = {"symbol_lower": "eurusd", "symbol_upper": "EURUSD", "family": "directional", "month": "2026-04"}
+
+    # Build a synthetic file per required artifact.
+    artifacts_block = {}
+    for spec in layout:
+        if not spec.required:
+            continue
+        relpath = spec.target_relpath_template.format(**fmt)
+        abs_path = bundle_dir / relpath
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        content = f"synthetic-{spec.v2_key}".encode()
+        abs_path.write_bytes(content)
+        artifacts_block[spec.v2_key] = {
+            "path": relpath,
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
+
+    lock = {
+        "schema_version": 3,
+        "symbol": "EURUSD",
+        "bundle": {"month": "2026-04", "dir_relpath": str(bundle_dir), "family": "directional"},
+        "artifacts": artifacts_block,
+        "deployability": {"live_deployable": True, "model_month": "2026-04"},
+    }
+    lock_path = bundle_dir / "eurusd_directional_live_lock.json"
+    lock_path.write_text(json.dumps(lock))
+
+    # Resolver works.
+    parsed = BundlePaths.from_lock(lock_path)
+    assert parsed.family == "directional"
+    assert parsed.predictions().name == "eurusd_directional_locked_predictions.parquet"
+    assert parsed.model_cbm().name == "EURUSD_directional_model_2026-04.cbm"
+
+    # validate_bundle accepts the dir.
+    result = subprocess.run(
+        [sys.executable, "scripts/validate_bundle.py", str(bundle_dir)],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[1],
+    )
+    assert result.returncode == 0, result.stderr
