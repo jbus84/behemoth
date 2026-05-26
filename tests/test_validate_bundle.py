@@ -26,9 +26,13 @@ def _make_valid_bundle(tmp_path: Path) -> Path:
     (bundle / "models" / "EURUSD_model_2026-04.cbm").write_bytes(cbm)
     (bundle / "models" / "EURUSD_model_2026-04.json").write_bytes(thr)
     lock = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": "EURUSD",
-        "bundle": {"month": "2026-04", "dir_relpath": str(bundle)},
+        "bundle": {
+            "month": "2026-04",
+            "dir_relpath": str(bundle),
+            "family": "oco_first_touch_clean",
+        },
         "artifacts": {
             "predictions": {
                 "path": "eurusd_oco_locked_predictions.parquet",
@@ -88,4 +92,26 @@ def test_fails_for_v1_lock(tmp_path: Path) -> None:
     lock_path.write_text(json.dumps(data))
     result = _run(bundle)
     assert result.returncode != 0
-    assert "schema_version=2" in result.stderr
+    assert "schema_version=3" in result.stderr
+
+
+def test_fails_when_family_missing(tmp_path: Path) -> None:
+    bundle = _make_valid_bundle(tmp_path)
+    lock_path = bundle / "eurusd_oco_live_lock.json"
+    data = json.loads(lock_path.read_text())
+    data["bundle"].pop("family", None)
+    lock_path.write_text(json.dumps(data))
+    result = _run(bundle)
+    assert result.returncode != 0
+    assert "bundle.family" in result.stderr
+
+
+def test_fails_when_family_unknown(tmp_path: Path) -> None:
+    bundle = _make_valid_bundle(tmp_path)
+    lock_path = bundle / "eurusd_oco_live_lock.json"
+    data = json.loads(lock_path.read_text())
+    data["bundle"]["family"] = "not_a_real_family"
+    lock_path.write_text(json.dumps(data))
+    result = _run(bundle)
+    assert result.returncode != 0
+    assert "unknown family" in result.stderr
