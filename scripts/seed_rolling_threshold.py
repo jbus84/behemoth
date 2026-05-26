@@ -117,9 +117,9 @@ def _seed_symbol(
     from src.behemoth.core.schemas import IncomingTick, ModelFeatures
     from src.behemoth.runtime.tick_aggregator import TickAggregator
 
-    binding = registry.get_model_binding(symbol)
-    if not binding:
-        print(f"  {symbol}: no model binding — skipping", flush=True)
+    bundle_paths = registry.get_bundle_paths(symbol)
+    if not bundle_paths:
+        print(f"  {symbol}: no bundle paths — skipping", flush=True)
         return True  # not a failure, just no model
 
     candidates = registry.get_candidates(symbol)
@@ -128,13 +128,13 @@ def _seed_symbol(
         return True
 
     # Load model
-    cbm_raw = str(binding.get("model_cbm_path", "")).strip()
-    thr_raw = str(binding.get("model_threshold_json_path", "")).strip()
-    if not cbm_raw or not thr_raw:
-        print(f"  {symbol}: model paths not configured — FAILED", flush=True)
+    try:
+        cbm_path = bundle_paths.model_cbm()
+        thr_path = bundle_paths.model_threshold_json()
+    except Exception as e:
+        print(f"  {symbol}: failed to resolve bundle paths: {e} — FAILED", flush=True)
         return False
-    cbm_path = Path(cbm_raw)
-    thr_path = Path(thr_raw)
+
     if not cbm_path.exists() or not thr_path.exists():
         print(f"  {symbol}: model artifacts missing — FAILED", flush=True)
         return False
@@ -149,7 +149,7 @@ def _seed_symbol(
     model.load_model(str(cbm_path))
     thr_cfg = json.loads(thr_path.read_text())
     static_thr = float(thr_cfg.get("threshold_exec", 0.5))
-    model_month = str(binding.get("model_month", "")).strip()
+    model_month = bundle_paths.model_month
 
     # Load ticks
     now_ts = datetime.now(tz=timezone.utc)
