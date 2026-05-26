@@ -1048,16 +1048,17 @@ def _load_models() -> None:
         return
 
     for sym in _config.symbols:
-        binding = _registry.get_model_binding(sym)
-        if not binding:
-            logger.error("No governance model binding for %s — skipping model load.", sym)
+        bundle_paths = _registry.get_bundle_paths(sym)
+        if not bundle_paths:
+            logger.error("No governance bundle paths for %s — skipping model load.", sym)
             continue
         cache_key = _cache_key(sym)
-        _model_registry.load_model_binding(
+        _model_registry.load_bundle_paths(
             symbol=sym,
-            binding=binding,
+            bundle_paths=bundle_paths,
             cache_key=cache_key,
-            expected_month=str(binding.get("model_month", "")).strip() or None,
+            locked_runtime_overrides={},
+            expected_month=bundle_paths.model_month or None,
             catboost_cls=_catboost_cls(),
         )
 

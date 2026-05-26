@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -26,8 +26,6 @@ class CandidateContract:
     cap_pips: float
     source: str
     lock_path: str | None = None
-    # model_binding remains for one transition release; mark it deprecated.
-    model_binding: dict[str, Any] = field(default_factory=dict)
 
 
 class GovernanceLockLoader:
@@ -48,17 +46,6 @@ class GovernanceLockLoader:
         rows = data.get("state_universe", {}).get("rows", [])
         candidates = [CandidateSpec.from_row(r) for r in rows]
 
-        # model_binding kept temporarily; will be removed in Task 6.
-        artifacts = data.get("artifacts", {})
-        cbm_entry = artifacts.get("model_cbm", {}) or {}
-        thr_entry = artifacts.get("model_threshold_json", {}) or {}
-        model_binding = {
-            "model_cbm_path": str(bp.model_cbm()),
-            "model_cbm_sha256": str(cbm_entry.get("sha256", "")).strip(),
-            "model_threshold_json_path": str(bp.model_threshold_json()),
-            "model_threshold_json_sha256": str(thr_entry.get("sha256", "")).strip(),
-            "model_month": bp.model_month or (month or "unknown"),
-        }
         return CandidateContract(
             symbol=sym,
             model_month=bp.model_month or (month or "unknown"),
@@ -69,7 +56,6 @@ class GovernanceLockLoader:
             cap_pips=float(locked.get("production_cap_pips", 1.2)),
             source="live" if month is None else "historical",
             lock_path=str(path),
-            model_binding=model_binding,
         )
 
 

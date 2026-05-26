@@ -78,10 +78,11 @@ def test_historical_registry_loads_month_scoped_entries(tmp_path: Path) -> None:
     assert reg.months_for_symbol("eurusd") == ["2025-07", "2025-08"]
     assert len(reg.get_candidates("EURUSD", "2025-07")) == 1
     assert reg.get_cap_pips("EURUSD", "2025-07") == pytest.approx(1.1)
-    binding = reg.get_model_binding("EURUSD", "2025-07")
-    assert binding is not None
-    assert binding["model_month"] == "2025-07"
-    assert "EURUSD_model_2025-07.cbm" in binding["model_cbm_path"]
+    bundle_paths = reg.get_bundle_paths("EURUSD", "2025-07")
+    assert bundle_paths is not None
+    assert bundle_paths.model_month == "2025-07"
+    cbm_path = bundle_paths.model_cbm()
+    assert "EURUSD_model_2025-07.cbm" in cbm_path.name
     assert len(reg.all_candidates()) == 3
 
 

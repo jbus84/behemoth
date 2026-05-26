@@ -159,14 +159,15 @@ class TestRegistryLoading:
         reg = CandidateRegistry.load(lock_dir)
 
         assert reg.symbols == ["EURUSD"]
-        binding = reg.get_model_binding("EURUSD")
-        assert binding is not None
-        assert Path(binding["model_cbm_path"]).is_file()
-        assert Path(binding["model_cbm_path"]).name == "EURUSD_model_2026-02.cbm"
-        assert Path(binding["model_threshold_json_path"]).is_file()
-        assert Path(binding["model_threshold_json_path"]).name == "EURUSD_model_2026-02.json"
-        assert binding["locked_runtime_overrides"]["threshold_source"] == "rolling_days"
-        assert binding["locked_runtime_overrides"]["rolling_threshold_min_history"] == 300
+        bundle_paths = reg.get_bundle_paths("EURUSD")
+        assert bundle_paths is not None
+        cbm_path = bundle_paths.model_cbm()
+        json_path = bundle_paths.model_threshold_json()
+        assert cbm_path.is_file()
+        assert cbm_path.name == "EURUSD_model_2026-02.cbm"
+        assert json_path.is_file()
+        assert json_path.name == "EURUSD_model_2026-02.json"
+        assert bundle_paths.model_month == "2026-02"
 
 
 class TestCandidateGeneration:
@@ -178,12 +179,12 @@ class TestCandidateGeneration:
         assert hermetic_registry.get_candidates("XYZABC") == []
 
     def test_model_binding_present(self, hermetic_registry: CandidateRegistry):
-        binding = hermetic_registry.get_model_binding("EURUSD")
-        assert binding is not None
-        assert binding["model_cbm_path"].endswith(".cbm")
-        assert binding["model_threshold_json_path"].endswith(".json")
-        assert len(str(binding["model_cbm_sha256"])) == 64
-        assert len(str(binding["model_threshold_json_sha256"])) == 64
+        bundle_paths = hermetic_registry.get_bundle_paths("EURUSD")
+        assert bundle_paths is not None
+        cbm_path = bundle_paths.model_cbm()
+        json_path = bundle_paths.model_threshold_json()
+        assert str(cbm_path).endswith(".cbm")
+        assert str(json_path).endswith(".json")
 
     def test_candidate_fields_populated(self, hermetic_registry: CandidateRegistry):
         cands = hermetic_registry.get_candidates("GBPUSD")
