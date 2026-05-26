@@ -37,7 +37,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     verify_calls: list[str] = []
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     build_bundle_dir.mkdir(parents=True)
-    # v2 bundle layout: artifacts live inside the bundle
+    # v3 bundle layout: artifacts live inside the bundle
     predictions_path = build_bundle_dir / "eurusd_oco_locked_predictions.parquet"
     states_path = build_bundle_dir / "eurusd_oco_allowed_states.csv"
     predictions_path.write_text("predictions\n")
@@ -52,8 +52,13 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     lock_path.write_text(
         json.dumps(
             {
-                "schema_version": 2,
+                "schema_version": 3,
                 "symbol": "EURUSD",
+                "bundle": {
+                    "month": "2026-02",
+                    "dir_relpath": str(build_bundle_dir),
+                    "family": "oco_first_touch_clean",
+                },
                 "artifacts": {
                     "predictions": {
                         "path": "eurusd_oco_locked_predictions.parquet",
@@ -113,7 +118,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     assert verify_calls == ["data/analysis/backtest_reconcile:2026-02"]
     promoted_lock = archive_dir / "2026-02" / "eurusd_oco_live_lock.json"
     promoted_data = json.loads(promoted_lock.read_text())
-    # v2 locks are bundle-relative; paths should NOT be rewritten during promotion
+    # v3 locks are bundle-relative; paths should NOT be rewritten during promotion
     assert (
         promoted_data["artifacts"]["predictions"]["path"] == "eurusd_oco_locked_predictions.parquet"
     )
@@ -241,8 +246,13 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(monkeypatch, tmp_path
         (build_bundle_dir / f"{lower}_oco_live_lock.json").write_text(
             json.dumps(
                 {
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "symbol": symbol,
+                    "bundle": {
+                        "month": "2026-02",
+                        "dir_relpath": str(build_bundle_dir),
+                        "family": "oco_first_touch_clean",
+                    },
                     "artifacts": {
                         "model_cbm": {
                             "path": f"models/{symbol}_model_2026-02.cbm",

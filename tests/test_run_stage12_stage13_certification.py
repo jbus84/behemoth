@@ -280,8 +280,8 @@ def test_main_uses_lock_bundle_predictions_for_stage12(monkeypatch, tmp_path: Pa
     missing_predictions_dir = tmp_path / "missing-active-predictions"
     lock_dir = tmp_path / "bundle" / "2026-02"
     lock_dir.mkdir(parents=True)
-    # Place predictions at a non-default path so the old fallback would miss it.
-    # BundlePaths will resolve it from the v2 lock.
+        # Place predictions at a non-default path so the old fallback would miss it.
+        # BundlePaths will resolve it from the v3 lock.
     locked_predictions = lock_dir / "custom_predictions.parquet"
     pd.DataFrame([{"symbol": "EURUSD", "test_month": "2026-02"}]).to_parquet(
         locked_predictions,
@@ -290,8 +290,13 @@ def test_main_uses_lock_bundle_predictions_for_stage12(monkeypatch, tmp_path: Pa
     (lock_dir / "eurusd_oco_live_lock.json").write_text(
         json.dumps(
             {
-                "schema_version": 2,
-                "symbol": "EURUSD",
+                    "schema_version": 3,
+                    "symbol": "EURUSD",
+                    "bundle": {
+                        "month": "2026-02",
+                        "dir_relpath": str(lock_dir),
+                        "family": "oco_first_touch_clean",
+                    },
                 "artifacts": {
                     "predictions": {
                         "path": "custom_predictions.parquet",

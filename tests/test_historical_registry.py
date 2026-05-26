@@ -40,9 +40,13 @@ def _write_lock(
     }
 
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": symbol,
-        "bundle": {"month": month, "dir_relpath": "."},
+        "bundle": {
+            "month": month,
+            "dir_relpath": ".",
+            "family": "oco_first_touch_clean",
+        },
         "artifacts": artifacts,
         "deployability": {"live_deployable": True, "model_month": model_month or month},
         "locked_runtime": {"production_cap_pips": 1.1},

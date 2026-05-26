@@ -34,11 +34,15 @@ def test_load_contract(tmp_path: Path) -> None:
     cbm_sha = hashlib.sha256(cbm_file.read_bytes()).hexdigest()
     json_sha = hashlib.sha256(json_file.read_bytes()).hexdigest()
 
-    # Write v2 lock
+    # Write v3 lock
     lock.write_text(json.dumps({
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": "EURUSD",
-        "bundle": {"month": "2026-01", "dir_relpath": "."},
+        "bundle": {
+            "month": "2026-01",
+            "dir_relpath": ".",
+            "family": "oco_first_touch_clean",
+        },
         "artifacts": {
             "model_cbm": {"path": "models/EURUSD_model_2026-01.cbm", "sha256": cbm_sha},
             "model_threshold_json": {"path": "models/EURUSD_model_2026-01.json", "sha256": json_sha},
