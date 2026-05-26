@@ -189,6 +189,24 @@ class TestModelRegistryFamilyCacheKey:
         assert ModelRegistry.make_cache_key("EURUSD") == "EURUSD"
 
 
+class TestLoadModelsMultiFamily:
+    def test_load_models_skips_when_no_families(self, monkeypatch) -> None:
+        from src.behemoth.core.registry import CandidateRegistry
+        from src.behemoth.api import server
+
+        empty_reg = CandidateRegistry()
+        monkeypatch.setattr(server, "_registry", empty_reg)
+        monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
+        monkeypatch.setattr(server._model_registry, "clear", lambda: None)
+
+        original_symbols = server._config.symbols
+        server._config.symbols = ["EURUSD"]
+        try:
+            server._load_models()
+        finally:
+            server._config.symbols = original_symbols
+
+
 class TestMetricsEndpoint:
     def test_metrics_returns_prometheus_format(self, client):
         r = client.get("/metrics")

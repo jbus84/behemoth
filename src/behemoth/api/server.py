@@ -449,16 +449,19 @@ def _is_historical_mode() -> bool:
     }
 
 
-def _cache_key(symbol: str, model_month: str | None = None) -> str:
-    return _candidate_catalog().cache_key(symbol, model_month)
+def _cache_key(symbol: str, model_month: str | None = None, family: str | None = None) -> str:
+    base = _candidate_catalog().cache_key(symbol, model_month)
+    if family:
+        return f"{base}|{family}"
+    return base
 
 
-def _has_loaded_model_for_symbol(symbol: str) -> bool:
-    return _model_registry.has_model(symbol)
+def _has_loaded_model_for_symbol(symbol: str, family: str | None = None) -> bool:
+    return _model_registry.has_model(symbol, family=family)
 
 
-def _latest_loaded_month_for_symbol(symbol: str) -> str | None:
-    return _model_registry.get_latest_month(symbol)
+def _latest_loaded_month_for_symbol(symbol: str, family: str | None = None) -> str | None:
+    return _model_registry.get_latest_month(symbol, family=family)
 
 
 def _effective_governance_dir() -> str:
@@ -1059,23 +1062,29 @@ def _load_models() -> None:
         return
 
     for sym in _config.symbols:
-        try:
-            bundle_paths = _registry.get_bundle_paths(sym)
-            if not bundle_paths:
-                logger.error("No governance bundle paths for %s — skipping model load.", sym)
-                continue
-            cache_key = _cache_key(sym)
-            _model_registry.load_bundle_paths(
-                symbol=sym,
-                bundle_paths=bundle_paths,
-                cache_key=cache_key,
-                locked_runtime_overrides={},
-                expected_month=bundle_paths.model_month or None,
-                catboost_cls=_catboost_cls(),
-            )
-        except BundleIntegrityError as exc:
-            logger.error("Bundle integrity error for %s — skipping model load: %s", sym, exc)
+        candidates = _registry.get_candidates(sym)
+        families = sorted({c.family for c in candidates if c.family})
+        if not families:
+            logger.error("No governance families for %s — skipping model load.", sym)
             continue
+        for family in families:
+            try:
+                bundle_paths = _registry.get_bundle_paths(sym, family)
+                if not bundle_paths:
+                    logger.error("No governance bundle paths for %s family %s — skipping.", sym, family)
+                    continue
+                cache_key = _cache_key(sym, family=family)
+                _model_registry.load_bundle_paths(
+                    symbol=sym,
+                    bundle_paths=bundle_paths,
+                    cache_key=cache_key,
+                    locked_runtime_overrides={},
+                    expected_month=bundle_paths.model_month or None,
+                    catboost_cls=_catboost_cls(),
+                )
+            except BundleIntegrityError as exc:
+                logger.error("Bundle integrity error for %s %s — skipping: %s", sym, family, exc)
+                continue
 
 def _load_seed_files(seed_dir: Path | None = None) -> None:
     """Load pre-computed threshold seed parquets into audit_logs."""
