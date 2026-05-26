@@ -4,6 +4,154 @@ import pytest
 from scripts.run_tick_opportunity_monthly_wfo import _wfo_monthly
 
 
+def test_parse_requested_families_accepts_yaml_list_and_csv_string():
+    from scripts.run_tick_opportunity_monthly_wfo import _parse_requested_families
+
+    assert _parse_requested_families(["directional", "pullback"]) == [
+        "directional",
+        "pullback",
+    ]
+    assert _parse_requested_families("directional, pullback") == [
+        "directional",
+        "pullback",
+    ]
+
+
+def test_parse_requested_families_rejects_unknown_family():
+    from scripts.run_tick_opportunity_monthly_wfo import _parse_requested_families
+
+    with pytest.raises(ValueError, match="unknown family"):
+        _parse_requested_families("directional,not_a_family")
+
+
+def test_libraries_for_requested_families_groups_by_event_builder_library():
+    from scripts.run_tick_opportunity_monthly_wfo import _libraries_for_requested_families
+
+    assert _libraries_for_requested_families(["oco_first_touch", "directional"]) == [
+        "directional",
+        "oco",
+    ]
+
+
+def test_plan_wfo_inputs_uses_families_when_present_and_keeps_legacy_library():
+    from scripts.run_tick_opportunity_monthly_wfo import _plan_wfo_inputs
+
+    assert _plan_wfo_inputs({"library": "oco", "families": ""}) == {
+        "oco": None,
+    }
+    assert _plan_wfo_inputs({"library": "both", "families": ["directional"]}) == {
+        "directional": ["directional"],
+    }
+
+
+def test_filter_candidate_families_keeps_only_requested_family_rows():
+    from scripts.run_tick_opportunity_monthly_wfo import _filter_candidate_families
+
+    cands = pd.DataFrame(
+        {
+            "symbol": ["EURUSD", "EURUSD", "EURUSD"],
+            "family": ["directional", "pullback", "oco_first_touch"],
+            "train_count": [10, 10, 10],
+            "mean_gross_pips_train": [0.1, 0.1, 0.1],
+        }
+    )
+
+    out = _filter_candidate_families(cands, families=["pullback"])
+
+    assert out["family"].tolist() == ["pullback"]
+
+
+def test_filter_candidate_families_fails_loud_when_family_column_missing():
+    from scripts.run_tick_opportunity_monthly_wfo import _filter_candidate_families
+
+    with pytest.raises(ValueError, match="family"):
+        _filter_candidate_families(pd.DataFrame({"symbol": ["EURUSD"]}), families=["directional"])
+
+
+def test_build_events_filters_requested_family_before_candidate_cap(tmp_path):
+    import scripts.run_tick_opportunity_monthly_wfo as wfo
+
+    candidate_dir = tmp_path / "candidates"
+    dataset_dir = tmp_path / "datasets"
+    candidate_dir.mkdir()
+    dataset_dir.mkdir()
+    pd.DataFrame(
+        {
+            "symbol": ["EURUSD", "EURUSD"],
+            "family": ["pullback", "directional"],
+            "bar_ticks": [100, 100],
+            "horizon": [6, 6],
+            "train_count": [99_999, 1_000],
+            "mean_gross_pips_train": [10.0, 0.1],
+        }
+    ).to_csv(candidate_dir / "EURUSD_directional_candidates.csv", index=False)
+    (dataset_dir / "EURUSD_100tick_velocity.parquet").touch()
+    seen: dict[str, list[str]] = {}
+
+    def fake_prepare_frame(path, *, symbol, horizons):
+        seen["horizons"] = list(horizons)
+        return pd.DataFrame(
+            {
+                "year": [2024, 2025],
+                "close_ts": pd.to_datetime(
+                    ["2024-01-01", "2025-01-01"], utc=True
+                ),
+            }
+        )
+
+    def fake_build_directional_events(**kwargs):
+        seen["families"] = kwargs["cands"]["family"].tolist()
+        return pd.DataFrame()
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(wfo, "_prepare_frame", fake_prepare_frame)
+    monkeypatch.setattr(wfo, "_quantiles", lambda df: {})
+    monkeypatch.setattr(wfo, "_build_directional_events", fake_build_directional_events)
+    try:
+        wfo._build_events_for_library(
+            library="directional",
+            families=["directional"],
+            symbol="EURUSD",
+            dataset_dir=dataset_dir,
+            candidate_dir=candidate_dir,
+            train_years_fit={2024},
+            eval_year=2025,
+            eval_start_ts=None,
+            eval_end_ts_excl=None,
+            min_candidate_train_count=0,
+            max_candidates=1,
+            max_events_per_candidate=10,
+            oco_include_no_touch=False,
+            oco_hold_mode="from_touch",
+        )
+    finally:
+        monkeypatch.undo()
+
+    assert seen["families"] == ["directional"]
+
+
+def test_build_events_for_unsupported_family_fails_loud_with_family_name(tmp_path):
+    import scripts.run_tick_opportunity_monthly_wfo as wfo
+
+    with pytest.raises(NotImplementedError, match="oco_asymmetric"):
+        wfo._build_events_for_library(
+            library="oco_asymmetric",
+            families=["oco_asymmetric"],
+            symbol="EURUSD",
+            dataset_dir=tmp_path,
+            candidate_dir=tmp_path,
+            train_years_fit={2024},
+            eval_year=2025,
+            eval_start_ts=None,
+            eval_end_ts_excl=None,
+            min_candidate_train_count=0,
+            max_candidates=1,
+            max_events_per_candidate=10,
+            oco_include_no_touch=False,
+            oco_hold_mode="from_touch",
+        )
+
+
 def test_wfo_monthly_empty_input_returns_four_values():
     """An empty events frame must return the same 4-tuple shape as the
     normal path (metrics, thresholds, preds, importance).

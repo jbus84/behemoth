@@ -3,6 +3,7 @@ dataset_dir: data/analysis/tick_velocity
 candidate_dir: data/analysis/tick_opportunity_mining
 
 library: directional
+families: [directional]
 train_years_for_state_fit: "2022,2023,2024"
 eval_start_month: "2025-01"
 eval_end_month: "2026-03"
