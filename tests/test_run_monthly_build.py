@@ -241,16 +241,7 @@ def test_run_monthly_build_passes_family_to_freeze(monkeypatch) -> None:
         assert "--family" in cmd, f"freeze invocation missing --family: {cmd}"
         family_index = cmd.index("--family")
         families.add(cmd[family_index + 1])
-    assert families == {
-        "oco_first_touch",
-        "directional",
-        "oco_asymmetric",
-        "directional_inverse",
-        "directional_run",
-        "double_touch",
-        "pullback",
-        "no_touch",
-    }
+    assert families == set(run_monthly_build.FAMILIES_TO_FREEZE)
 
 
 def test_monthly_build_freezes_all_symbol_local_families() -> None:
@@ -265,6 +256,9 @@ def test_monthly_build_freezes_all_symbol_local_families() -> None:
         "double_touch",
         "pullback",
         "no_touch",
+        "dollar_residual",
+        "dispersion_rank",
+        "lead_lag",
     )
 
 
@@ -343,3 +337,13 @@ def test_sync_candidate_model_artifacts_requires_requested_model_month(tmp_path:
 
     assert exit_code == 1
     assert not list(target.glob("EURUSD_model_*"))
+
+
+def test_monthly_build_freezes_cross_symbol_families_after_symbol_local_families() -> None:
+    import scripts.run_monthly_build as build
+
+    assert build.FAMILIES_TO_FREEZE[-3:] == (
+        "dollar_residual",
+        "dispersion_rank",
+        "lead_lag",
+    )
