@@ -63,6 +63,7 @@ SYMBOL_LOCAL_WFO_FAMILIES: set[str] = {
     "pullback",
     "no_touch",
 }
+CROSS_SYMBOL_WFO_FAMILIES: set[str] = {"dollar_residual", "dispersion_rank", "lead_lag"}
 
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
@@ -106,7 +107,7 @@ _FAMILY_CANDIDATE_LIBRARY: dict[str, str] = {
     "dispersion_rank": "dispersion_rank",
     "lead_lag": "lead_lag",
 }
-_SUPPORTED_WFO_REPLAY_FAMILIES: set[str] = SYMBOL_LOCAL_WFO_FAMILIES
+_SUPPORTED_WFO_REPLAY_FAMILIES: set[str] = SYMBOL_LOCAL_WFO_FAMILIES | CROSS_SYMBOL_WFO_FAMILIES
 
 
 def _params_from_candidate_row(r: pd.Series) -> dict[str, Any]:
@@ -192,8 +193,8 @@ def _build_registry_family_events(
     rows: list[pd.DataFrame] = []
     for _, r in cands.iterrows():
         family_name = str(r["family"]).strip().lower()
-        if family_name not in SYMBOL_LOCAL_WFO_FAMILIES:
-            raise NotImplementedError(f"{family_name} is not a symbol-local WFO family")
+        if family_name not in SYMBOL_LOCAL_WFO_FAMILIES | CROSS_SYMBOL_WFO_FAMILIES:
+            raise NotImplementedError(f"{family_name} is not a supported WFO family")
         family = FAMILY_REGISTRY[family_name]
         regime_txt = str(r["regime_desc"])
         regime = regime_txt.split(";")[0].strip()
@@ -407,7 +408,7 @@ def _build_events_for_library(
 ) -> pd.DataFrame:
     lib = str(library).strip().lower()
     _ensure_wfo_replay_supported(families)
-    if lib not in {"directional", "oco"}:
+    if lib not in {"directional", "oco"} | CROSS_SYMBOL_WFO_FAMILIES:
         raise ValueError(f"bad library: {library}")
     c_path = candidate_dir / f"{symbol}_{lib}_candidates.csv"
     if not c_path.exists():

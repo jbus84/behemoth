@@ -133,10 +133,10 @@ def test_build_events_filters_requested_family_before_candidate_cap(tmp_path):
 def test_build_events_for_unsupported_family_fails_loud_with_family_name(tmp_path):
     import scripts.run_tick_opportunity_monthly_wfo as wfo
 
-    with pytest.raises(NotImplementedError, match="dollar_residual"):
+    with pytest.raises(NotImplementedError, match="not_a_family"):
         wfo._build_events_for_library(
-            library="dollar_residual",
-            families=["dollar_residual"],
+            library="directional",
+            families=["not_a_family"],
             symbol="EURUSD",
             dataset_dir=tmp_path,
             candidate_dir=tmp_path,
@@ -397,3 +397,21 @@ def test_wfo_monthly_invokes_guard_on_stale_data():
             execution_quantile=0.9,
             seed=0,
         )
+
+
+def test_cross_symbol_families_plan_to_their_candidate_libraries() -> None:
+    from scripts.run_tick_opportunity_monthly_wfo import _plan_wfo_inputs
+
+    assert _plan_wfo_inputs({"library": "both", "families": ["dollar_residual"]}) == {
+        "dollar_residual": ["dollar_residual"]
+    }
+    assert _plan_wfo_inputs({"library": "both", "families": ["dispersion_rank", "lead_lag"]}) == {
+        "dispersion_rank": ["dispersion_rank"],
+        "lead_lag": ["lead_lag"],
+    }
+
+
+def test_cross_symbol_replay_support_gate_accepts_cross_symbol_families() -> None:
+    import scripts.run_tick_opportunity_monthly_wfo as wfo
+
+    wfo._ensure_wfo_replay_supported(["dollar_residual", "dispersion_rank", "lead_lag"])
