@@ -239,3 +239,19 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
             "live_deployable": False,
         }
     ]
+
+
+def test_freeze_monthly_bundle_accepts_family_argument() -> None:
+    """The freeze script's argparse accepts --family with a default of oco_first_touch."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    result = subprocess.run(
+        [sys.executable, "scripts/freeze_monthly_bundle.py", "--help"],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[1],
+    )
+    assert result.returncode == 0
+    assert "--family" in result.stdout
