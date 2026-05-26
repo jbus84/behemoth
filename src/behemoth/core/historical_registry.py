@@ -1,7 +1,7 @@
 """Historical governance lock registry for month-aligned backtest inference.
 
 Loads month-scoped lock manifests from:
-    <history_dir>/<YYYY-MM>/<symbol>_oco_live_lock.json
+    <history_dir>/<YYYY-MM>/<symbol>_live_lock.json
 
 and exposes candidate/model/cap bindings by (symbol, month).
 """
@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from src.behemoth.core.bundle_paths import BundlePaths
+from src.behemoth.core.bundle_paths import BundlePaths, iter_locks
 from src.behemoth.core.registry import CandidateSpec
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
@@ -43,15 +43,24 @@ class HistoricalCandidateRegistry:
             raise FileNotFoundError(f"Historical governance directory not found: {p_dir}")
 
         reg = cls()
-        for p in sorted(p_dir.glob("*/*_oco_live_lock.json")):
-            try:
+        for month_dir in sorted(path for path in p_dir.iterdir() if path.is_dir()):
+            # Filtered to OCO until HistoricalCandidateRegistry supports multi-family lookup.
+            for p in iter_locks(month_dir, family="oco_first_touch_clean"):
+                entry = cls._load_one(p)
+                if entry is not None:
+                    reg._entries[(entry.symbol, entry.month)] = entry
+        return reg
+
+    @classmethod
+    def _load_one(cls, p: Path) -> HistoricalLockEntry | None:
+        try:
                 parent_month = p.parent.name.strip()
                 if not _MONTH_RE.match(parent_month):
-                    continue
+                    return None
                 data = json.loads(p.read_text(encoding="utf-8"))
                 symbol = str(data.get("symbol", "")).upper().strip()
                 if not symbol:
-                    continue
+                    return None
 
                 artifacts = data.get("artifacts", {}) if isinstance(data, dict) else {}
                 BundlePaths.from_lock(p)  # raises BundleIntegrityError on v1 — intentional
@@ -67,10 +76,10 @@ class HistoricalCandidateRegistry:
                 pred_path = str(pred_entry.get("path", "")).strip()
                 pred_sha = str(pred_entry.get("sha256", "")).strip()
                 if not _MONTH_RE.match(model_month):
-                    continue
+                    return None
                 if model_month != parent_month:
                     # Folder and manifest month must agree in historical mode.
-                    continue
+                    return None
 
                 rows = data.get("state_universe", {}).get("rows", [])
                 candidates: list[CandidateSpec] = []
@@ -79,7 +88,7 @@ class HistoricalCandidateRegistry:
                         if isinstance(row, dict):
                             candidates.append(CandidateSpec.from_row(row))
                 if not candidates:
-                    continue
+                    return None
 
                 locked = data.get("locked_runtime", {}) if isinstance(data, dict) else {}
                 cap_pips = float(locked.get("production_cap_pips", 1.2))
@@ -104,10 +113,9 @@ class HistoricalCandidateRegistry:
                     or model_binding["model_cbm_sha256"] == ""
                     or model_binding["model_threshold_json_sha256"] == ""
                 ):
-                    continue
+                    return None
 
-                key = (symbol, model_month)
-                reg._entries[key] = HistoricalLockEntry(
+                return HistoricalLockEntry(
                     symbol=symbol,
                     month=model_month,
                     lock_path=str(p),
@@ -115,9 +123,8 @@ class HistoricalCandidateRegistry:
                     cap_pips=cap_pips,
                     model_binding=model_binding,
                 )
-            except Exception:
-                continue
-        return reg
+        except Exception:
+            return None
 
     @property
     def symbols(self) -> list[str]:

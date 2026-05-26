@@ -10,6 +10,7 @@ from typing import Any
 
 import duckdb
 
+from src.behemoth.core.bundle_paths import iter_locks
 from src.behemoth.ops.verdicts import RestartEligibility
 
 
@@ -147,7 +148,7 @@ def _iter_promoted_lock_payloads(governance_dir: Path) -> list[tuple[Path, dict[
     if not governance_dir.exists():
         return []
     payloads: list[tuple[Path, dict[str, Any]]] = []
-    for lock_path in sorted(governance_dir.glob("*_oco_live_lock.json")):
+    for lock_path in iter_locks(governance_dir):
         try:
             data = json.loads(lock_path.read_text(encoding="utf-8"))
         except Exception:
@@ -495,8 +496,8 @@ class ReconciliationSnapshot:
     current_metadata: RuntimeSessionMetadata
     persisted_metadata: RuntimeSessionMetadata | None
     local_state: RuntimeFileSnapshot
-    broker_snapshot: "BrokerSnapshot | None"
-    local_runtime: "LocalRuntimeStateSummary | None"
+    broker_snapshot: BrokerSnapshot | None
+    local_runtime: LocalRuntimeStateSummary | None
     comparison: RuntimeContextComparison
     restart_eligibility: RestartEligibilityResult
 
@@ -534,9 +535,9 @@ class ReconciliationCycle:
         reconciliation_report_path: Path,
         broker_snapshot_path: Path,
         startup_mode: str,
-        build_current_metadata: "Callable[[], RuntimeSessionMetadata]",
-        load_promoted_symbols: "Callable[[], list[str]]",
-        capture_broker_snapshot: "Callable[[], None] | None" = None,
+        build_current_metadata: Callable[[], RuntimeSessionMetadata],
+        load_promoted_symbols: Callable[[], list[str]],
+        capture_broker_snapshot: Callable[[], None] | None = None,
     ) -> None:
         self._runtime_dir = runtime_dir
         self._state_db_path = state_db_path

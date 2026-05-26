@@ -94,7 +94,13 @@ class GovernanceValidator:
         self._sha_cache.clear()
 
         req_sym_set = self._normalize_required_symbols(required_symbols)
-        lock_paths = sorted(p_dir.glob("*/*_oco_live_lock.json"))
+        from src.behemoth.core.bundle_paths import iter_locks
+
+        lock_paths = [
+            lock_path
+            for month_dir in sorted(path for path in p_dir.iterdir() if path.is_dir())
+            for lock_path in iter_locks(month_dir)
+        ]
         lock_keys, lock_dupes = self._validate_locks(p_dir, lock_paths, req_sym_set, checks)
         self._validate_index(p_dir, lock_keys, lock_dupes, req_sym_set, checks)
         self._validate_required_coverage(req_sym_set, required_months, lock_keys, checks)

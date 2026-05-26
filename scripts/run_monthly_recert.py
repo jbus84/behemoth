@@ -29,7 +29,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths  # noqa: E402
+from src.behemoth.core.bundle_paths import (  # noqa: E402
+    BundleIntegrityError,
+    BundlePaths,
+    iter_locks,
+)
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
@@ -72,7 +76,7 @@ def _git_metadata() -> tuple[str, str, bool]:
 def _lock_fingerprint(bundle_dir: Path) -> str:
     root = bundle_dir if bundle_dir.is_absolute() else _repo_root() / bundle_dir
     digest = hashlib.sha256()
-    for path in sorted(root.glob("*_oco_live_lock.json")):
+    for path in iter_locks(root):
         digest.update(path.name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
