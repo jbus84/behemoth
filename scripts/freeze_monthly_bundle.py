@@ -43,6 +43,19 @@ except Exception:
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
+CROSS_SYMBOL_FAMILIES = {"dollar_residual", "dispersion_rank", "lead_lag"}
+CROSS_SYMBOL_SCOPE_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+
+
+def _cross_symbol_scope_for_family(family: str) -> dict[str, object]:
+    if str(family).strip().lower() not in CROSS_SYMBOL_FAMILIES:
+        return {}
+    return {
+        "symbols": CROSS_SYMBOL_SCOPE_SYMBOLS,
+        "alignment": "close_ts_inner_join",
+        "source": "scripts.cross_symbol",
+    }
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
@@ -658,16 +671,21 @@ def run(
                 "model_valid_through": model_valid_through,
             }
 
+            scope = _cross_symbol_scope_for_family(family)
+            bundle_block: dict[str, Any] = {
+                "month": str(month),
+                "dir_relpath": str(_repo_relative_or_abs(month_dir, repo_root)),
+                "family": family,
+            }
+            if scope:
+                bundle_block["cross_symbol_scope"] = scope
+
             manifest: dict[str, Any] = {
                 "schema_version": 3,
                 "frozen_at_utc": datetime.now(timezone.utc).isoformat(),
                 "symbol": str(sym).upper(),
                 "git": git_snapshot,
-                "bundle": {
-                    "month": str(month),
-                    "dir_relpath": str(_repo_relative_or_abs(month_dir, repo_root)),
-                    "family": family,
-                },
+                "bundle": bundle_block,
                 "artifacts": artifacts,
                 "provenance": provenance,
                 "deployability": deployability,
