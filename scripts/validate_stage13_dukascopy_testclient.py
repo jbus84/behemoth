@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,7 +14,11 @@ from typing import Any
 
 import pandas as pd
 
-from src.behemoth.core.bundle_paths import lock_filename
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import lock_filename  # noqa: E402
 
 
 @dataclass(frozen=True)

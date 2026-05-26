@@ -6,11 +6,16 @@ import hashlib
 import json
 import re
 import shutil
+import sys
 from dataclasses import dataclass
 from json import JSONDecodeError
 from pathlib import Path
 
-from src.behemoth.core.bundle_paths import iter_locks, lock_filename
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import iter_locks, lock_filename  # noqa: E402
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 

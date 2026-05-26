@@ -21,7 +21,11 @@ import polars as pl
 import tqdm
 from fastapi.testclient import TestClient
 
-from src.behemoth.core.bundle_paths import lock_filename
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import lock_filename  # noqa: E402
 
 # server imported lazily to allow env variable injection
 
