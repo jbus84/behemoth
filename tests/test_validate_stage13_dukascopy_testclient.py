@@ -21,7 +21,7 @@ def _write_lock(path: Path, *, symbol: str, deployable: bool, reason: str = "") 
                 "schema_version": 3,
                 "symbol": symbol,
                 "bundle": {
-                    "family": "oco_first_touch_clean",
+                    "family": "oco_first_touch",
                 },
                 "deployability": {
                     "live_deployable": deployable,
@@ -57,7 +57,7 @@ def _write_dukascopy_replay_summary(
 
 
 def test_build_stage13_artifacts_requires_stage12_prerequisite(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "eurusd_oco_first_touch_live_lock.json", symbol="EURUSD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "EURUSD_stage12_api_parity_summary.csv", symbol="EURUSD", passed=False)
     _write_dukascopy_replay_summary(
         tmp_path / "backtest_reconcile" / "EURUSD_dukascopy_testclient_replay_summary.csv",
@@ -89,7 +89,7 @@ def test_build_stage13_artifacts_requires_stage12_prerequisite(tmp_path: Path) -
 
 
 def test_build_stage13_artifacts_ignores_local_surrogate_summaries(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "usdcad_oco_live_lock.json", symbol="USDCAD", deployable=True)
+    _write_lock(tmp_path / "locks" / "usdcad_oco_first_touch_live_lock.json", symbol="USDCAD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "USDCAD_stage12_api_parity_summary.csv", symbol="USDCAD", passed=True)
     _write_dukascopy_replay_summary(
         tmp_path / "backtest_reconcile" / "USDCAD_dukascopy_testclient_replay_summary.csv",
@@ -130,7 +130,7 @@ def test_build_stage13_artifacts_ignores_local_surrogate_summaries(tmp_path: Pat
 
 
 def test_build_stage13_artifacts_treats_execution_parity_as_direct_gate(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "gbpusd_oco_live_lock.json", symbol="GBPUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "gbpusd_oco_first_touch_live_lock.json", symbol="GBPUSD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "GBPUSD_stage12_api_parity_summary.csv", symbol="GBPUSD", passed=True)
     _write_dukascopy_replay_summary(
         tmp_path / "backtest_reconcile" / "GBPUSD_dukascopy_testclient_replay_summary.csv",
@@ -163,7 +163,7 @@ def test_build_stage13_artifacts_treats_execution_parity_as_direct_gate(tmp_path
 
 
 def test_build_stage13_artifacts_prefers_explicit_replay_over_fallback_summaries(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "audusd_oco_live_lock.json", symbol="AUDUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "audusd_oco_first_touch_live_lock.json", symbol="AUDUSD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "AUDUSD_stage12_api_parity_summary.csv", symbol="AUDUSD", passed=True)
     _write_dukascopy_replay_summary(
         tmp_path / "backtest_reconcile" / "AUDUSD_dukascopy_testclient_replay_summary.csv",
@@ -209,7 +209,7 @@ def test_build_stage13_artifacts_prefers_explicit_replay_over_fallback_summaries
 
 
 def test_build_stage13_artifacts_uses_fallback_when_replay_glob_matches_nothing(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "usdchf_oco_live_lock.json", symbol="USDCHF", deployable=True)
+    _write_lock(tmp_path / "locks" / "usdchf_oco_first_touch_live_lock.json", symbol="USDCHF", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "USDCHF_stage12_api_parity_summary.csv", symbol="USDCHF", passed=True)
     _write_csv(
         tmp_path / "backtest_reconcile" / "USDCHF_jforex_signal_parity_summary.csv",
@@ -250,7 +250,7 @@ def test_build_stage13_artifacts_uses_fallback_when_replay_glob_matches_nothing(
 
 
 def test_build_stage13_artifacts_uses_fallback_for_partial_replay_family(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "usdjpy_oco_live_lock.json", symbol="USDJPY", deployable=True)
+    _write_lock(tmp_path / "locks" / "usdjpy_oco_first_touch_live_lock.json", symbol="USDJPY", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "USDJPY_stage12_api_parity_summary.csv", symbol="USDJPY", passed=True)
     _write_csv(
         tmp_path / "backtest_reconcile" / "USDJPY_dukascopy_testclient_replay_summary.csv",
@@ -288,7 +288,7 @@ def test_build_stage13_artifacts_uses_fallback_for_partial_replay_family(tmp_pat
 
 
 def test_build_stage13_artifacts_reports_missing_inputs_with_expected_source_paths(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "eurusd_oco_first_touch_live_lock.json", symbol="EURUSD", deployable=True)
     runtime = tmp_path / "backtest_reconcile" / "EURUSD_jforex_runtime_events.csv"
     runtime.parent.mkdir(parents=True, exist_ok=True)
     runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,EURUSD,runtime,predict_cycle,True,\n")
@@ -322,7 +322,7 @@ def test_build_stage13_artifacts_reports_missing_inputs_with_expected_source_pat
 
 
 def test_build_stage13_artifacts_reports_runtime_artifact_as_current_dukascopy_surface(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "gbpusd_oco_live_lock.json", symbol="GBPUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "gbpusd_oco_first_touch_live_lock.json", symbol="GBPUSD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "GBPUSD_stage12_api_parity_summary.csv", symbol="GBPUSD", passed=True)
     _write_dukascopy_replay_summary(
         tmp_path / "backtest_reconcile" / "GBPUSD_dukascopy_testclient_replay_summary.csv",
@@ -353,7 +353,7 @@ def test_build_stage13_artifacts_reports_runtime_artifact_as_current_dukascopy_s
 
 
 def test_build_stage13_artifacts_rejects_header_only_runtime_events_artifact(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "eurusd_oco_first_touch_live_lock.json", symbol="EURUSD", deployable=True)
     _write_stage12_summary(
         tmp_path / "backtest_reconcile" / "EURUSD_stage12_api_parity_summary.csv",
         symbol="EURUSD",
@@ -389,8 +389,8 @@ def test_build_stage13_artifacts_rejects_header_only_runtime_events_artifact(tmp
 
 
 def test_build_stage13_artifacts_limits_outputs_to_requested_symbols(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
-    _write_lock(tmp_path / "locks" / "gbpusd_oco_live_lock.json", symbol="GBPUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "eurusd_oco_first_touch_live_lock.json", symbol="EURUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "gbpusd_oco_first_touch_live_lock.json", symbol="GBPUSD", deployable=True)
     _write_stage12_summary(
         tmp_path / "backtest_reconcile" / "EURUSD_stage12_api_parity_summary.csv",
         symbol="EURUSD",
@@ -441,7 +441,7 @@ def test_build_stage13_artifacts_limits_outputs_to_requested_symbols(tmp_path: P
 
 
 def test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(tmp_path: Path) -> None:
-    _write_lock(tmp_path / "locks" / "audusd_oco_live_lock.json", symbol="AUDUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "audusd_oco_first_touch_live_lock.json", symbol="AUDUSD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "AUDUSD_stage12_api_parity_summary.csv", symbol="AUDUSD", passed=True)
     _write_dukascopy_replay_summary(
         tmp_path / "backtest_reconcile" / "AUDUSD_dukascopy_testclient_replay_summary.csv",
@@ -489,7 +489,7 @@ def test_build_stage13_artifacts_emits_nogo_for_non_deployable_symbols(
     tmp_path: Path,
 ) -> None:
     _write_lock(
-        tmp_path / "locks" / "usdcad_oco_live_lock.json",
+        tmp_path / "locks" / "usdcad_oco_first_touch_live_lock.json",
         symbol="USDCAD",
         deployable=False,
         reason="historically non-deployable",
@@ -540,7 +540,7 @@ def test_build_stage13_artifacts_rejects_summary_rows_without_target_bundle_prov
 ) -> None:
     bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-03"
     bundle_dir.mkdir(parents=True)
-    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "eurusd_oco_first_touch_live_lock.json", symbol="EURUSD", deployable=True)
     wrong_run_dir = tmp_path / "shared_reconcile"
     right_run_dir = tmp_path / "data/analysis/backtest_reconcile/2026-03/monthly_recert"
     _write_stage12_summary(

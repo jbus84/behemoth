@@ -145,7 +145,7 @@ def _threshold_analysis_section(
         # Check if today's date is in the threshold schedule
         schedule_has_today = False
         static_threshold = None
-        lock_path = LOCK_DIR / lock_filename(symbol)
+        lock_path = LOCK_DIR / lock_filename(symbol, "oco_first_touch")
         if lock_path.exists():
             lock = json.loads(lock_path.read_text())
             artifacts = lock.get("artifacts", {})
@@ -270,7 +270,7 @@ def _candidate_audit_section(con: duckdb.DuckDBPyConnection, run_id: str) -> lis
     results = []
     for symbol, distinct, uids, total in rows:
         locked_states: list[str] = []
-        lock_path = LOCK_DIR / lock_filename(symbol)
+        lock_path = LOCK_DIR / lock_filename(symbol, "oco_first_touch")
         if lock_path.exists():
             lock = json.loads(lock_path.read_text())
             locked_states = [

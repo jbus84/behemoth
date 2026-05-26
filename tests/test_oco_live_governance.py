@@ -184,7 +184,7 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
         "bundle": {
             "month": "2026-02",
             "dir_relpath": str(tmp_path),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
@@ -365,7 +365,7 @@ def test_validate_lock_state_csv_defaults_to_lock_artifact_latest_month(tmp_path
         "bundle": {
             "month": "2026-02",
             "dir_relpath": str(tmp_path),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {

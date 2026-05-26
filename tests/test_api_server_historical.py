@@ -14,14 +14,14 @@ from src.behemoth.core.registry import CandidateSpec
 
 def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
     lock_path = Path(
-        f"configs/research/governance/oco_history/{month}/{symbol.lower()}_oco_live_lock.json"
+        f"configs/research/governance/oco_history/{month}/{symbol.lower()}_oco_first_touch_live_lock.json"
     )
     bp = BundlePaths(
         lock_path=lock_path,
         bundle_dir=lock_path.parent,
         symbol=symbol,
         model_month=month,
-        family="oco_first_touch_clean",
+        family="oco_first_touch",
         _artifacts={},
         _deployability={"live_deployable": True, "model_month": month},
     )
@@ -263,14 +263,14 @@ def test_resolve_runtime_contract_rejects_invalid_force_month_format() -> None:
 
 def _mk_contract(symbol: str = "EURUSD", month: str = "2025-07") -> server._ResolvedRuntimeContract:
     lock_path = Path(
-        f"configs/research/governance/oco_history/{month}/{symbol.lower()}_oco_live_lock.json"
+        f"configs/research/governance/oco_history/{month}/{symbol.lower()}_oco_first_touch_live_lock.json"
     )
     bp = BundlePaths(
         lock_path=lock_path,
         bundle_dir=lock_path.parent,
         symbol=symbol,
         model_month=month,
-        family="oco_first_touch_clean",
+        family="oco_first_touch",
         _artifacts={},
         _deployability={"live_deployable": True, "model_month": month},
     )

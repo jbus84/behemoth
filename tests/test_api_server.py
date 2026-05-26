@@ -20,8 +20,11 @@ from src.behemoth.api.server import app
 
 
 @pytest.fixture
-def client(tmp_path):
-    """Create a test client with an isolated runtime DB per test."""
+def client(tmp_path, monkeypatch):
+    """Create a test client with an isolated runtime DB and empty governance dir per test."""
+    empty_gov = tmp_path / "governance_empty"
+    empty_gov.mkdir()
+    monkeypatch.setenv("BEHEMOTH_GOVERNANCE_DIR", str(empty_gov))
     original_persist_db_path = server._config.persist_db_path
     server._config.persist_db_path = str(tmp_path / "behemoth_runtime.duckdb")
     try:
@@ -136,7 +139,7 @@ class TestBundlePathsThresholdOverrides:
             "bundle": {
                 "month": "2026-03",
                 "dir_relpath": str(bundle_dir),
-                "family": "oco_first_touch_clean",
+                "family": "oco_first_touch",
             },
             "artifacts": {
                 "predictions":          {"path": "gbpusd_oco_locked_predictions.parquet", "sha256": _sha(b"p")},
@@ -146,7 +149,7 @@ class TestBundlePathsThresholdOverrides:
             },
             "deployability": {"live_deployable": True, "model_month": "2026-03"},
         }
-        lock_path = bundle_dir / "gbpusd_oco_live_lock.json"
+        lock_path = bundle_dir / "gbpusd_oco_first_touch_live_lock.json"
         lock_path.write_text(json.dumps(lock))
 
         bp = BundlePaths.from_lock(lock_path)

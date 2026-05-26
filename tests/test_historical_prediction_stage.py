@@ -16,7 +16,7 @@ def _write_v3_lock_with_predictions(tmp_path: Path, predictions_path: Path | str
     """Helper to create a v3 lock file with predictions artifact."""
     import hashlib
 
-    lock = tmp_path / "EURUSD_oco_live_lock.json"
+    lock = tmp_path / "EURUSD_oco_first_touch_live_lock.json"
     models_dir = tmp_path / "models"
     models_dir.mkdir(exist_ok=True)
 
@@ -44,7 +44,7 @@ def _write_v3_lock_with_predictions(tmp_path: Path, predictions_path: Path | str
         "bundle": {
             "month": "2026-01",
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "predictions": {"path": pred_file.name if pred_file.parent == tmp_path else str(pred_file.relative_to(tmp_path)), "sha256": pred_sha},

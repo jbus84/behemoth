@@ -15,6 +15,7 @@ from pathlib import Path
 
 DEFAULT_SYMBOLS = "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD"
 MONTHLY_BUILD_ROOT = Path("configs/research/governance/oco_candidate_builds")
+FAMILIES_TO_FREEZE: tuple[str, ...] = ("oco_first_touch",)  # extended in sub-projects D/E
 
 
 def _repo_root() -> Path:
@@ -55,12 +56,12 @@ def _materialize_bundle_models(bundle_dir: Path) -> None:
         raise SystemExit(f"[monthly-build] bundle failed validation: {bundle_dir}")
 
 
-def main() -> None:
+def main_with_args(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--model-month", help="Override model month YYYY-MM (default: last complete month)"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     model_month = _derive_model_month(args.model_month)
     print(f"[monthly-build] building bundle for {model_month}", flush=True)
@@ -82,31 +83,38 @@ def main() -> None:
         ],
         "step 1/2: sync_candidate_model_artifacts",
     )
-    _run_step(
-        [
-            "uv",
-            "run",
-            "python",
-            "scripts/freeze_monthly_bundle.py",
-            "--allow-dirty",
-            "--symbols",
-            DEFAULT_SYMBOLS,
-            "--out-dir",
-            "configs/research/governance/oco_candidate_builds",
-            "--months",
-            model_month,
-            "--config-dir",
-            "configs/research/experiments_dukascopy_candidate",
-            "--analysis-dir",
-            "data/analysis/tick_opportunity_mining_dukascopy_candidate",
-            "--models-dir",
-            "models/oco_dukascopy_candidate",
-        ],
-        "step 2/2: freeze_monthly_bundle",
-    )
+    for family in FAMILIES_TO_FREEZE:
+        _run_step(
+            [
+                "uv",
+                "run",
+                "python",
+                "scripts/freeze_monthly_bundle.py",
+                "--family",
+                family,
+                "--allow-dirty",
+                "--symbols",
+                DEFAULT_SYMBOLS,
+                "--out-dir",
+                "configs/research/governance/oco_candidate_builds",
+                "--months",
+                model_month,
+                "--config-dir",
+                "configs/research/experiments_dukascopy_candidate",
+                "--analysis-dir",
+                "data/analysis/tick_opportunity_mining_dukascopy_candidate",
+                "--models-dir",
+                "models/oco_dukascopy_candidate",
+            ],
+            f"step 2/2: freeze_monthly_bundle ({family})",
+        )
     bundle_dir = _repo_root() / MONTHLY_BUILD_ROOT / model_month
     print("[monthly-build] step 3/3: materialize_bundle_models", flush=True)
     _materialize_bundle_models(bundle_dir)
+
+
+def main() -> None:
+    main_with_args()
 
 
 if __name__ == "__main__":

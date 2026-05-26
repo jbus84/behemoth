@@ -33,18 +33,43 @@ class BundleArtifactSpec(NamedTuple):
 _LOG = logging.getLogger("behemoth.governance")
 
 
+def _oco_style_layout(family: str) -> tuple[BundleArtifactSpec, ...]:
+    """Build the eight-artifact spec tuple for a family that follows the OCO-style
+    layout. Optionality comes from the required=False flag in config and summary specs."""
+    return (
+        BundleArtifactSpec("predictions",          f"{{symbol_lower}}_{family}_locked_predictions.parquet", True),
+        BundleArtifactSpec("allowed_states_csv",   f"{{symbol_lower}}_{family}_allowed_states.csv",         True),
+        BundleArtifactSpec("model_cbm",            f"models/{{symbol_upper}}_{family}_model_{{month}}.cbm", True),
+        BundleArtifactSpec("model_threshold_json", f"models/{{symbol_upper}}_{family}_model_{{month}}.json", True),
+        BundleArtifactSpec("wfo_config",           f"configs/{{symbol_lower}}_{family}_wfo.yaml",           False),
+        BundleArtifactSpec("reduced_config",       f"configs/{{symbol_lower}}_{family}_reduced.yaml",       False),
+        BundleArtifactSpec("reduced_summary",      f"{{symbol_lower}}_{family}_reduced_summary.csv",        False),
+        BundleArtifactSpec("tick_exact_summary",   f"{{symbol_lower}}_{family}_tick_exact_summary.csv",     False),
+    )
+
+
+# Family names duplicated from scripts.mining_family.FAMILY_REGISTRY by design:
+# bundle_paths is core/lightweight, and FAMILY_REGISTRY lives in a 1.6k-line
+# module that imports numpy/pandas. The sync test in tests/test_bundle_paths.py
+# enforces equivalence as the invariant.
+_MINING_FAMILY_NAMES: tuple[str, ...] = (
+    "oco_first_touch",
+    "oco_asymmetric",
+    "directional",
+    "directional_inverse",
+    "directional_run",
+    "double_touch",
+    "pullback",
+    "no_touch",
+    "dollar_residual",
+    "dispersion_rank",
+    "lead_lag",
+)
 BUNDLE_LAYOUTS: dict[str, tuple[BundleArtifactSpec, ...]] = {
-    "oco_first_touch_clean": (
-        BundleArtifactSpec("predictions", "{symbol_lower}_oco_locked_predictions.parquet", True),
-        BundleArtifactSpec("allowed_states_csv", "{symbol_lower}_oco_allowed_states.csv", True),
-        BundleArtifactSpec("model_cbm", "models/{symbol_upper}_model_{month}.cbm", True),
-        BundleArtifactSpec("model_threshold_json", "models/{symbol_upper}_model_{month}.json", True),
-        BundleArtifactSpec("wfo_config", "configs/{symbol_lower}_wfo.yaml", False),
-        BundleArtifactSpec("reduced_config", "configs/{symbol_lower}_reduced.yaml", False),
-        BundleArtifactSpec("reduced_summary", "{symbol_lower}_oco_reduced_summary.csv", False),
-        BundleArtifactSpec("tick_exact_summary", "{symbol_lower}_oco_tick_exact_summary.csv", False),
-    ),
+    family: _oco_style_layout(family) for family in _MINING_FAMILY_NAMES
 }
+
+# FIXME(sub-project D/E): lead_lag, dispersion_rank, dollar_residual are cross-sectional, not per-symbol; refine layout when those families come online.
 
 
 def bundle_layout_for(family: str) -> tuple[BundleArtifactSpec, ...]:
@@ -167,9 +192,14 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def lock_filename(symbol: str) -> str:
-    """Canonical lock filename for a symbol."""
-    return f"{symbol.lower()}_oco_live_lock.json"
+def lock_filename(symbol: str, family: str) -> str:
+    """Canonical lock filename for a (symbol, family) pair.
+
+    Every governance lock lives at `<bundle_dir>/<lock_filename(symbol, family)>`.
+    Adding a new mining family means registering it in BUNDLE_LAYOUTS and using
+    its key as the `family` argument here.
+    """
+    return f"{symbol.lower()}_{family}_live_lock.json"
 
 
 def iter_locks(bundle_dir: Path, family: str | None = None) -> Iterator[Path]:

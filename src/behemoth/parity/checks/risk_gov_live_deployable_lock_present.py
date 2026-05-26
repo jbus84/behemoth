@@ -19,7 +19,7 @@ def _list_deployable_months(history_dir: Path, symbol: str) -> list[str]:
     for month_dir in sorted(history_dir.iterdir()):
         if not month_dir.is_dir():
             continue
-        lock_path = month_dir / lock_filename(sym_lc)
+        lock_path = month_dir / lock_filename(sym_lc, "oco_first_touch")
         if not lock_path.exists():
             continue
         try:

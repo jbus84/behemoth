@@ -30,7 +30,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.behemoth.core.bundle_paths import bundle_layout_for, sha256_file  # noqa: E402
+from src.behemoth.core.bundle_paths import (  # noqa: E402
+    bundle_layout_for,
+    lock_filename,
+    sha256_file,
+)
 
 try:
     import yaml
@@ -364,6 +368,7 @@ def _prune_stale_symbol_month_files(
     out_dir: Path,
     symbol: str,
     available_months: list[str],
+    family: str = "oco_first_touch",
 ) -> int:
     """Remove stale month lock/state files for a symbol no longer in available month set."""
     sym = str(symbol).upper().strip()
@@ -378,9 +383,9 @@ def _prune_stale_symbol_month_files(
         if month_dir.name in keep:
             continue
         for fp in (
-            month_dir / f"{sym_l}_oco_live_lock.json",
-            month_dir / f"{sym_l}_oco_allowed_states.csv",
-            month_dir / f"{sym_l}_oco_locked_predictions.parquet",
+            month_dir / lock_filename(sym, family),
+            month_dir / f"{sym_l}_{family}_allowed_states.csv",
+            month_dir / f"{sym_l}_{family}_locked_predictions.parquet",
         ):
             if fp.exists():
                 fp.unlink()
@@ -403,7 +408,7 @@ def run(
     anchor_day_utc: int,
     window_days: int,
     allow_dirty: bool,
-    family: str = "oco_first_touch_clean",
+    family: str = "oco_first_touch",
 ) -> tuple[list[Path], pd.DataFrame]:
     out_dir.mkdir(parents=True, exist_ok=True)
     git_snapshot = _git_info()
@@ -430,7 +435,7 @@ def run(
         available = sorted(
             list(set(model_pairs.keys()) & (set(sched_months) | set(reduced_month_status.keys())))
         )
-        _prune_stale_symbol_month_files(out_dir=out_dir, symbol=sym, available_months=available)
+        _prune_stale_symbol_month_files(out_dir=out_dir, symbol=sym, available_months=available, family=family)
         month_list = _filter_months(
             months=available,
             explicit_months=months,
@@ -609,7 +614,7 @@ def run(
                     "non_deployable_reason": non_deployable_reason,
                 },
             }
-            lock_out = month_dir / f"{str(sym).lower()}_oco_live_lock.json"
+            lock_out = month_dir / lock_filename(sym, family)
             lock_out.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
             out_paths.extend([lock_out, states_out])
@@ -667,7 +672,7 @@ def main() -> None:
     p.add_argument("--models-dir", default="models/oco")
     p.add_argument("--config-dir", default="configs/research/experiments")
     p.add_argument("--analysis-dir", default="data/analysis/tick_opportunity_mining")
-    p.add_argument("--family", default="oco_first_touch_clean")
+    p.add_argument("--family", default="oco_first_touch")
     p.add_argument("--months", default="", help="Optional explicit YYYY-MM list (comma-separated)")
     p.add_argument("--start-month", default="", help="Optional lower bound month YYYY-MM")
     p.add_argument("--end-month", default="", help="Optional upper bound month YYYY-MM")

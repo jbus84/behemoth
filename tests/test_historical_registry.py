@@ -20,7 +20,7 @@ def _write_lock(
 
     month_dir = root / month
     month_dir.mkdir(parents=True, exist_ok=True)
-    lock_path = month_dir / f"{symbol.lower()}_oco_live_lock.json"
+    lock_path = month_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json"
 
     # Create model files in bundle-relative models/ directory
     models_dir = month_dir / "models"
@@ -45,7 +45,7 @@ def _write_lock(
         "bundle": {
             "month": month,
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": artifacts,
         "deployability": {"live_deployable": True, "model_month": model_month or month},

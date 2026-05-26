@@ -98,7 +98,7 @@ class CandidateRegistry:
 
         reg = cls()
         # Filtered to OCO until CandidateRegistry supports multi-family lookup.
-        for p in iter_locks(p_dir, family="oco_first_touch_clean"):
+        for p in iter_locks(p_dir, family="oco_first_touch"):
             try:
                 data = json.loads(p.read_text())
                 sym = data.get("symbol", "").upper()

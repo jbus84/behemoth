@@ -39,7 +39,7 @@ def _sha(path: Path) -> str:
 def _iter_locks(lock_dir: Path, symbols: list[str]) -> list[Path]:
     if not symbols:
         return list(iter_locks(lock_dir))
-    wanted_names = {lock_filename(symbol) for symbol in symbols}
+    wanted_names = {lock_filename(symbol, "oco_first_touch") for symbol in symbols}
     return sorted(path for path in iter_locks(lock_dir) if path.name in wanted_names)
 
 
@@ -243,7 +243,7 @@ def run(
                         symbol,
                         "-",
                         "FAIL",
-                        f"missing live lock {lock_dir / lock_filename(symbol)}",
+                        f"missing live lock {lock_dir / lock_filename(symbol, 'oco_first_touch')}",
                     )
                 )
     else:

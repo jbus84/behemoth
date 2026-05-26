@@ -50,7 +50,7 @@ def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str,
     )
     if not parquet_path.exists():
         # Fallback to checking lock file for path
-        lock_path = Path("configs/research/governance/oco") / lock_filename(symbol)
+        lock_path = Path("configs/research/governance/oco") / lock_filename(symbol, "oco_first_touch")
         if lock_path.exists():
             import json
 

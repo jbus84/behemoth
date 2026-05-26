@@ -44,7 +44,7 @@ class HistoricalCandidateRegistry:
         reg = cls()
         for month_dir in sorted(path for path in p_dir.iterdir() if path.is_dir()):
             # Filtered to OCO until HistoricalCandidateRegistry supports multi-family lookup.
-            for p in iter_locks(month_dir, family="oco_first_touch_clean"):
+            for p in iter_locks(month_dir, family="oco_first_touch"):
                 entry = cls._load_one(p)
                 if entry is not None:
                     reg._entries[(entry.symbol, entry.month)] = entry

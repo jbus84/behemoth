@@ -1071,7 +1071,7 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
         "bundle": {
             "month": "2026-02",
             "dir_relpath": str(lock_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "deployability": {
             "model_month": "2026-02",
@@ -1080,7 +1080,7 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
         "artifacts": {},
         "state_universe": {"count": 0, "rows": []},
     }
-    (lock_dir / "usdcad_oco_live_lock.json").write_text(json.dumps(lock), encoding="utf-8")
+    (lock_dir / "usdcad_oco_first_touch_live_lock.json").write_text(json.dumps(lock), encoding="utf-8")
 
     with open(reconcile_dir / "USDCAD_jforex_runtime_events.csv", "w", newline="") as f:
         writer = csv.DictWriter(

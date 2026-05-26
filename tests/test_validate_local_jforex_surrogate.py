@@ -28,14 +28,14 @@ def _write_lock(
         "schema_version": 3,
         "symbol": symbol,
         "bundle": {
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "deployability": {
             "live_deployable": deployable,
         },
         "artifacts": {},
     }
-    (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
+    (lock_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json").write_text(
         json.dumps(payload),
         encoding="utf-8",
     )

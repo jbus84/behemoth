@@ -198,7 +198,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
     )
 
     month_dir = out_dir / "2026-02"
-    lock_path = month_dir / f"{sl}_oco_live_lock.json"
+    lock_path = month_dir / f"{sl}_oco_first_touch_live_lock.json"
     states_path = month_dir / f"{sl}_oco_allowed_states.csv"
     preds_path = month_dir / f"{sl}_oco_locked_predictions.parquet"
 
@@ -211,7 +211,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
         (models_dir / f"{symbol}_model_2026-02.json").read_text(encoding="utf-8")
     )
     assert lock["schema_version"] == 3
-    assert lock["bundle"]["family"] == "oco_first_touch_clean"
+    assert lock["bundle"]["family"] == "oco_first_touch"
     assert lock["historical_backtest"]["deployable"] is False
     assert lock["historical_backtest"]["non_deployable_reason"] == "no_gate_states"
     assert lock["state_universe"]["count"] == 0
@@ -239,3 +239,19 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
             "live_deployable": False,
         }
     ]
+
+
+def test_freeze_monthly_bundle_accepts_family_argument() -> None:
+    """The freeze script's argparse accepts --family with a default of oco_first_touch."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    result = subprocess.run(
+        [sys.executable, "scripts/freeze_monthly_bundle.py", "--help"],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[1],
+    )
+    assert result.returncode == 0
+    assert "--family" in result.stdout

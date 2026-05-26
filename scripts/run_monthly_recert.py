@@ -296,7 +296,7 @@ def _validate_month_bundle(bundle_dir: Path) -> None:
         )
 
     for symbol in DEFAULT_SYMBOLS:
-        lock_path = bundle_dir / lock_filename(symbol)
+        lock_path = bundle_dir / lock_filename(symbol, "oco_first_touch")
         if not lock_path.is_file():
             raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {lock_path}")
         try:

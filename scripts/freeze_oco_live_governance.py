@@ -299,7 +299,7 @@ def _build_manifest(
     symbol: str,
     paths: dict[str, Path],
     out_dir: Path,
-    family: str = "oco_first_touch_clean",
+    family: str = "oco_first_touch",
     cadence_days: int,
     anchor_day_utc: int,
     window_days: int,
@@ -423,7 +423,7 @@ def run(
     anchor_day_utc: int,
     window_days: int,
     allow_dirty: bool,
-    family: str = "oco_first_touch_clean",
+    family: str = "oco_first_touch",
 ) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     git_snapshot = _git_info()
@@ -445,7 +445,7 @@ def run(
             window_days=int(window_days),
             git_snapshot=git_snapshot,
         )
-        mp = out_dir / lock_filename(str(s))
+        mp = out_dir / lock_filename(str(s), family)
         mp.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
         st = pd.DataFrame(manifest["state_universe"]["rows"])
@@ -471,7 +471,7 @@ def main() -> None:
     p.add_argument("--out-dir", default="configs/research/governance/oco")
     p.add_argument("--config-dir", default="configs/research/experiments")
     p.add_argument("--analysis-dir", default="data/analysis/tick_opportunity_mining")
-    p.add_argument("--family", default="oco_first_touch_clean")
+    p.add_argument("--family", default="oco_first_touch")
     p.add_argument("--policy-config", default="configs/research/governance/oco_live_policy.yaml")
     p.add_argument(
         "--registry-yaml",

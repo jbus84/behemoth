@@ -147,7 +147,7 @@ def _resolve_stage12_predictions_path(
 ) -> Path:
     symbol = _normalize_symbol(symbol)
     if lock_dir is not None:
-        lock_path = Path(lock_dir) / lock_filename(symbol)
+        lock_path = Path(lock_dir) / lock_filename(symbol, "oco_first_touch")
         if lock_path.exists():
             return BundlePaths.from_lock(lock_path).predictions()
     return Path(predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet"

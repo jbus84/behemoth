@@ -1,0 +1,140 @@
+{
+  "artifacts": {
+    "allowed_states_csv": {
+      "path": "audusd_oco_first_touch_allowed_states.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "path": "models/AUDUSD_oco_first_touch_model_2026-04.cbm",
+      "sha256": "e61296b7d955bc614227bb22e3e7b9c16d75f00ab3f058779a3a4fed29ca644c"
+    },
+    "model_threshold_json": {
+      "path": "models/AUDUSD_oco_first_touch_model_2026-04.json",
+      "sha256": "b03fc4d1ee5833e53bf32192ea6b3483fb56663ef3e9e8f33ba0c1c82e81e72d"
+    },
+    "predictions": {
+      "path": "audusd_oco_first_touch_locked_predictions.parquet",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "path": "configs/audusd_oco_first_touch_reduced.yaml",
+      "sha256": "eb25a35d2eb155455309c7f29634c177aa9fe4fe0e4ea0bd2bb7ac0508e16da1"
+    },
+    "reduced_summary": {
+      "path": "audusd_oco_first_touch_reduced_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "path": "audusd_oco_first_touch_tick_exact_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "path": "configs/audusd_oco_first_touch_wfo.yaml",
+      "sha256": "155de811359f95ef96bea1ef38178eefd44751fe420a01ff72de3bee91bc6ae7"
+    }
+  },
+  "bundle": {
+    "dir_relpath": "configs/research/governance/oco",
+    "family": "oco_first_touch",
+    "month": "2026-04"
+  },
+  "deployability": {
+    "capacity_overall_pass": true,
+    "live_deployable": true,
+    "model_month": "2026-04",
+    "model_valid_through": "2026-04-30",
+    "tick_exact_overall_pass": true
+  },
+  "frozen_at_utc": "2026-05-01T16:08:13.188726+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "34cc29ef1e7016c86ec5b4e84dcec284cf821088",
+    "dirty": true
+  },
+  "historical_backtest": {
+    "deployable": true,
+    "mode": "month_locked",
+    "non_deployable_reason": "",
+    "target_month": "2026-04"
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 300,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "provenance": {
+    "allowed_states_csv": {
+      "origin": "configs/research/governance/oco_candidate_builds/2026-04/audusd_oco_allowed_states.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "origin": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/AUDUSD_model_2026-04.cbm",
+      "origin_sha256": "e61296b7d955bc614227bb22e3e7b9c16d75f00ab3f058779a3a4fed29ca644c"
+    },
+    "model_threshold_json": {
+      "origin": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/AUDUSD_model_2026-04.json",
+      "origin_sha256": "b03fc4d1ee5833e53bf32192ea6b3483fb56663ef3e9e8f33ba0c1c82e81e72d"
+    },
+    "predictions": {
+      "origin": "configs/research/governance/oco_candidate_builds/2026-04/audusd_oco_locked_predictions.parquet",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "origin": "configs/research/experiments_dukascopy_candidate/audusd_oco_reduced_core_rolling.yaml",
+      "origin_sha256": "eb25a35d2eb155455309c7f29634c177aa9fe4fe0e4ea0bd2bb7ac0508e16da1"
+    },
+    "reduced_summary": {
+      "origin": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "origin": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/AUDUSD_oco_tick_exact_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "origin": "configs/research/experiments_dukascopy_candidate/audusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+      "origin_sha256": "155de811359f95ef96bea1ef38178eefd44751fe420a01ff72de3bee91bc6ae7"
+    }
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 3,
+  "state_universe": {
+    "count": 2,
+    "rows": [
+      {
+        "bar_ticks": 1000,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch",
+        "horizon": 6,
+        "regime_desc": "all;barrier=2.0",
+        "state_id": "oco_first_touch__all__k2",
+        "symbol": "AUDUSD"
+      },
+      {
+        "bar_ticks": 1000,
+        "barrier_pips": 3.0,
+        "family": "oco_first_touch",
+        "horizon": 6,
+        "regime_desc": "all;barrier=3.0",
+        "state_id": "oco_first_touch__all__k3",
+        "symbol": "AUDUSD"
+      }
+    ],
+    "sha256": "18e66cc9fced086c967e6ee5e356faa08e11811592d75b1c931205797434f9c3"
+  },
+  "symbol": "AUDUSD"
+}

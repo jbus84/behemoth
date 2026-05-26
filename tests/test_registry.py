@@ -39,7 +39,7 @@ def _write_symbol_lock(
         "bundle": {
             "month": model_suffix,
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "model_cbm": {"path": f"models/{cbm.name}", "sha256": _sha256(cbm)},
@@ -49,7 +49,7 @@ def _write_symbol_lock(
         "locked_runtime": {"production_cap_pips": 1.2},
         "state_universe": {"rows": state_rows},
     }
-    (lock_dir / f"{sym}_oco_live_lock.json").write_text(json.dumps(lock))
+    (lock_dir / f"{sym}_oco_first_touch_live_lock.json").write_text(json.dumps(lock))
 
 
 @pytest.fixture
@@ -127,7 +127,7 @@ class TestRegistryLoading:
             "bundle": {
                 "month": "2026-02",
                 "dir_relpath": ".",
-                "family": "oco_first_touch_clean",
+                "family": "oco_first_touch",
             },
             "artifacts": {
                 "model_cbm": {"path": "models/EURUSD_model_2026-02.cbm", "sha256": _sha256(model_cbm)},
@@ -154,7 +154,7 @@ class TestRegistryLoading:
                 ]
             },
         }
-        (lock_dir / "EURUSD_oco_live_lock.json").write_text(json.dumps(lock))
+        (lock_dir / "EURUSD_oco_first_touch_live_lock.json").write_text(json.dumps(lock))
 
         reg = CandidateRegistry.load(lock_dir)
 

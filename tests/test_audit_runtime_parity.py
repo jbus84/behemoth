@@ -17,7 +17,7 @@ def test_harness_runs_and_writes_artifacts(tmp_path: Path) -> None:
         "EURUSD,true,136,0\n"
     )
     for sym in ["audusd", "eurusd", "gbpusd", "usdcad", "usdchf", "usdjpy"]:
-        (governance / f"{sym}_oco_live_lock.json").write_text(
+        (governance / f"{sym}_oco_first_touch_live_lock.json").write_text(
             '{"model_month":"2026-04","lock_hash":"abc"}'
         )
 

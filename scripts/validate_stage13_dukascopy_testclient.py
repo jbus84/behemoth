@@ -104,7 +104,7 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
 
 
 def _load_lock_status(lock_dir: Path, symbol: str) -> dict[str, Any]:
-    path = Path(lock_dir) / lock_filename(symbol)
+    path = Path(lock_dir) / lock_filename(symbol, "oco_first_touch")
     if not path.exists():
         return {"historical_deployable": True, "non_deployable_reason": ""}
     try:

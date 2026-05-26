@@ -32,7 +32,7 @@ def test_load_runtime_events_filters_by_symbol(tmp_path: Path) -> None:
 
 
 def test_load_governance_lock_returns_dict(tmp_path: Path) -> None:
-    lock = tmp_path / "audusd_oco_live_lock.json"
+    lock = tmp_path / "audusd_oco_first_touch_live_lock.json"
     lock.write_text('{"model_month":"2026-04","lock_hash":"abc","ok":true}')
     out = loader.load_governance_lock(governance_lock_dir=tmp_path, symbol="AUDUSD")
     assert out["model_month"] == "2026-04"

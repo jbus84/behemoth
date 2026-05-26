@@ -72,7 +72,7 @@ def _default_configs() -> dict[str, SymbolConfig]:
             monthly_path=Path(
                 "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv"
             ),
-            lock_path=Path("configs/research/governance/oco") / lock_filename("EURUSD"),
+            lock_path=Path("configs/research/governance/oco") / lock_filename("EURUSD", "oco_first_touch"),
         ),
         "GBPUSD": SymbolConfig(
             symbol="GBPUSD",
@@ -94,7 +94,7 @@ def _default_configs() -> dict[str, SymbolConfig]:
             monthly_path=Path(
                 "data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_monthly.csv"
             ),
-            lock_path=Path("configs/research/governance/oco") / lock_filename("GBPUSD"),
+            lock_path=Path("configs/research/governance/oco") / lock_filename("GBPUSD", "oco_first_touch"),
         ),
         "USDJPY": SymbolConfig(
             symbol="USDJPY",
@@ -116,7 +116,7 @@ def _default_configs() -> dict[str, SymbolConfig]:
             monthly_path=Path(
                 "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_monthly.csv"
             ),
-            lock_path=Path("configs/research/governance/oco") / lock_filename("USDJPY"),
+            lock_path=Path("configs/research/governance/oco") / lock_filename("USDJPY", "oco_first_touch"),
         ),
     }
 
