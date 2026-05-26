@@ -16,7 +16,11 @@ def _sha256(payload: bytes) -> str:
     return h.hexdigest()
 
 
-def _write_v2_bundle(tmp_path: Path, symbol: str = "EURUSD") -> Path:
+def _write_v3_bundle(
+    tmp_path: Path,
+    family: str = "oco_first_touch_clean",
+    symbol: str = "EURUSD",
+) -> Path:
     bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-04"
     (bundle_dir / "models").mkdir(parents=True)
     (bundle_dir / "configs").mkdir(parents=True)
@@ -32,9 +36,9 @@ def _write_v2_bundle(tmp_path: Path, symbol: str = "EURUSD") -> Path:
     (bundle_dir / "models" / f"{symbol}_model_2026-04.json").write_bytes(thr_bytes)
 
     lock = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": symbol,
-        "bundle": {"month": "2026-04", "dir_relpath": str(bundle_dir)},
+        "bundle": {"month": "2026-04", "dir_relpath": str(bundle_dir), "family": family},
         "artifacts": {
             "predictions": {
                 "path": f"{symbol.lower()}_oco_locked_predictions.parquet",
@@ -61,7 +65,7 @@ def _write_v2_bundle(tmp_path: Path, symbol: str = "EURUSD") -> Path:
 
 
 def test_from_lock_resolves_predictions(tmp_path: Path) -> None:
-    lock_path = _write_v2_bundle(tmp_path)
+    lock_path = _write_v3_bundle(tmp_path)
 
     bp = BundlePaths.from_lock(lock_path)
 
@@ -73,7 +77,7 @@ def test_from_lock_resolves_predictions(tmp_path: Path) -> None:
 
 
 def test_rejects_absolute_path_in_artifact(tmp_path: Path) -> None:
-    lock_path = _write_v2_bundle(tmp_path)
+    lock_path = _write_v3_bundle(tmp_path)
     data = json.loads(lock_path.read_text())
     data["artifacts"]["predictions"]["path"] = str(lock_path.parent / "x.parquet")
     lock_path.write_text(json.dumps(data))
@@ -83,7 +87,7 @@ def test_rejects_absolute_path_in_artifact(tmp_path: Path) -> None:
 
 
 def test_rejects_parent_escape(tmp_path: Path) -> None:
-    lock_path = _write_v2_bundle(tmp_path)
+    lock_path = _write_v3_bundle(tmp_path)
     data = json.loads(lock_path.read_text())
     data["artifacts"]["predictions"]["path"] = "../escape.parquet"
     lock_path.write_text(json.dumps(data))
@@ -92,18 +96,18 @@ def test_rejects_parent_escape(tmp_path: Path) -> None:
         BundlePaths.from_lock(lock_path)
 
 
-def test_rejects_schema_v1(tmp_path: Path) -> None:
-    lock_path = _write_v2_bundle(tmp_path)
+def test_rejects_schema_v2(tmp_path: Path) -> None:
+    lock_path = _write_v3_bundle(tmp_path)
     data = json.loads(lock_path.read_text())
-    data["schema_version"] = 1
+    data["schema_version"] = 2
     lock_path.write_text(json.dumps(data))
 
-    with pytest.raises(BundleIntegrityError, match="schema_version=2"):
+    with pytest.raises(BundleIntegrityError, match="schema_version=3"):
         BundlePaths.from_lock(lock_path)
 
 
 def test_predictions_call_verifies_sha(tmp_path: Path) -> None:
-    lock_path = _write_v2_bundle(tmp_path)
+    lock_path = _write_v3_bundle(tmp_path)
     bp = BundlePaths.from_lock(lock_path)
     # Corrupt the on-disk file after construction.
     (lock_path.parent / "eurusd_oco_locked_predictions.parquet").write_bytes(b"corrupted")
@@ -112,8 +116,57 @@ def test_predictions_call_verifies_sha(tmp_path: Path) -> None:
 
 
 def test_missing_file_raises(tmp_path: Path) -> None:
-    lock_path = _write_v2_bundle(tmp_path)
+    lock_path = _write_v3_bundle(tmp_path)
     (lock_path.parent / "eurusd_oco_locked_predictions.parquet").unlink()
     bp = BundlePaths.from_lock(lock_path)
     with pytest.raises(BundleIntegrityError, match="missing artifact"):
         bp.predictions()
+
+
+def test_bundle_layouts_exposes_oco_family() -> None:
+    from src.behemoth.core.bundle_paths import BUNDLE_LAYOUTS, bundle_layout_for
+
+    assert "oco_first_touch_clean" in BUNDLE_LAYOUTS
+    layout = bundle_layout_for("oco_first_touch_clean")
+    assert {spec.v2_key for spec in layout} >= {
+        "predictions",
+        "allowed_states_csv",
+        "model_cbm",
+        "model_threshold_json",
+    }
+
+
+def test_bundle_layouts_rejects_unknown_family() -> None:
+    from src.behemoth.core.bundle_paths import bundle_layout_for
+
+    with pytest.raises(BundleIntegrityError, match="unknown family"):
+        bundle_layout_for("not_a_real_family")
+
+
+def test_bundle_paths_exposes_family(tmp_path: Path) -> None:
+    lock_path = _write_v3_bundle(tmp_path)
+
+    bp = BundlePaths.from_lock(lock_path)
+
+    assert bp.family == "oco_first_touch_clean"
+
+
+def test_bundle_paths_rejects_v2_lock(tmp_path: Path) -> None:
+    lock_path = _write_v3_bundle(tmp_path)
+    data = json.loads(lock_path.read_text())
+    data["schema_version"] = 2
+    del data["bundle"]["family"]
+    lock_path.write_text(json.dumps(data))
+
+    with pytest.raises(BundleIntegrityError, match="schema_version=3"):
+        BundlePaths.from_lock(lock_path)
+
+
+def test_bundle_paths_rejects_missing_family(tmp_path: Path) -> None:
+    lock_path = _write_v3_bundle(tmp_path)
+    data = json.loads(lock_path.read_text())
+    del data["bundle"]["family"]
+    lock_path.write_text(json.dumps(data))
+
+    with pytest.raises(BundleIntegrityError, match="bundle.family"):
+        BundlePaths.from_lock(lock_path)
