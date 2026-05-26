@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from src.behemoth.core.bundle_paths import BundlePaths
 from src.behemoth.core.registry import CandidateSpec
 
 
@@ -39,20 +40,24 @@ class GovernanceLockLoader:
     def _parse_lock(self, path: Path, symbol: str, month: str | None) -> CandidateContract:
         data = json.loads(path.read_text())
         sym = str(data.get("symbol", "")).upper().strip()
-        artifacts = data.get("artifacts", {})
+        bp = BundlePaths.from_lock(path)  # raises BundleIntegrityError on v1 — intentional, no fallback
         locked = data.get("locked_runtime", {})
         rows = data.get("state_universe", {}).get("rows", [])
         candidates = [CandidateSpec.from_row(r) for r in rows]
+
+        artifacts = data.get("artifacts", {})
+        cbm_entry = artifacts.get("model_cbm", {}) or {}
+        thr_entry = artifacts.get("model_threshold_json", {}) or {}
         model_binding = {
-            "model_cbm_path": str(artifacts.get("model_cbm_path", "")).strip(),
-            "model_cbm_sha256": str(artifacts.get("model_cbm_sha256", "")).strip(),
-            "model_threshold_json_path": str(artifacts.get("model_threshold_json_path", "")).strip(),
-            "model_threshold_json_sha256": str(artifacts.get("model_threshold_json_sha256", "")).strip(),
-            "model_month": str(artifacts.get("model_month", "")).strip(),
+            "model_cbm_path": str(bp.model_cbm()),
+            "model_cbm_sha256": str(cbm_entry.get("sha256", "")).strip(),
+            "model_threshold_json_path": str(bp.model_threshold_json()),
+            "model_threshold_json_sha256": str(thr_entry.get("sha256", "")).strip(),
+            "model_month": bp.model_month or (month or "unknown"),
         }
         return CandidateContract(
             symbol=sym,
-            model_month=str(artifacts.get("model_month", month or "unknown")).strip(),
+            model_month=model_binding["model_month"],
             cache_key=f"{sym}|{month}" if month else sym,
             candidates=candidates,
             model_binding=model_binding,

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import importlib
-import json
 import os
 import re
 import subprocess
@@ -34,6 +33,8 @@ _validate_api_parity = importlib.import_module("scripts.validate_api_parity")
 _validate_stage13_dukascopy_testclient = importlib.import_module(
     "scripts.validate_stage13_dukascopy_testclient"
 )
+
+from src.behemoth.core.bundle_paths import BundlePaths  # noqa: E402
 
 DukascopyTestClientArtifactOutputs = (
     _generate_dukascopy_testclient_artifacts.DukascopyTestClientArtifactOutputs
@@ -146,27 +147,9 @@ def _resolve_stage12_predictions_path(
 ) -> Path:
     symbol = _normalize_symbol(symbol)
     if lock_dir is not None:
-        lock_dir = Path(lock_dir)
-        lock_path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
+        lock_path = Path(lock_dir) / f"{symbol.lower()}_oco_live_lock.json"
         if lock_path.exists():
-            try:
-                manifest = json.loads(lock_path.read_text(encoding="utf-8"))
-                artifacts = _as_mapping(manifest.get("artifacts"))
-                manifest_predictions = str(artifacts.get("predictions_path", "")).strip()
-            except Exception:
-                manifest_predictions = ""
-            if manifest_predictions:
-                candidate = Path(manifest_predictions)
-                if candidate.exists():
-                    return candidate
-                repo_candidate = REPO_ROOT / candidate
-                if repo_candidate.exists():
-                    return repo_candidate
-
-        locked_predictions = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
-        if locked_predictions.exists():
-            return locked_predictions
-
+            return BundlePaths.from_lock(lock_path).predictions()
     return Path(predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet"
 
 
@@ -477,10 +460,14 @@ def run_stage12_stage13_certification(
         stage12_row = _as_mapping(stage12_runner(symbol))
         stage12_outcome = _normalize_outcome(stage12_row.get("certification_outcome"))
         if stage12_outcome != "PASS":
-            rows.append(_resolved_stage_row(symbol=symbol, stage12_row=stage12_row, stage13_row=None))
+            rows.append(
+                _resolved_stage_row(symbol=symbol, stage12_row=stage12_row, stage13_row=None)
+            )
             continue
         stage13_row = _as_mapping(stage13_runner(symbol))
-        rows.append(_resolved_stage_row(symbol=symbol, stage12_row=stage12_row, stage13_row=stage13_row))
+        rows.append(
+            _resolved_stage_row(symbol=symbol, stage12_row=stage12_row, stage13_row=stage13_row)
+        )
 
     final_summary = pd.DataFrame(rows)
     final_summary.to_csv(out_dir / FINAL_SUMMARY_FILENAME, index=False)
@@ -599,13 +586,17 @@ def main(argv: list[str] | None = None) -> int:
                 "stage13_verdict": row.get("verdict"),
             }
 
-    final_rows = _combine_final_rows(symbols=symbols, stage12_rows=stage12_rows, stage13_rows=stage13_rows)
+    final_rows = _combine_final_rows(
+        symbols=symbols, stage12_rows=stage12_rows, stage13_rows=stage13_rows
+    )
     final_summary_path = out_dir / FINAL_SUMMARY_FILENAME
     pd.DataFrame(final_rows).to_csv(final_summary_path, index=False)
 
     print(f"Wrote Stage 12 summary rows for {len(stage12_rows)} symbols to {reconcile_dir}")
     print(f"Wrote Stage 13 summary to {(_stage13_summary_path(reconcile_dir)).as_posix()}")
-    print(f"Wrote Stage 13 checks to {(reconcile_dir / 'stage13_dukascopy_testclient_checks.csv').as_posix()}")
+    print(
+        f"Wrote Stage 13 checks to {(reconcile_dir / 'stage13_dukascopy_testclient_checks.csv').as_posix()}"
+    )
     print(f"Wrote final normalized summary to {final_summary_path.as_posix()}")
     if not stage13_checks.empty:
         print(f"Stage 13 checks rows: {len(stage13_checks)}")

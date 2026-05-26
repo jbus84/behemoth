@@ -1066,19 +1066,14 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
     out_csv = tmp_path / "out.csv"
 
     lock = {
+        "schema_version": 2,
         "symbol": "USDCAD",
-        "artifacts": {
+        "deployability": {
             "model_month": "2026-02",
-            "predictions_path": "",
-            "predictions_sha256": "",
             "live_deployable": False,
         },
+        "artifacts": {},
         "state_universe": {"count": 0, "rows": []},
-        "historical_backtest": {
-            "target_month": "2026-02",
-            "deployable": False,
-            "non_deployable_reason": "no_gate_states",
-        },
     }
     (lock_dir / "usdcad_oco_live_lock.json").write_text(json.dumps(lock), encoding="utf-8")
 
@@ -1123,7 +1118,6 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
     row = df.iloc[0].to_dict()
     assert row["symbol"] == "USDCAD"
     assert str(row["historical_deployable"]).lower() == "false"
-    assert row["non_deployable_reason"] == "no_gate_states"
     assert row["lock_dir"] == str(lock_dir)
     assert str(row["overall_pass"]).lower() == "false"
 

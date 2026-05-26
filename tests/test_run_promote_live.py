@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import sys
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 import scripts.run_promote_live as run_promote_live
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _make_valid_provenance_status(model_month: str) -> dict:
@@ -31,38 +37,44 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     verify_calls: list[str] = []
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     build_bundle_dir.mkdir(parents=True)
-    source_predictions = (
-        build_bundle_dir
-        / "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2026_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
-    )
-    source_states = (
-        build_bundle_dir
-        / "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv"
-    )
-    source_predictions.parent.mkdir(parents=True)
-    source_states.parent.mkdir(parents=True)
-    source_predictions.write_text("predictions\n")
-    source_states.write_text("states\n")
-    source_model_cbm = build_bundle_dir / "models/oco/EURUSD_model_2026-02.cbm"
-    source_threshold_json = build_bundle_dir / "models/oco/EURUSD_model_2026-02.json"
-    source_model_cbm.parent.mkdir(parents=True, exist_ok=True)
+    # v2 bundle layout: artifacts live inside the bundle
+    predictions_path = build_bundle_dir / "eurusd_oco_locked_predictions.parquet"
+    states_path = build_bundle_dir / "eurusd_oco_allowed_states.csv"
+    predictions_path.write_text("predictions\n")
+    states_path.write_text("states\n")
+    model_dir = build_bundle_dir / "models"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    source_model_cbm = model_dir / "EURUSD_model_2026-02.cbm"
+    source_threshold_json = model_dir / "EURUSD_model_2026-02.json"
     source_model_cbm.write_text("cbm\n")
     source_threshold_json.write_text('{"threshold": 1.23}\n')
     lock_path = build_bundle_dir / "eurusd_oco_live_lock.json"
     lock_path.write_text(
         json.dumps(
             {
+                "schema_version": 2,
+                "symbol": "EURUSD",
                 "artifacts": {
-                    "model_cbm_path": str(source_model_cbm),
-                    "model_threshold_json_path": str(source_threshold_json),
-                    "predictions_path": str(source_predictions),
-                    "reduced_states_csv_path": str(source_states),
-                    "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_summary.csv",
-                    "live_deployable": True,
+                    "predictions": {
+                        "path": "eurusd_oco_locked_predictions.parquet",
+                        "sha256": _sha256_file(predictions_path),
+                    },
+                    "allowed_states_csv": {
+                        "path": "eurusd_oco_allowed_states.csv",
+                        "sha256": _sha256_file(states_path),
+                    },
+                    "model_cbm": {
+                        "path": "models/EURUSD_model_2026-02.cbm",
+                        "sha256": _sha256_file(source_model_cbm),
+                    },
+                    "model_threshold_json": {
+                        "path": "models/EURUSD_model_2026-02.json",
+                        "sha256": _sha256_file(source_threshold_json),
+                    },
                 },
+                "deployability": {"live_deployable": True},
                 "state_universe": {"count": 7},
                 "locked_runtime": {"production_cap_pips": 1.2},
-                "symbol": "EURUSD",
             },
             indent=2,
         )
@@ -74,15 +86,21 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
 
     def fake_subprocess_run(args, **kwargs):
         if "rev-parse" in args:
-            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+            return type(
+                "R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0}
+            )()
         return type("R", (), {"stdout": "", "returncode": 0})()
 
     monkeypatch.setattr(
         run_promote_live,
         "_verify_cert",
-        lambda report_dir, model_month, **kwargs: verify_calls.append(f"{report_dir}:{model_month}"),
+        lambda report_dir, model_month, **kwargs: verify_calls.append(
+            f"{report_dir}:{model_month}"
+        ),
     )
-    monkeypatch.setattr(run_promote_live, "_load_go_symbols", lambda report_dir, model_month: ["EURUSD"])
+    monkeypatch.setattr(
+        run_promote_live, "_load_go_symbols", lambda report_dir, model_month: ["EURUSD"]
+    )
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(run_promote_live.subprocess, "run", fake_subprocess_run)
@@ -95,19 +113,12 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     assert verify_calls == ["data/analysis/backtest_reconcile:2026-02"]
     promoted_lock = archive_dir / "2026-02" / "eurusd_oco_live_lock.json"
     promoted_data = json.loads(promoted_lock.read_text())
-    assert promoted_data["artifacts"]["predictions_path"] == str(
-        archive_dir
-        / "2026-02"
-        / "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2026_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
-    )
-    assert promoted_data["artifacts"]["reduced_states_csv_path"] == str(
-        archive_dir
-        / "2026-02"
-        / "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv"
+    # v2 locks are bundle-relative; paths should NOT be rewritten during promotion
+    assert (
+        promoted_data["artifacts"]["predictions"]["path"] == "eurusd_oco_locked_predictions.parquet"
     )
     assert (
-        promoted_data["artifacts"]["reduced_summary_path"]
-        == "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_summary.csv"
+        promoted_data["artifacts"]["allowed_states_csv"]["path"] == "eurusd_oco_allowed_states.csv"
     )
 
     index_path = archive_dir / "index.csv"
@@ -118,14 +129,10 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
             "symbol": "EURUSD",
             "month": "2026-02",
             "lock_path": str(promoted_lock),
-            "allowed_states_path": str(
-                archive_dir
-                / "2026-02"
-                / "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv"
-            ),
-            "model_cbm_path": str(archive_dir / "2026-02" / "models/oco/EURUSD_model_2026-02.cbm"),
+            "allowed_states_path": str(archive_dir / "2026-02" / "eurusd_oco_allowed_states.csv"),
+            "model_cbm_path": str(archive_dir / "2026-02" / "models" / "EURUSD_model_2026-02.cbm"),
             "threshold_json_path": str(
-                archive_dir / "2026-02" / "models/oco/EURUSD_model_2026-02.json"
+                archive_dir / "2026-02" / "models" / "EURUSD_model_2026-02.json"
             ),
             "candidates_count": "7",
             "production_cap_pips": "1.2",
@@ -137,10 +144,14 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
 def test_main_requires_existing_build_bundle(monkeypatch, tmp_path) -> None:
     def fake_subprocess_run(args, **kwargs):
         if "rev-parse" in args:
-            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+            return type(
+                "R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0}
+            )()
         return type("R", (), {"stdout": "", "returncode": 0})()
 
-    monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir, model_month, **kwargs: None)
+    monkeypatch.setattr(
+        run_promote_live, "_verify_cert", lambda report_dir, model_month, **kwargs: None
+    )
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(run_promote_live.subprocess, "run", fake_subprocess_run)
@@ -208,9 +219,7 @@ def test_promote_live_requires_process_status_pass(tmp_path) -> None:
         )
 
 
-def test_promote_live_blocks_when_required_symbol_is_no_go(
-    monkeypatch, tmp_path
-) -> None:
+def test_promote_live_blocks_when_required_symbol_is_no_go(monkeypatch, tmp_path) -> None:
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     build_bundle_dir.mkdir(parents=True)
     archive_dir = tmp_path / "configs/research/governance/oco_history_dukascopy_candidate"
@@ -221,7 +230,7 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(
 
     for symbol in ("EURUSD", "AUDUSD"):
         lower = symbol.lower()
-        model_dir = build_bundle_dir / "models/oco"
+        model_dir = build_bundle_dir / "models"
         model_dir.mkdir(parents=True, exist_ok=True)
         model_cbm = model_dir / f"{symbol}_model_2026-02.cbm"
         model_thr = model_dir / f"{symbol}_model_2026-02.json"
@@ -232,13 +241,23 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(
         (build_bundle_dir / f"{lower}_oco_live_lock.json").write_text(
             json.dumps(
                 {
+                    "schema_version": 2,
                     "symbol": symbol,
                     "artifacts": {
-                        "model_cbm_path": str(model_cbm),
-                        "model_threshold_json_path": str(model_thr),
-                        "reduced_states_csv_path": str(allowed_states),
-                        "live_deployable": symbol == "EURUSD",
+                        "model_cbm": {
+                            "path": f"models/{symbol}_model_2026-02.cbm",
+                            "sha256": _sha256_file(model_cbm),
+                        },
+                        "model_threshold_json": {
+                            "path": f"models/{symbol}_model_2026-02.json",
+                            "sha256": _sha256_file(model_thr),
+                        },
+                        "allowed_states_csv": {
+                            "path": f"{lower}_oco_allowed_states.csv",
+                            "sha256": _sha256_file(allowed_states),
+                        },
                     },
+                    "deployability": {"live_deployable": symbol == "EURUSD"},
                     "state_universe": {"count": 1 if symbol == "EURUSD" else 0},
                     "locked_runtime": {"production_cap_pips": 1.2},
                 }
@@ -295,9 +314,13 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(
 
     def fake_subprocess_run(args, **kwargs):
         if "rev-parse" in args:
-            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+            return type(
+                "R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0}
+            )()
         if "merge-base" in args:
-            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+            return type(
+                "R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0}
+            )()
         return type("R", (), {"stdout": "", "returncode": 0})()
 
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
@@ -385,13 +408,16 @@ def test_verify_dag_provenance_passes_when_certified_commit_is_current(
     """Promotion passes when current HEAD is exactly the certified commit."""
     status = _make_valid_provenance_status("2026-03")
 
-    fake_merge_base_result = type("R", (), {
-        "stdout": "abc1234567890000000000000000000000000001\n",
-        "returncode": 0,
-    })()
+    fake_merge_base_result = type(
+        "R",
+        (),
+        {
+            "stdout": "abc1234567890000000000000000000000000001\n",
+            "returncode": 0,
+        },
+    )()
     monkeypatch.setattr(
-        run_promote_live.subprocess, "run",
-        lambda *args, **kwargs: fake_merge_base_result
+        run_promote_live.subprocess, "run", lambda *args, **kwargs: fake_merge_base_result
     )
 
     # Should not raise
@@ -413,13 +439,16 @@ def test_verify_dag_provenance_passes_when_current_commit_is_descendant(
     status["target_commit"] = certified
 
     # merge-base returns the certified commit, proving it's an ancestor
-    fake_merge_base_result = type("R", (), {
-        "stdout": certified + "\n",
-        "returncode": 0,
-    })()
+    fake_merge_base_result = type(
+        "R",
+        (),
+        {
+            "stdout": certified + "\n",
+            "returncode": 0,
+        },
+    )()
     monkeypatch.setattr(
-        run_promote_live.subprocess, "run",
-        lambda *args, **kwargs: fake_merge_base_result
+        run_promote_live.subprocess, "run", lambda *args, **kwargs: fake_merge_base_result
     )
 
     # Should not raise
@@ -441,13 +470,16 @@ def test_verify_dag_provenance_blocks_when_certified_commit_is_not_ancestor(
     status["target_commit"] = certified
 
     # merge-base returns something other than certified, proving divergence
-    fake_merge_base_result = type("R", (), {
-        "stdout": "0000000000000000000000000000000000000000\n",
-        "returncode": 0,
-    })()
+    fake_merge_base_result = type(
+        "R",
+        (),
+        {
+            "stdout": "0000000000000000000000000000000000000000\n",
+            "returncode": 0,
+        },
+    )()
     monkeypatch.setattr(
-        run_promote_live.subprocess, "run",
-        lambda *args, **kwargs: fake_merge_base_result
+        run_promote_live.subprocess, "run", lambda *args, **kwargs: fake_merge_base_result
     )
 
     with pytest.raises(SystemExit) as exc:
@@ -474,9 +506,7 @@ def test_verify_dag_provenance_blocks_empty_target_commit(tmp_path) -> None:
         )
 
 
-def test_main_promote_live_blocks_when_certified_commit_diverged(
-    tmp_path, monkeypatch
-) -> None:
+def test_main_promote_live_blocks_when_certified_commit_diverged(tmp_path, monkeypatch) -> None:
     """main() must enforce commit ancestry: if the certified commit is not an
     ancestor of current HEAD, promotion raises SystemExit."""
     import datetime
@@ -494,11 +524,19 @@ def test_main_promote_live_blocks_when_certified_commit_diverged(
     (status_dir / "monthly_recert_status.json").write_text(json.dumps(status))
     # Minimal passing CSV
     import csv as _csv
+
     csv_path = status_dir / "stage14_jforex_runtime_certification_checks.csv"
     with csv_path.open("w", newline="") as f:
         w = _csv.DictWriter(f, fieldnames=["symbol", "check", "result", "evaluated_at_utc"])
         w.writeheader()
-        w.writerow({"symbol": "EURUSD", "check": "all", "result": "PASS", "evaluated_at_utc": datetime.date.today().isoformat()})
+        w.writerow(
+            {
+                "symbol": "EURUSD",
+                "check": "all",
+                "result": "PASS",
+                "evaluated_at_utc": datetime.date.today().isoformat(),
+            }
+        )
 
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
 
@@ -508,14 +546,22 @@ def test_main_promote_live_blocks_when_certified_commit_diverged(
         if "rev-parse" in args:
             return type("R", (), {"stdout": current + "\n", "returncode": 0})()
         if "merge-base" in args:
-            return type("R", (), {"stdout": "0000000000000000000000000000000000000000\n", "returncode": 1})()
+            return type(
+                "R", (), {"stdout": "0000000000000000000000000000000000000000\n", "returncode": 1}
+            )()
         return type("R", (), {"stdout": "", "returncode": 0})()
 
     monkeypatch.setattr(run_promote_live.subprocess, "run", fake_subprocess_run)
     monkeypatch.setattr(
         sys,
         "argv",
-        ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile", "--model-month", "2026-03"],
+        [
+            "run_promote_live.py",
+            "--report-dir",
+            "data/analysis/backtest_reconcile",
+            "--model-month",
+            "2026-03",
+        ],
     )
 
     with pytest.raises(SystemExit) as exc:

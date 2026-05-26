@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.behemoth.core.bundle_paths import BundlePaths
 from src.behemoth.core.registry import CandidateSpec
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
@@ -53,7 +54,18 @@ class HistoricalCandidateRegistry:
                     continue
 
                 artifacts = data.get("artifacts", {}) if isinstance(data, dict) else {}
-                model_month = str(artifacts.get("model_month", "")).strip() or parent_month
+                BundlePaths.from_lock(p)  # raises BundleIntegrityError on v1 — intentional
+                deploy = data.get("deployability", {}) or {}
+                model_month = str(deploy.get("model_month", "")).strip() or parent_month
+                cbm_entry = artifacts.get("model_cbm", {}) or {}
+                thr_entry = artifacts.get("model_threshold_json", {}) or {}
+                pred_entry = artifacts.get("predictions", {}) or {}
+                cbm_path = str(cbm_entry.get("path", "")).strip()
+                cbm_sha = str(cbm_entry.get("sha256", "")).strip()
+                thr_path = str(thr_entry.get("path", "")).strip()
+                thr_sha = str(thr_entry.get("sha256", "")).strip()
+                pred_path = str(pred_entry.get("path", "")).strip()
+                pred_sha = str(pred_entry.get("sha256", "")).strip()
                 if not _MONTH_RE.match(model_month):
                     continue
                 if model_month != parent_month:
@@ -72,17 +84,18 @@ class HistoricalCandidateRegistry:
                 locked = data.get("locked_runtime", {}) if isinstance(data, dict) else {}
                 cap_pips = float(locked.get("production_cap_pips", 1.2))
 
+                # Resolve bundle-relative paths to absolute for downstream consumers
+                cbm_path = str(p.parent / cbm_path) if cbm_path else ""
+                thr_path = str(p.parent / thr_path) if thr_path else ""
+                pred_path = str(p.parent / pred_path) if pred_path else ""
+
                 model_binding = {
-                    "model_cbm_path": str(artifacts.get("model_cbm_path", "")).strip(),
-                    "model_cbm_sha256": str(artifacts.get("model_cbm_sha256", "")).strip(),
-                    "model_threshold_json_path": str(
-                        artifacts.get("model_threshold_json_path", "")
-                    ).strip(),
-                    "model_threshold_json_sha256": str(
-                        artifacts.get("model_threshold_json_sha256", "")
-                    ).strip(),
-                    "predictions_path": str(artifacts.get("predictions_path", "")).strip(),
-                    "predictions_sha256": str(artifacts.get("predictions_sha256", "")).strip(),
+                    "model_cbm_path": cbm_path,
+                    "model_cbm_sha256": cbm_sha,
+                    "model_threshold_json_path": thr_path,
+                    "model_threshold_json_sha256": thr_sha,
+                    "predictions_path": pred_path,
+                    "predictions_sha256": pred_sha,
                     "model_month": model_month,
                 }
                 if (

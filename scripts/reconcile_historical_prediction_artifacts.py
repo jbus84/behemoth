@@ -94,6 +94,15 @@ def _load_lock(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _find_repo_root(start: Path) -> Path:
+    current = start.resolve()
+    while current != current.parent:
+        if (current / ".git").exists():
+            return current
+        current = current.parent
+    return start.resolve()
+
+
 def _iter_lock_paths(history_dir: Path, symbols: list[str], months: list[str]) -> list[Path]:
     lock_paths = sorted(history_dir.glob("*/*_oco_live_lock.json"))
     out: list[Path] = []
@@ -130,17 +139,28 @@ def reconcile_lock(
     if not symbol or not _MONTH_RE.match(month):
         raise ValueError(f"invalid lock metadata: {lock_path}")
 
-    source_predictions_path = str(
-        artifacts.get("source_predictions_path", "") or artifacts.get("predictions_path", "")
-    ).strip()
+    bundle_dir = lock_path.parent
+
+    prov = lock.get("provenance", {})
+    pred_prov = prov.get("predictions", {})
+    source_predictions_path = str(pred_prov.get("origin", "")).strip()
+    if not source_predictions_path:
+        # fallback to current predictions path
+        source_predictions_path = str(artifacts.get("predictions", {}).get("path", "")).strip()
+    model_entry = artifacts.get("model_cbm", {})
+    thr_entry = artifacts.get("model_threshold_json", {})
+    model_path = bundle_dir / Path(str(model_entry.get("path", "")).strip())
+    threshold_path = bundle_dir / Path(str(thr_entry.get("path", "")).strip())
+
     if not source_predictions_path:
         raise ValueError(f"missing predictions_path in {lock_path}")
     source_pred = Path(source_predictions_path)
+    if not source_pred.is_absolute():
+        repo_root = _find_repo_root(bundle_dir)
+        source_pred = repo_root / source_pred
     if not source_pred.exists():
         raise FileNotFoundError(source_pred)
 
-    model_path = Path(str(artifacts.get("model_cbm_path", "")).strip())
-    threshold_path = Path(str(artifacts.get("model_threshold_json_path", "")).strip())
     if not model_path.exists() or not threshold_path.exists():
         raise FileNotFoundError(f"missing model artifacts for {lock_path}")
 
@@ -271,24 +291,36 @@ def reconcile_lock(
     frozen.to_parquet(out_path, index=False)
     frozen_sha = _sha256(out_path)
 
-    old_hash = str(artifacts.get("predictions_sha256", "")).strip()
-    artifacts["source_predictions_path"] = source_predictions_path
-    artifacts["source_predictions_sha256"] = _sha256(source_pred)
-    artifacts["predictions_path"] = str(out_path)
-    artifacts["predictions_sha256"] = frozen_sha
-    artifacts["predictions_reconciled_at_utc"] = datetime.now(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    old_hash = str(artifacts.get("predictions", {}).get("sha256", "")).strip()
+    if "predictions" not in artifacts:
+        artifacts["predictions"] = {}
+    artifacts["predictions"]["path"] = f"{symbol.lower()}_oco_locked_predictions.parquet"
+    artifacts["predictions"]["sha256"] = frozen_sha
+    if "provenance" not in lock:
+        lock["provenance"] = {}
+    if "predictions" not in lock["provenance"]:
+        lock["provenance"]["predictions"] = {}
+    if source_pred.is_absolute():
+        try:
+            origin_rel = str(source_pred.resolve().relative_to(_find_repo_root(bundle_dir)))
+        except ValueError:
+            origin_rel = str(source_pred.resolve())
+    else:
+        origin_rel = str(source_pred)
+    lock["provenance"]["predictions"]["origin"] = origin_rel
+    lock["provenance"]["predictions"]["origin_sha256"] = _sha256(source_pred)
+
     lock["artifacts"] = artifacts
     if write_lock:
         lock_path.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
+    source_sha = _sha256(source_pred)
     return {
         "symbol": symbol,
         "month": month,
         "lock_path": str(lock_path),
         "source_predictions_path": str(source_pred),
-        "source_predictions_sha256": artifacts["source_predictions_sha256"],
+        "source_predictions_sha256": source_sha,
         "lock_predictions_sha256_before": old_hash,
         "frozen_predictions_path": str(out_path),
         "frozen_predictions_sha256": frozen_sha,

@@ -104,12 +104,10 @@ def _load_lock_status(lock_dir: Path, symbol: str) -> dict[str, Any]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {"historical_deployable": True, "non_deployable_reason": ""}
-    backtest = payload.get("historical_backtest", {})
-    if not isinstance(backtest, dict):
-        backtest = {}
+    deploy = payload.get("deployability", {}) or {}
     return {
-        "historical_deployable": bool(backtest.get("deployable", True)),
-        "non_deployable_reason": str(backtest.get("non_deployable_reason", "")).strip(),
+        "historical_deployable": bool(deploy.get("live_deployable", False)),
+        "non_deployable_reason": "",
     }
 
 

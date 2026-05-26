@@ -25,8 +25,9 @@ def _list_deployable_months(history_dir: Path, symbol: str) -> list[str]:
             payload = json.loads(lock_path.read_text())
         except json.JSONDecodeError:
             continue
-        artifacts = payload.get("artifacts") or {}
-        if artifacts.get("live_deployable") is True:
+        deploy = payload.get("deployability") or {}
+        deployable = bool(deploy.get("live_deployable", False))
+        if deployable:
             months.append(month_dir.name)
     return months
 

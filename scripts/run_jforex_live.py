@@ -216,15 +216,18 @@ def _validate_promoted_runtime_artifacts(cfg: RunConfig) -> None:
         if not symbol or symbol not in requested_symbols:
             continue
         artifacts = payload.get("artifacts", {})
-        if not isinstance(artifacts, dict) or bool(artifacts.get("live_deployable", True)) is False:
+        if not isinstance(artifacts, dict):
             continue
 
-        runtime_model_path = models_dir / Path(str(artifacts.get("model_cbm_path", "")).strip()).name
-        runtime_thr_path = models_dir / Path(
-            str(artifacts.get("model_threshold_json_path", "")).strip()
-        ).name
-        expected_model_sha = str(artifacts.get("model_cbm_sha256", "")).strip()
-        expected_thr_sha = str(artifacts.get("model_threshold_json_sha256", "")).strip()
+        deploy = payload.get("deployability", {})
+        if not isinstance(deploy, dict) or bool(deploy.get("live_deployable", False)) is False:
+            continue
+        cbm_entry = artifacts.get("model_cbm", {})
+        thr_entry = artifacts.get("model_threshold_json", {})
+        runtime_model_path = models_dir / Path(str(cbm_entry.get("path", "")).strip()).name
+        runtime_thr_path = models_dir / Path(str(thr_entry.get("path", "")).strip()).name
+        expected_model_sha = str(cbm_entry.get("sha256", "")).strip()
+        expected_thr_sha = str(thr_entry.get("sha256", "")).strip()
 
         if not runtime_model_path.exists():
             failures.append(f"{symbol}: missing runtime model {runtime_model_path}")

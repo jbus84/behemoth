@@ -49,7 +49,9 @@ def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str,
             import json
 
             lock = json.loads(lock_path.read_text())
-            parquet_path = Path(lock["artifacts"]["predictions_path"])
+            artifacts = lock.get("artifacts", {})
+            entry = artifacts.get("predictions", {})
+            parquet_path = lock_path.parent / Path(str(entry.get("path", "")).strip())
 
     if not parquet_path.exists():
         print(f"Error: Offline predictions parquet not found at {parquet_path}")

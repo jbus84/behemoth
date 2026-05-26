@@ -107,44 +107,49 @@ def run(
     lock_symbol = str(lock.get("symbol", "")).upper().strip()
 
     artifacts = lock.get("artifacts", {})
+    bundle_dir = lock_path.parent
+
     # Integrity checks against frozen paths and hashes.
-    for label, pkey, hkey, required in [
-        ("wfo_config_hash", "wfo_config_path", "wfo_config_sha256", True),
-        ("reduced_config_hash", "reduced_config_path", "reduced_config_sha256", True),
-        ("reduced_states_hash", "reduced_states_csv_path", "reduced_states_csv_sha256", True),
-        ("predictions_hash", "predictions_path", "predictions_sha256", True),
-        ("model_cbm_hash", "model_cbm_path", "model_cbm_sha256", True),
-        (
-            "model_threshold_json_hash",
-            "model_threshold_json_path",
-            "model_threshold_json_sha256",
-            True,
-        ),
-        ("tick_exact_summary_hash", "tick_exact_summary_path", "tick_exact_summary_sha256", True),
-        ("reduced_summary_hash", "reduced_summary_path", "reduced_summary_sha256", False),
+    artifact_specs: list[tuple[str, str, str, bool, str]] = []
+    for label, v2_key, required in [
+        ("wfo_config_hash", "wfo_config", True),
+        ("reduced_config_hash", "reduced_config", True),
+        ("reduced_states_hash", "allowed_states_csv", True),
+        ("predictions_hash", "predictions", True),
+        ("model_cbm_hash", "model_cbm", True),
+        ("model_threshold_json_hash", "model_threshold_json", True),
+        ("tick_exact_summary_hash", "tick_exact_summary", True),
+        ("reduced_summary_hash", "reduced_summary", False),
     ]:
-        p_txt = str(artifacts.get(pkey, "")).strip()
-        exp = str(artifacts.get(hkey, "")).strip()
+        entry = artifacts.get(v2_key, {})
+        p_txt = str(entry.get("path", "")).strip()
+        exp = str(entry.get("sha256", "")).strip()
+        artifact_specs.append((label, p_txt, exp, required, v2_key))
+
+    for label, p_txt, exp, required, key_name in artifact_specs:
         if not p_txt:
             if required:
-                checks.append(Check(label, False, f"missing {pkey}"))
+                checks.append(Check(label, False, f"missing {key_name}"))
             continue
-        p = Path(p_txt)
+        p = bundle_dir / p_txt
         if (not p.exists()) or p.is_dir():
             checks.append(Check(label, False, f"missing {p}"))
             continue
         got = _sha256(p)
         checks.append(Check(label, got == exp, f"expected={exp} got={got}"))
 
-    model_month = str(artifacts.get("model_month", "")).strip()
+    deploy = lock.get("deployability", {})
+    model_month = str(deploy.get("model_month", "")).strip()
+    model_cbm_entry = artifacts.get("model_cbm", {})
+    model_thr_entry = artifacts.get("model_threshold_json", {})
     model_cbm_path = (
-        Path(str(artifacts.get("model_cbm_path", "")).strip())
-        if str(artifacts.get("model_cbm_path", "")).strip()
+        bundle_dir / Path(str(model_cbm_entry.get("path", "")).strip())
+        if str(model_cbm_entry.get("path", "")).strip()
         else None
     )
     model_thr_path = (
-        Path(str(artifacts.get("model_threshold_json_path", "")).strip())
-        if str(artifacts.get("model_threshold_json_path", "")).strip()
+        bundle_dir / Path(str(model_thr_entry.get("path", "")).strip())
+        if str(model_thr_entry.get("path", "")).strip()
         else None
     )
     if model_month:
@@ -175,7 +180,10 @@ def run(
         )
 
     # Tick-exact overall pass gate.
-    te_pass = artifacts.get("tick_exact_overall_pass")
+    deploy = lock.get("deployability", {})
+    te_pass = deploy.get("tick_exact_overall_pass")
+    cap_pass = deploy.get("capacity_overall_pass")
+    live_deployable = deploy.get("live_deployable")
     checks.append(
         Check(
             "tick_exact_overall_pass",
@@ -183,26 +191,23 @@ def run(
             f"tick_exact_overall_pass={te_pass!r} (must be True)",
         )
     )
-    if "capacity_overall_pass" in artifacts:
-        cap_pass = artifacts.get("capacity_overall_pass")
+    checks.append(
+        Check(
+            "capacity_overall_pass",
+            cap_pass is True,
+            f"capacity_overall_pass={cap_pass!r} (must be True)",
+        )
+    )
+    if live_deployable is not None:
+        expected_live_deployable = (te_pass is True) and (cap_pass is True)
         checks.append(
             Check(
-                "capacity_overall_pass",
-                cap_pass is True,
-                f"capacity_overall_pass={cap_pass!r} (must be True)",
+                "live_deployable_consistent",
+                isinstance(live_deployable, bool)
+                and (live_deployable == expected_live_deployable),
+                (f"live_deployable={live_deployable!r} expected={expected_live_deployable!r}"),
             )
         )
-        if "live_deployable" in artifacts:
-            live_deployable = artifacts.get("live_deployable")
-            expected_live_deployable = (te_pass is True) and (cap_pass is True)
-            checks.append(
-                Check(
-                    "live_deployable_consistent",
-                    isinstance(live_deployable, bool)
-                    and (live_deployable == expected_live_deployable),
-                    (f"live_deployable={live_deployable!r} expected={expected_live_deployable!r}"),
-                )
-            )
 
     # Git provenance gate — lock must be produced from a clean worktree.
     git_info = lock.get("git", {})
@@ -251,9 +256,10 @@ def run(
     # State universe check (exact key-set match).
     effective_state_csv = state_csv
     if effective_state_csv is None:
-        p_txt = str(artifacts.get("reduced_states_csv_path", "")).strip()
+        entry = artifacts.get("allowed_states_csv", {})
+        p_txt = str(entry.get("path", "")).strip()
         if p_txt:
-            effective_state_csv = Path(p_txt)
+            effective_state_csv = bundle_dir / p_txt
     if effective_state_csv is not None and effective_state_csv.exists():
         live_raw = pd.read_csv(effective_state_csv)
         live = _states_key(_normalize_live_state_frame(live_raw, lock_symbol=lock_symbol))

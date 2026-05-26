@@ -20,28 +20,28 @@ def _sha256(path: Path) -> str:
 def _write_symbol_lock(
     sym: str,
     lock_dir: Path,
-    models_dir: Path,
     state_rows: list[dict],
     live_deployable: bool = True,
     model_suffix: str = "2026-02",
 ) -> None:
-    """Write a self-consistent lock file + fake model artifacts for one symbol."""
+    """Write a self-consistent v2 lock file + fake model artifacts for one symbol."""
+    # Create model files in bundle-relative models/ directory
+    models_dir = lock_dir / "models"
+    models_dir.mkdir(exist_ok=True)
     cbm = models_dir / f"{sym}_model_{model_suffix}.cbm"
     thr = models_dir / f"{sym}_model_{model_suffix}.json"
     cbm.write_bytes(b"fake-cbm-" + sym.encode())
     thr.write_text('{"threshold": 0.5}')
 
     lock = {
+        "schema_version": 2,
         "symbol": sym,
-        "frozen_at_utc": f"2026-{model_suffix}-01T00:00:00Z",
+        "bundle": {"month": model_suffix, "dir_relpath": "."},
         "artifacts": {
-            "live_deployable": live_deployable,
-            "model_cbm_path": f"models/oco/{cbm.name}",
-            "model_cbm_sha256": _sha256(cbm),
-            "model_threshold_json_path": f"models/oco/{thr.name}",
-            "model_threshold_json_sha256": _sha256(thr),
-            "model_month": model_suffix,
+            "model_cbm": {"path": f"models/{cbm.name}", "sha256": _sha256(cbm)},
+            "model_threshold_json": {"path": f"models/{thr.name}", "sha256": _sha256(thr)},
         },
+        "deployability": {"live_deployable": live_deployable, "model_month": model_suffix},
         "locked_runtime": {"production_cap_pips": 1.2},
         "state_universe": {"rows": state_rows},
     }
@@ -52,14 +52,11 @@ def _write_symbol_lock(
 def hermetic_registry(tmp_path: Path) -> CandidateRegistry:
     """Self-consistent registry with EURUSD and GBPUSD, no real artifacts needed."""
     lock_dir = tmp_path / "locks"
-    models_dir = tmp_path / "models"
     lock_dir.mkdir()
-    models_dir.mkdir()
 
     _write_symbol_lock(
         "EURUSD",
         lock_dir,
-        models_dir,
         state_rows=[
             {
                 "symbol": "EURUSD",
@@ -74,7 +71,6 @@ def hermetic_registry(tmp_path: Path) -> CandidateRegistry:
     _write_symbol_lock(
         "GBPUSD",
         lock_dir,
-        models_dir,
         state_rows=[
             {
                 "symbol": "GBPUSD",
@@ -95,7 +91,7 @@ def hermetic_registry(tmp_path: Path) -> CandidateRegistry:
         ],
     )
 
-    return CandidateRegistry.load(lock_dir, models_dir=models_dir)
+    return CandidateRegistry.load(lock_dir)
 
 
 class TestRegistryLoading:
@@ -109,27 +105,27 @@ class TestRegistryLoading:
             CandidateRegistry.load(Path("configs/not_a_real_dir"))
 
     def test_load_resolves_model_paths_against_models_dir(self, tmp_path: Path):
+        """V2 paths are bundle-relative; verify they resolve correctly."""
         lock_dir = tmp_path / "locks"
-        models_dir = tmp_path / "models_alt"
         lock_dir.mkdir()
-        models_dir.mkdir()
 
+        # Create model files in bundle-relative location
+        models_dir = lock_dir / "models"
+        models_dir.mkdir()
         model_cbm = models_dir / "EURUSD_model_2026-02.cbm"
         model_thr = models_dir / "EURUSD_model_2026-02.json"
         model_cbm.write_bytes(b"cbm-bytes")
         model_thr.write_text('{"threshold": 0.5}')
 
         lock = {
+            "schema_version": 2,
             "symbol": "EURUSD",
-            "frozen_at_utc": "2026-03-25T00:00:00Z",
+            "bundle": {"month": "2026-02", "dir_relpath": "."},
             "artifacts": {
-                "live_deployable": True,
-                "model_cbm_path": "models/oco/EURUSD_model_2026-02.cbm",
-                "model_cbm_sha256": _sha256(model_cbm),
-                "model_threshold_json_path": "models/oco/EURUSD_model_2026-02.json",
-                "model_threshold_json_sha256": _sha256(model_thr),
-                "model_month": "2026-02",
+                "model_cbm": {"path": "models/EURUSD_model_2026-02.cbm", "sha256": _sha256(model_cbm)},
+                "model_threshold_json": {"path": "models/EURUSD_model_2026-02.json", "sha256": _sha256(model_thr)},
             },
+            "deployability": {"live_deployable": True, "model_month": "2026-02"},
             "locked_runtime": {
                 "production_cap_pips": 1.2,
                 "threshold_mode": "rolling_days",
@@ -152,13 +148,15 @@ class TestRegistryLoading:
         }
         (lock_dir / "EURUSD_oco_live_lock.json").write_text(json.dumps(lock))
 
-        reg = CandidateRegistry.load(lock_dir, models_dir=models_dir)
+        reg = CandidateRegistry.load(lock_dir)
 
         assert reg.symbols == ["EURUSD"]
         binding = reg.get_model_binding("EURUSD")
         assert binding is not None
-        assert Path(binding["model_cbm_path"]) == model_cbm
-        assert Path(binding["model_threshold_json_path"]) == model_thr
+        assert Path(binding["model_cbm_path"]).is_file()
+        assert Path(binding["model_cbm_path"]).name == "EURUSD_model_2026-02.cbm"
+        assert Path(binding["model_threshold_json_path"]).is_file()
+        assert Path(binding["model_threshold_json_path"]).name == "EURUSD_model_2026-02.json"
         assert binding["locked_runtime_overrides"]["threshold_source"] == "rolling_days"
         assert binding["locked_runtime_overrides"]["rolling_threshold_min_history"] == 300
 

@@ -786,17 +786,23 @@ def audit_symbol(
         lock = json.loads(cfg.lock_path.read_text(encoding="utf-8"))
         lock_symbol_bad = 0 if str(lock.get("symbol", "")).upper().strip() == cfg.symbol else 1
         art = lock.get("artifacts", {})
-        for pkey, hkey in [
-            ("wfo_config_path", "wfo_config_sha256"),
-            ("reduced_config_path", "reduced_config_sha256"),
-            ("reduced_states_csv_path", "reduced_states_csv_sha256"),
-            ("predictions_path", "predictions_sha256"),
-            ("model_cbm_path", "model_cbm_sha256"),
-            ("model_threshold_json_path", "model_threshold_json_sha256"),
-            ("tick_exact_summary_path", "tick_exact_summary_sha256"),
-        ]:
-            p = Path(str(art.get(pkey, "")))
-            exp = str(art.get(hkey, ""))
+        artifact_specs = [
+            ("wfo_config", "wfo_config"),
+            ("reduced_config", "reduced_config"),
+            ("allowed_states_csv", "allowed_states_csv"),
+            ("predictions", "predictions"),
+            ("model_cbm", "model_cbm"),
+            ("model_threshold_json", "model_threshold_json"),
+            ("tick_exact_summary", "tick_exact_summary"),
+        ]
+        for pkey, hkey in artifact_specs:
+            entry = art.get(pkey, {}) or {}
+            p_txt = str(entry.get("path", "")).strip()
+            exp = str(entry.get("sha256", "")).strip()
+            if not p_txt:
+                continue
+            p = Path(p_txt)
+            p = cfg.lock_path.parent / p
             checked += 1
             if (not p.exists()) or (_sha256(p) != exp):
                 hash_mism += 1

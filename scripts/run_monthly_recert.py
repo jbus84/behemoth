@@ -25,13 +25,18 @@ import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths  # noqa: E402
+
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
 CERT_TICK_BATCH_SIZE = "1"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 CERT_SUMMARY_FILENAME = "stage14_jforex_runtime_certification_summary.csv"
 MONTHLY_RECERT_STATUS_FILENAME = "monthly_recert_status.json"
-BUNDLE_MODELS_SUBDIR = Path("models/oco_dukascopy_candidate")
 MONTHLY_RECERT_RUN_DIRNAME = "monthly_recert"
 
 
@@ -175,7 +180,7 @@ def _read_acceptable_nogos(report_dir: str) -> dict[str, list[dict[str, str]]]:
 
 
 def _bundle_models_dir(bundle_dir: Path) -> Path:
-    return bundle_dir / BUNDLE_MODELS_SUBDIR
+    return bundle_dir / "models"
 
 
 def _resolve_repo_path(path_value: str) -> Path:
@@ -263,15 +268,11 @@ def _stage14_make_vars(run_report_dir: str, eval_start: str, eval_end: str) -> d
 def _validate_month_bundle(bundle_dir: Path) -> None:
     index_path = bundle_dir.parent / "index.csv"
     if not index_path.is_file():
-        raise SystemExit(
-            f"[monthly-recert] incomplete month build bundle: missing {index_path}"
-        )
+        raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {index_path}")
 
     model_dir = _bundle_models_dir(bundle_dir)
     if not model_dir.is_dir():
-        raise SystemExit(
-            f"[monthly-recert] incomplete month build bundle: missing {model_dir}"
-        )
+        raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {model_dir}")
 
     expected_rows = {(symbol, bundle_dir.name) for symbol in DEFAULT_SYMBOLS}
     seen_rows: set[tuple[str, str]] = set()
@@ -292,46 +293,22 @@ def _validate_month_bundle(bundle_dir: Path) -> None:
     for symbol in DEFAULT_SYMBOLS:
         lock_path = bundle_dir / f"{symbol.lower()}_oco_live_lock.json"
         if not lock_path.is_file():
-            raise SystemExit(
-                f"[monthly-recert] incomplete month build bundle: missing {lock_path}"
-            )
-        manifest = json.loads(lock_path.read_text(encoding="utf-8"))
-        artifacts = manifest.get("artifacts", {})
-        cbm_path = Path(str(artifacts.get("model_cbm_path", "")).strip())
-        thr_path = Path(str(artifacts.get("model_threshold_json_path", "")).strip())
-        if (not cbm_path.is_file()) or (not thr_path.is_file()):
-            raise SystemExit(
-                f"[monthly-recert] incomplete month build bundle: missing bundled model artifacts for {symbol}"
-            )
-        bundle_prefix = bundle_dir.resolve().as_posix().rstrip("/") + "/"
-        if (not str(cbm_path.resolve()).startswith(bundle_prefix)) or (
-            not str(thr_path.resolve()).startswith(bundle_prefix)
-        ):
-            raise SystemExit(
-                f"[monthly-recert] incomplete month build bundle: non-local model artifact path for {symbol}"
-            )
-        live_deployable = bool(artifacts.get("live_deployable", False))
-        prediction_path_raw = str(artifacts.get("predictions_path", "")).strip()
-        if live_deployable and not prediction_path_raw:
-            raise SystemExit(
-                f"[monthly-recert] incomplete month build bundle: missing predictions path for {symbol}"
-            )
-        if prediction_path_raw and not _resolve_repo_path(prediction_path_raw).is_file():
-            raise SystemExit(
-                f"[monthly-recert] incomplete month build bundle: missing predictions artifact for {symbol}: "
-                f"{prediction_path_raw}"
-            )
-
-        states_path_raw = str(artifacts.get("reduced_states_csv_path", "")).strip()
-        if live_deployable and not states_path_raw:
-            raise SystemExit(
-                f"[monthly-recert] incomplete month build bundle: missing allowed states path for {symbol}"
-            )
-        if states_path_raw and not _resolve_repo_path(states_path_raw).is_file():
-            raise SystemExit(
-                f"[monthly-recert] incomplete month build bundle: missing allowed states artifact for {symbol}: "
-                f"{states_path_raw}"
-            )
+            raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {lock_path}")
+        try:
+            bp = BundlePaths.from_lock(lock_path)
+        except BundleIntegrityError as exc:
+            raise SystemExit(f"[monthly-recert] incomplete month build bundle: {exc}") from exc
+        try:
+            bp.model_cbm()
+            bp.model_threshold_json()
+        except BundleIntegrityError as exc:
+            raise SystemExit(f"[monthly-recert] incomplete month build bundle: {exc}") from exc
+        if bp.live_deployable:
+            try:
+                bp.predictions()
+                bp.allowed_states_csv()
+            except BundleIntegrityError as exc:
+                raise SystemExit(f"[monthly-recert] incomplete month build bundle: {exc}") from exc
 
 
 def _require_month_bundle(model_month: str) -> Path:
@@ -381,11 +358,7 @@ def _write_recert_status(
                 "outputs": {
                     "checks_csv": str((_repo_root() / report_dir / CERT_CHECKS_FILENAME).resolve()),
                     "summary_csv": str(
-                        (
-                            _repo_root()
-                            / report_dir
-                            / CERT_SUMMARY_FILENAME
-                        ).resolve()
+                        (_repo_root() / report_dir / CERT_SUMMARY_FILENAME).resolve()
                     ),
                 },
                 "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
