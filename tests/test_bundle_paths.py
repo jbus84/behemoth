@@ -359,6 +359,21 @@ def test_lock_filename_requires_family() -> None:
         lock_filename("EURUSD")  # type: ignore[call-arg]
 
 
+def test_bundle_layouts_keys_match_mining_family_registry() -> None:
+    """BUNDLE_LAYOUTS must register every family known to mining."""
+    from scripts.mining_family import FAMILY_REGISTRY
+    from src.behemoth.core.bundle_paths import BUNDLE_LAYOUTS
+
+    layout_families = set(BUNDLE_LAYOUTS.keys())
+    mining_families = set(FAMILY_REGISTRY.keys())
+
+    missing_in_layouts = mining_families - layout_families
+    extra_in_layouts = layout_families - mining_families
+
+    assert not missing_in_layouts, f"BUNDLE_LAYOUTS missing families: {missing_in_layouts}"
+    assert not extra_in_layouts, f"BUNDLE_LAYOUTS has unknown families: {extra_in_layouts}"
+
+
 @pytest.mark.parametrize(
     "family",
     [
