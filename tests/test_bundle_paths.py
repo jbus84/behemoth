@@ -500,3 +500,42 @@ def test_directional_family_round_trip(tmp_path: Path) -> None:
         cwd=Path(__file__).resolve().parents[1],
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_bundle_paths_exposes_cross_symbol_scope(tmp_path: Path) -> None:
+    from src.behemoth.core.bundle_paths import BundlePaths
+
+    lock = tmp_path / "eurusd_dollar_residual_live_lock.json"
+    pred = tmp_path / "eurusd_dollar_residual_locked_predictions.parquet"
+    pred.write_text("x", encoding="utf-8")
+    lock.write_text(
+        json.dumps(
+            {
+                "schema_version": 3,
+                "symbol": "EURUSD",
+                "bundle": {
+                    "family": "dollar_residual",
+                    "model_month": "2026-04",
+                    "cross_symbol_scope": {
+                        "symbols": ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"],
+                        "alignment": "close_ts_inner_join",
+                        "source": "scripts.cross_symbol",
+                    },
+                },
+                "artifacts": {
+                    "predictions": {
+                        "path": "eurusd_dollar_residual_locked_predictions.parquet",
+                        "sha256": hashlib.sha256(b"x").hexdigest(),
+                        "required": True,
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    paths = BundlePaths.from_lock(lock)
+
+    assert paths.family == "dollar_residual"
+    assert paths.cross_symbol_scope["alignment"] == "close_ts_inner_join"
+    assert "GBPUSD" in paths.cross_symbol_scope["symbols"]
