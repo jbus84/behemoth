@@ -787,15 +787,15 @@ def audit_symbol(
         lock_symbol_bad = 0 if str(lock.get("symbol", "")).upper().strip() == cfg.symbol else 1
         art = lock.get("artifacts", {})
         artifact_specs = [
-            ("wfo_config", "wfo_config"),
-            ("reduced_config", "reduced_config"),
-            ("allowed_states_csv", "allowed_states_csv"),
-            ("predictions", "predictions"),
-            ("model_cbm", "model_cbm"),
-            ("model_threshold_json", "model_threshold_json"),
-            ("tick_exact_summary", "tick_exact_summary"),
+            "wfo_config",
+            "reduced_config",
+            "allowed_states_csv",
+            "predictions",
+            "model_cbm",
+            "model_threshold_json",
+            "tick_exact_summary",
         ]
-        for pkey, hkey in artifact_specs:
+        for pkey in artifact_specs:
             entry = art.get(pkey, {}) or {}
             p_txt = str(entry.get("path", "")).strip()
             exp = str(entry.get("sha256", "")).strip()

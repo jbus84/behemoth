@@ -46,7 +46,7 @@ def _run_step(cmd: list[str], label: str) -> None:
 
 
 def _materialize_bundle_models(bundle_dir: Path) -> None:
-    """Schema-v2 bundles are self-contained; validate and proceed."""
+    """Schema-v3 bundles are self-contained; validate and proceed."""
     result = subprocess.run(
         [sys.executable, "scripts/validate_bundle.py", str(bundle_dir)],
         cwd=_repo_root(),

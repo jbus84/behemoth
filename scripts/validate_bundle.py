@@ -1,5 +1,5 @@
 # scripts/validate_bundle.py
-"""Validate one month bundle against ADR 0001 (schema_version=2).
+"""Validate one month bundle against ADR 0001 and ADR 0002 (schema_version=3).
 
 Exit 0 on success; non-zero with a precise error on the first failure.
 """

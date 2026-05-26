@@ -57,8 +57,13 @@ def _ensure_governance_dir(tmp_path: Path) -> Path:
 
 def _write_live_lock(governance_dir: Path, symbol: str, *, model_month: str, live_deployable: bool = True) -> None:
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": symbol,
+        "bundle": {
+            "month": model_month,
+            "dir_relpath": str(governance_dir),
+            "family": "oco_first_touch_clean",
+        },
         "deployability": {
             "live_deployable": live_deployable,
             "model_month": model_month,
@@ -327,8 +332,13 @@ def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted
         encoding="utf-8",
     )
     lock_payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": "EURUSD",
+        "bundle": {
+            "month": "2026-03",
+            "dir_relpath": str(governance_dir),
+            "family": "oco_first_touch_clean",
+        },
         "artifacts": {
             "model_cbm": {
                 "path": "models/EURUSD_model_2026-03.cbm",

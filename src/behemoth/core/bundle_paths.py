@@ -1,11 +1,12 @@
 # src/behemoth/core/bundle_paths.py
-"""Bundle-relative path resolver for schema_version=2 month bundles.
+"""Bundle-relative path resolver for schema_version=3 month bundles.
 
 Single source of truth for turning lock keys into filesystem paths. Every
 producer and consumer goes through here so the lock file's contract is
 enforced in exactly one place.
 
-See docs/adr/0001-deterministic-month-bundles.md for the full design decision.
+See docs/adr/0001-deterministic-month-bundles.md and
+docs/adr/0002-multi-family-bundle-contract.md for the design decisions.
 """
 
 from __future__ import annotations
@@ -27,16 +28,24 @@ class BundleArtifactSpec(NamedTuple):
     required: bool
 
 
-BUNDLE_LAYOUT: tuple[BundleArtifactSpec, ...] = (
-    BundleArtifactSpec("predictions", "{symbol_lower}_oco_locked_predictions.parquet", True),
-    BundleArtifactSpec("allowed_states_csv", "{symbol_lower}_oco_allowed_states.csv", True),
-    BundleArtifactSpec("model_cbm", "models/{symbol_upper}_model_{month}.cbm", True),
-    BundleArtifactSpec("model_threshold_json", "models/{symbol_upper}_model_{month}.json", True),
-    BundleArtifactSpec("wfo_config", "configs/{symbol_lower}_wfo.yaml", False),
-    BundleArtifactSpec("reduced_config", "configs/{symbol_lower}_reduced.yaml", False),
-    BundleArtifactSpec("reduced_summary", "{symbol_lower}_oco_reduced_summary.csv", False),
-    BundleArtifactSpec("tick_exact_summary", "{symbol_lower}_oco_tick_exact_summary.csv", False),
-)
+BUNDLE_LAYOUTS: dict[str, tuple[BundleArtifactSpec, ...]] = {
+    "oco_first_touch_clean": (
+        BundleArtifactSpec("predictions", "{symbol_lower}_oco_locked_predictions.parquet", True),
+        BundleArtifactSpec("allowed_states_csv", "{symbol_lower}_oco_allowed_states.csv", True),
+        BundleArtifactSpec("model_cbm", "models/{symbol_upper}_model_{month}.cbm", True),
+        BundleArtifactSpec("model_threshold_json", "models/{symbol_upper}_model_{month}.json", True),
+        BundleArtifactSpec("wfo_config", "configs/{symbol_lower}_wfo.yaml", False),
+        BundleArtifactSpec("reduced_config", "configs/{symbol_lower}_reduced.yaml", False),
+        BundleArtifactSpec("reduced_summary", "{symbol_lower}_oco_reduced_summary.csv", False),
+        BundleArtifactSpec("tick_exact_summary", "{symbol_lower}_oco_tick_exact_summary.csv", False),
+    ),
+}
+
+
+def bundle_layout_for(family: str) -> tuple[BundleArtifactSpec, ...]:
+    if family not in BUNDLE_LAYOUTS:
+        raise BundleIntegrityError(f"unknown family: {family!r}")
+    return BUNDLE_LAYOUTS[family]
 
 
 @dataclass(frozen=True)
@@ -51,6 +60,7 @@ class BundlePaths:
     bundle_dir: Path
     symbol: str
     model_month: str
+    family: str
     _artifacts: dict[str, _Artifact]
     _deployability: dict[str, Any]
 
@@ -58,10 +68,15 @@ class BundlePaths:
     def from_lock(cls, lock_path: Path) -> BundlePaths:
         lock_path = Path(lock_path)
         data = json.loads(lock_path.read_text(encoding="utf-8"))
-        if int(data.get("schema_version", 0)) != 2:
+        if int(data.get("schema_version", 0)) != 3:
             raise BundleIntegrityError(
-                f"{lock_path}: requires schema_version=2 (got {data.get('schema_version')!r})"
+                f"{lock_path}: requires schema_version=3 (got {data.get('schema_version')!r})"
             )
+        bundle = data.get("bundle", {}) or {}
+        family = str(bundle.get("family", "")).strip()
+        if not family:
+            raise BundleIntegrityError(f"{lock_path}: missing bundle.family")
+        bundle_layout_for(family)
         bundle_dir = lock_path.parent.resolve()
         artifacts_block = data.get("artifacts", {})
         if not isinstance(artifacts_block, dict) or not artifacts_block:
@@ -85,6 +100,7 @@ class BundlePaths:
             bundle_dir=bundle_dir,
             symbol=str(data.get("symbol", "")).upper().strip(),
             model_month=str(deploy.get("model_month", "")).strip(),
+            family=family,
             _artifacts=artifacts,
             _deployability=dict(deploy),
         )

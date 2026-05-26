@@ -349,7 +349,7 @@ def _rewrite_promoted_lock_paths(source_dir: Path, target_dir: Path) -> None:
         with lock_path.open() as f:
             manifest = json.load(f)
         if int(manifest.get("schema_version", 0)) == 2:
-            # v2 locks use bundle-relative paths; no rewriting needed.
+            # v3 locks use bundle-relative paths; no rewriting needed.
             continue
         rewritten = _rewrite_manifest_paths(manifest, source_dir, target_dir)
         with lock_path.open("w") as f:

@@ -1066,8 +1066,13 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
     out_csv = tmp_path / "out.csv"
 
     lock = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": "USDCAD",
+        "bundle": {
+            "month": "2026-02",
+            "dir_relpath": str(lock_dir),
+            "family": "oco_first_touch_clean",
+        },
         "deployability": {
             "model_month": "2026-02",
             "live_deployable": False,

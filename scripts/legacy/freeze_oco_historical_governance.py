@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Freeze month-scoped historical OCO governance locks for backtest replay."""
+"""Freeze month-scoped historical OCO governance locks for backtest replay.
+
+Emits schema_version: 3 bundles per ADR 0001 and ADR 0002.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.behemoth.core.bundle_paths import BUNDLE_LAYOUT, sha256_file  # noqa: E402
+from src.behemoth.core.bundle_paths import bundle_layout_for, sha256_file  # noqa: E402
 
 try:
     import yaml
@@ -394,6 +397,7 @@ def run(
     anchor_day_utc: int,
     window_days: int,
     allow_dirty: bool,
+    family: str = "oco_first_touch_clean",
 ) -> tuple[list[Path], pd.DataFrame]:
     out_dir.mkdir(parents=True, exist_ok=True)
     git_snapshot = _git_info()
@@ -478,7 +482,7 @@ def run(
             # before it is actually deployed.
             model_valid_through = _model_valid_through(str(month))
 
-            # Build v2 manifest with bundle-relative paths
+            # Build v3 manifest with bundle-relative paths.
             fmt = {
                 "symbol_lower": str(sym).lower(),
                 "symbol_upper": str(sym).upper(),
@@ -489,7 +493,7 @@ def run(
             repo_root = _repo_root().resolve()
             month_dir = month_dir.resolve()
 
-            # Map of v2_key -> source path for BUNDLE_LAYOUT-driven copy
+            # Map of v2_key -> source path for family-layout-driven copy.
             file_map: dict[str, Path | None] = {
                 "predictions": frozen_pred_out if frozen_pred_path_txt else None,
                 "allowed_states_csv": states_out,
@@ -501,7 +505,7 @@ def run(
                 "tick_exact_summary": paths["tick_exact_summary"],
             }
 
-            for spec in BUNDLE_LAYOUT:
+            for spec in bundle_layout_for(family):
                 source = file_map.get(spec.v2_key)
                 if source is None or not source.exists():
                     if spec.required and historical_deployable:
@@ -553,13 +557,14 @@ def run(
             }
 
             manifest: dict[str, Any] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "frozen_at_utc": datetime.now(timezone.utc).isoformat(),
                 "symbol": str(sym).upper(),
                 "git": git_snapshot,
                 "bundle": {
                     "month": str(month),
                     "dir_relpath": str(_repo_relative_or_abs(month_dir, repo_root)),
+                    "family": family,
                 },
                 "artifacts": artifacts,
                 "provenance": provenance,
@@ -656,6 +661,7 @@ def main() -> None:
     p.add_argument("--models-dir", default="models/oco")
     p.add_argument("--config-dir", default="configs/research/experiments")
     p.add_argument("--analysis-dir", default="data/analysis/tick_opportunity_mining")
+    p.add_argument("--family", default="oco_first_touch_clean")
     p.add_argument("--months", default="", help="Optional explicit YYYY-MM list (comma-separated)")
     p.add_argument("--start-month", default="", help="Optional lower bound month YYYY-MM")
     p.add_argument("--end-month", default="", help="Optional upper bound month YYYY-MM")
@@ -698,6 +704,7 @@ def main() -> None:
         anchor_day_utc=anchor_day_utc,
         window_days=window_days,
         allow_dirty=bool(args.allow_dirty),
+        family=str(args.family).strip(),
     )
 
 

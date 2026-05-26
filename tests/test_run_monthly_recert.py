@@ -323,8 +323,13 @@ def _write_bundle_fixture(build_bundle_dir) -> None:
         lock_path.write_text(
             json.dumps(
                 {
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "symbol": symbol,
+                    "bundle": {
+                        "month": "2026-02",
+                        "dir_relpath": str(build_bundle_dir),
+                        "family": "oco_first_touch_clean",
+                    },
                     "artifacts": {
                         "predictions": {
                             "path": f"{lower}_oco_locked_predictions.parquet",

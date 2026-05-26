@@ -32,8 +32,8 @@ def test_manifest_deploy_verdict_no_go_for_empty_universe(tmp_path, monkeypatch)
     assert _deploy_verdict(5) == "GO"
 
 
-def test_live_freeze_emits_schema_v2_with_bundle_relative_paths(tmp_path, monkeypatch):
-    """Freeze must produce a v2 lock whose artifact paths are bundle-relative."""
+def test_live_freeze_emits_schema_v3_with_family_and_bundle_relative_paths(tmp_path, monkeypatch):
+    """Freeze must produce a v3 lock whose artifact paths are bundle-relative."""
     from scripts import freeze_oco_live_governance as freeze
 
     bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-05"
@@ -95,7 +95,8 @@ def test_live_freeze_emits_schema_v2_with_bundle_relative_paths(tmp_path, monkey
         git_snapshot={"branch": "main", "commit": "deadbeef", "dirty": False},
     )
 
-    assert manifest["schema_version"] == 2
+    assert manifest["schema_version"] == 3
+    assert manifest["bundle"]["family"] == "oco_first_touch_clean"
     assert "artifacts" in manifest
     for key, entry in manifest["artifacts"].items():
         if isinstance(entry, dict) and "path" in entry:

@@ -24,7 +24,7 @@ def _write_symbol_lock(
     live_deployable: bool = True,
     model_suffix: str = "2026-02",
 ) -> None:
-    """Write a self-consistent v2 lock file + fake model artifacts for one symbol."""
+    """Write a self-consistent v3 lock file + fake model artifacts for one symbol."""
     # Create model files in bundle-relative models/ directory
     models_dir = lock_dir / "models"
     models_dir.mkdir(exist_ok=True)
@@ -34,9 +34,13 @@ def _write_symbol_lock(
     thr.write_text('{"threshold": 0.5}')
 
     lock = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": sym,
-        "bundle": {"month": model_suffix, "dir_relpath": "."},
+        "bundle": {
+            "month": model_suffix,
+            "dir_relpath": ".",
+            "family": "oco_first_touch_clean",
+        },
         "artifacts": {
             "model_cbm": {"path": f"models/{cbm.name}", "sha256": _sha256(cbm)},
             "model_threshold_json": {"path": f"models/{thr.name}", "sha256": _sha256(thr)},
@@ -105,7 +109,7 @@ class TestRegistryLoading:
             CandidateRegistry.load(Path("configs/not_a_real_dir"))
 
     def test_load_resolves_model_paths_against_models_dir(self, tmp_path: Path):
-        """V2 paths are bundle-relative; verify they resolve correctly."""
+        """V3 paths are bundle-relative; verify they resolve correctly."""
         lock_dir = tmp_path / "locks"
         lock_dir.mkdir()
 
@@ -118,9 +122,13 @@ class TestRegistryLoading:
         model_thr.write_text('{"threshold": 0.5}')
 
         lock = {
-            "schema_version": 2,
+            "schema_version": 3,
             "symbol": "EURUSD",
-            "bundle": {"month": "2026-02", "dir_relpath": "."},
+            "bundle": {
+                "month": "2026-02",
+                "dir_relpath": ".",
+                "family": "oco_first_touch_clean",
+            },
             "artifacts": {
                 "model_cbm": {"path": "models/EURUSD_model_2026-02.cbm", "sha256": _sha256(model_cbm)},
                 "model_threshold_json": {"path": "models/EURUSD_model_2026-02.json", "sha256": _sha256(model_thr)},

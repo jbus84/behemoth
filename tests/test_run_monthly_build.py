@@ -18,8 +18,13 @@ def _sha(path: Path) -> str:
 
 def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -> None:
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": symbol,
+        "bundle": {
+            "month": month,
+            "dir_relpath": str(lock_dir),
+            "family": "oco_first_touch_clean",
+        },
         "deployability": {
             "model_month": month,
         },
@@ -174,10 +179,15 @@ def test_materialize_bundle_models_validates_v2_bundle(monkeypatch, tmp_path) ->
     thr = models_dir / "EURUSD_model_2026-02.json"
     thr.write_text('{"t":1}')
 
-    # v2 lock with bundle-relative artifacts
+    # v3 lock with bundle-relative artifacts
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": "EURUSD",
+        "bundle": {
+            "month": "2026-02",
+            "dir_relpath": str(bundle_dir),
+            "family": "oco_first_touch_clean",
+        },
         "artifacts": {
             "predictions": {
                 "path": "eurusd_oco_locked_predictions.parquet",
@@ -208,10 +218,15 @@ def test_materialize_bundle_models_raises_on_invalid_bundle(monkeypatch, tmp_pat
     bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     bundle_dir.mkdir(parents=True)
 
-    # v2 lock missing required artifacts
+    # v3 lock missing required artifacts
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": "EURUSD",
+        "bundle": {
+            "month": "2026-02",
+            "dir_relpath": str(bundle_dir),
+            "family": "oco_first_touch_clean",
+        },
         "artifacts": {},
         "deployability": {"live_deployable": True},
     }
