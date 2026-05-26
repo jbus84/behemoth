@@ -278,6 +278,24 @@ def test_check_microstructure_columns_warns_on_partial_absence(capsys):
     assert "missing" in captured.out
 
 
+def test_symbol_local_family_set_excludes_cross_symbol_families() -> None:
+    import scripts.run_tick_opportunity_monthly_wfo as wfo
+
+    assert wfo.SYMBOL_LOCAL_WFO_FAMILIES == {
+        "oco_first_touch",
+        "oco_asymmetric",
+        "directional",
+        "directional_inverse",
+        "directional_run",
+        "double_touch",
+        "pullback",
+        "no_touch",
+    }
+    assert "dollar_residual" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
+    assert "dispersion_rank" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
+    assert "lead_lag" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
+
+
 def test_wfo_monthly_invokes_guard_on_stale_data():
     from scripts.run_tick_opportunity_monthly_wfo import _wfo_monthly
 

@@ -52,6 +52,17 @@ except ModuleNotFoundError:
     )
 
 
+SYMBOL_LOCAL_WFO_FAMILIES: set[str] = {
+    "oco_first_touch",
+    "oco_asymmetric",
+    "directional",
+    "directional_inverse",
+    "directional_run",
+    "double_touch",
+    "pullback",
+    "no_touch",
+}
+
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
     "dataset_dir": "data/analysis/tick_velocity",
