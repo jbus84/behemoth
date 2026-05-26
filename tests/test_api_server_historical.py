@@ -24,6 +24,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
         family="oco_first_touch",
         _artifacts={},
         _deployability={"live_deployable": True, "model_month": month},
+        cross_symbol_scope={},
     )
     return HistoricalLockEntry(
         symbol=symbol,
@@ -273,6 +274,7 @@ def _mk_contract(symbol: str = "EURUSD", month: str = "2025-07") -> server._Reso
         family="oco_first_touch",
         _artifacts={},
         _deployability={"live_deployable": True, "model_month": month},
+        cross_symbol_scope={},
     )
     return server._ResolvedRuntimeContract(
         symbol=symbol,

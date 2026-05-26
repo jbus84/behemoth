@@ -93,6 +93,7 @@ class BundlePaths:
     family: str
     _artifacts: dict[str, _Artifact]
     _deployability: dict[str, Any]
+    cross_symbol_scope: dict[str, object]
 
     @classmethod
     def from_lock(cls, lock_path: Path) -> BundlePaths:
@@ -125,6 +126,7 @@ class BundlePaths:
                 )
             artifacts[key] = _Artifact(relpath=rel, sha256=sha)
         deploy = data.get("deployability", {}) or {}
+        cross_symbol_scope = dict((bundle.get("cross_symbol_scope") or {}))
         return cls(
             lock_path=lock_path,
             bundle_dir=bundle_dir,
@@ -133,6 +135,7 @@ class BundlePaths:
             family=family,
             _artifacts=artifacts,
             _deployability=dict(deploy),
+            cross_symbol_scope=cross_symbol_scope,
         )
 
     def _resolve(self, key: str) -> Path:

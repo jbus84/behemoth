@@ -24,6 +24,9 @@ FAMILIES_TO_FREEZE: tuple[str, ...] = (
     "double_touch",
     "pullback",
     "no_touch",
+    "dollar_residual",
+    "dispersion_rank",
+    "lead_lag",
 )
 
 

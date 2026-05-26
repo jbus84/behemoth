@@ -284,3 +284,19 @@ def test_freeze_monthly_bundle_accepts_family_argument() -> None:
     )
     assert result.returncode == 0
     assert "--family" in result.stdout
+
+
+def test_cross_symbol_scope_for_cross_symbol_family() -> None:
+    from scripts.freeze_monthly_bundle import _cross_symbol_scope_for_family
+
+    scope = _cross_symbol_scope_for_family("lead_lag")
+
+    assert scope["symbols"] == ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+    assert scope["alignment"] == "close_ts_inner_join"
+    assert scope["source"] == "scripts.cross_symbol"
+
+
+def test_cross_symbol_scope_empty_for_symbol_local_family() -> None:
+    from scripts.freeze_monthly_bundle import _cross_symbol_scope_for_family
+
+    assert _cross_symbol_scope_for_family("directional") == {}
