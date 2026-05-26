@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -21,10 +21,13 @@ class CandidateContract:
     model_month: str
     cache_key: str
     candidates: list[CandidateSpec]
-    model_binding: dict[str, Any]
+    bundle_paths: BundlePaths
+    locked_runtime: dict[str, Any]
     cap_pips: float
     source: str
     lock_path: str | None = None
+    # model_binding remains for one transition release; mark it deprecated.
+    model_binding: dict[str, Any] = field(default_factory=dict)
 
 
 class GovernanceLockLoader:
@@ -41,10 +44,11 @@ class GovernanceLockLoader:
         data = json.loads(path.read_text())
         sym = str(data.get("symbol", "")).upper().strip()
         bp = BundlePaths.from_lock(path)  # raises BundleIntegrityError on v1 — intentional, no fallback
-        locked = data.get("locked_runtime", {})
+        locked = data.get("locked_runtime", {}) or {}
         rows = data.get("state_universe", {}).get("rows", [])
         candidates = [CandidateSpec.from_row(r) for r in rows]
 
+        # model_binding kept temporarily; will be removed in Task 6.
         artifacts = data.get("artifacts", {})
         cbm_entry = artifacts.get("model_cbm", {}) or {}
         thr_entry = artifacts.get("model_threshold_json", {}) or {}
@@ -57,13 +61,15 @@ class GovernanceLockLoader:
         }
         return CandidateContract(
             symbol=sym,
-            model_month=model_binding["model_month"],
+            model_month=bp.model_month or (month or "unknown"),
             cache_key=f"{sym}|{month}" if month else sym,
             candidates=candidates,
-            model_binding=model_binding,
+            bundle_paths=bp,
+            locked_runtime=dict(locked),
             cap_pips=float(locked.get("production_cap_pips", 1.2)),
             source="live" if month is None else "historical",
             lock_path=str(path),
+            model_binding=model_binding,
         )
 
 
