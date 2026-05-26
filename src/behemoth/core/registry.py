@@ -84,7 +84,10 @@ class CandidateRegistry:
         if lock_dir is None:
             lock_dir = Path(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
 
-        import json
+        import json  # noqa: E402
+
+        from src.behemoth.core.bundle_paths import BundlePaths  # noqa: E402
+
         p_dir = Path(lock_dir)
         resolved_models_dir = Path(models_dir) if models_dir is not None else None
         if not p_dir.exists() or not p_dir.is_dir():
@@ -98,18 +101,22 @@ class CandidateRegistry:
                 if not sym:
                     continue
 
+                artifacts = data.get("artifacts", {})
+                BundlePaths.from_lock(p)  # raises BundleIntegrityError on v1 — intentional
                 # Quarantine Policy: Skip if marked as not deployable
-                deployable = data.get("artifacts", {}).get("live_deployable", True)
+                deploy = data.get("deployability", {}) or {}
+                deployable = bool(deploy.get("live_deployable", False))
+                model_month = str(deploy.get("model_month", "")).strip()
+                cbm_entry = artifacts.get("model_cbm", {}) or {}
+                thr_entry = artifacts.get("model_threshold_json", {}) or {}
+                cbm_path_txt = str(cbm_entry.get("path", "")).strip()
+                cbm_sha = str(cbm_entry.get("sha256", "")).strip()
+                thr_path_txt = str(thr_entry.get("path", "")).strip()
+                thr_sha = str(thr_entry.get("sha256", "")).strip()
                 if not deployable:
                     import logging
                     logging.getLogger("behemoth.api").warning("Quarantining %s: live_deployable=False in governance lock.", sym)
                     continue
-                artifacts = data.get("artifacts", {})
-                cbm_path_txt = str(artifacts.get("model_cbm_path", "")).strip()
-                cbm_sha = str(artifacts.get("model_cbm_sha256", "")).strip()
-                thr_path_txt = str(artifacts.get("model_threshold_json_path", "")).strip()
-                thr_sha = str(artifacts.get("model_threshold_json_sha256", "")).strip()
-                model_month = str(artifacts.get("model_month", "")).strip()
                 if (not cbm_path_txt) or (not cbm_sha) or (not thr_path_txt) or (not thr_sha):
                     import logging
                     logging.getLogger("behemoth.api").error(
@@ -122,6 +129,9 @@ class CandidateRegistry:
                 if resolved_models_dir is not None:
                     cbm_path = resolved_models_dir / cbm_path.name
                     thr_path = resolved_models_dir / thr_path.name
+                else:
+                    cbm_path = p.parent / cbm_path
+                    thr_path = p.parent / thr_path
                 if (not cbm_path.exists()) or (not thr_path.exists()):
                     import logging
                     logging.getLogger("behemoth.api").error(

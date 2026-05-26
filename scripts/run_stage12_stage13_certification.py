@@ -34,7 +34,7 @@ _validate_stage13_dukascopy_testclient = importlib.import_module(
     "scripts.validate_stage13_dukascopy_testclient"
 )
 
-from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths  # noqa: E402
+from src.behemoth.core.bundle_paths import BundlePaths  # noqa: E402
 
 DukascopyTestClientArtifactOutputs = (
     _generate_dukascopy_testclient_artifacts.DukascopyTestClientArtifactOutputs
@@ -147,19 +147,9 @@ def _resolve_stage12_predictions_path(
 ) -> Path:
     symbol = _normalize_symbol(symbol)
     if lock_dir is not None:
-        lock_dir = Path(lock_dir)
-        lock_path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
+        lock_path = Path(lock_dir) / f"{symbol.lower()}_oco_live_lock.json"
         if lock_path.exists():
-            try:
-                bp = BundlePaths.from_lock(lock_path)
-                return bp.predictions()
-            except BundleIntegrityError:
-                # Not a v2 lock — fall back to legacy heuristic
-                pass
-        locked_predictions = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
-        if locked_predictions.exists():
-            return locked_predictions
-
+            return BundlePaths.from_lock(lock_path).predictions()
     return Path(predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet"
 
 
