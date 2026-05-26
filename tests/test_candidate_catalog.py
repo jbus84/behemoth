@@ -90,8 +90,8 @@ def test_candidate_catalog_resolves_live_contract() -> None:
 
         registry = CandidateRegistry()
         registry._candidates_by_symbol["EURUSD"] = [_candidate(bar_ticks=200)]
-        registry._caps_by_symbol["EURUSD"] = 1.5
-        registry._bundle_paths_by_symbol["EURUSD"] = bundle_paths
+        registry._caps_by_symbol_family[("EURUSD", "oco_first_touch")] = 1.5
+        registry._bundle_paths_by_symbol_family[("EURUSD", "oco_first_touch")] = bundle_paths
 
         catalog = CandidateCatalog(
             live_registry=registry,
@@ -146,3 +146,52 @@ def test_candidate_catalog_reports_missing_historical_months() -> None:
 
     with pytest.raises(KeyError, match="No historical lock for EURUSD month 2026-04"):
         catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc))
+
+
+def test_registry_loads_multiple_families() -> None:
+    import hashlib
+
+    with TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        for family in ("oco_first_touch", "directional"):
+            lock = t / f"eurusd_{family}_live_lock.json"
+            models_dir = t / "models"
+            models_dir.mkdir(exist_ok=True)
+            cbm = models_dir / f"EURUSD_{family}_model_2026-04.cbm"
+            thr = models_dir / f"EURUSD_{family}_model_2026-04.json"
+            cbm.write_bytes(b"cbm")
+            thr.write_text('{"t":1}')
+            preds = t / f"eurusd_{family}_locked_predictions.parquet"
+            states_csv = t / f"eurusd_{family}_allowed_states.csv"
+            preds.write_bytes(b"preds")
+            states_csv.write_text("state\na\n")
+            payload = {
+                "schema_version": 3,
+                "symbol": "EURUSD",
+                "bundle": {"month": "2026-04", "dir_relpath": ".", "family": family},
+                "deployability": {"live_deployable": True, "model_month": "2026-04"},
+                "locked_runtime": {"production_cap_pips": 1.2},
+                "state_universe": {
+                    "rows": [
+                        {
+                            "state_id": f"{family}__all__k1",
+                            "symbol": "EURUSD",
+                            "bar_ticks": 100,
+                            "horizon": 4,
+                            "barrier_pips": 10.0,
+                        }
+                    ]
+                },
+                "artifacts": {
+                    "predictions": {"path": preds.name, "sha256": hashlib.sha256(b"preds").hexdigest()},
+                    "allowed_states_csv": {"path": states_csv.name, "sha256": hashlib.sha256(states_csv.read_bytes()).hexdigest()},
+                    "model_cbm": {"path": f"models/{cbm.name}", "sha256": hashlib.sha256(b"cbm").hexdigest()},
+                    "model_threshold_json": {"path": f"models/{thr.name}", "sha256": hashlib.sha256(thr.read_bytes()).hexdigest()},
+                },
+            }
+            lock.write_text(json.dumps(payload))
+
+        reg = CandidateRegistry.load(lock_dir=t)
+        cands = reg.get_candidates("EURUSD")
+        families = {c.family for c in cands}
+        assert families == {"oco_first_touch", "directional"}
