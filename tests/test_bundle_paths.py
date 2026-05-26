@@ -170,3 +170,62 @@ def test_bundle_paths_rejects_missing_family(tmp_path: Path) -> None:
 
     with pytest.raises(BundleIntegrityError, match="bundle.family"):
         BundlePaths.from_lock(lock_path)
+
+
+def test_non_oco_family_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A registered non-OCO family can be written, read, and validated."""
+    from src.behemoth.core.bundle_paths import BUNDLE_LAYOUTS, BundleArtifactSpec
+
+    test_layout = (
+        BundleArtifactSpec("predictions", "{symbol_lower}_breakout_predictions.parquet", True),
+        BundleArtifactSpec("model_cbm", "models/{symbol_upper}_model_{month}.cbm", True),
+        BundleArtifactSpec(
+            "model_threshold_json", "models/{symbol_upper}_model_{month}.json", True
+        ),
+        BundleArtifactSpec("allowed_states_csv", "{symbol_lower}_breakout_states.csv", True),
+    )
+    monkeypatch.setitem(BUNDLE_LAYOUTS, "test_breakout", test_layout)
+
+    bundle_dir = tmp_path / "test_bundle"
+    (bundle_dir / "models").mkdir(parents=True)
+    pred = b"p"
+    cbm = b"c"
+    thr = b"t"
+    states = b"s"
+    (bundle_dir / "eurusd_breakout_predictions.parquet").write_bytes(pred)
+    (bundle_dir / "eurusd_breakout_states.csv").write_bytes(states)
+    (bundle_dir / "models" / "EURUSD_model_2026-04.cbm").write_bytes(cbm)
+    (bundle_dir / "models" / "EURUSD_model_2026-04.json").write_bytes(thr)
+
+    lock = {
+        "schema_version": 3,
+        "symbol": "EURUSD",
+        "bundle": {
+            "month": "2026-04",
+            "dir_relpath": str(bundle_dir),
+            "family": "test_breakout",
+        },
+        "artifacts": {
+            "predictions": {
+                "path": "eurusd_breakout_predictions.parquet",
+                "sha256": _sha256(pred),
+            },
+            "allowed_states_csv": {
+                "path": "eurusd_breakout_states.csv",
+                "sha256": _sha256(states),
+            },
+            "model_cbm": {"path": "models/EURUSD_model_2026-04.cbm", "sha256": _sha256(cbm)},
+            "model_threshold_json": {
+                "path": "models/EURUSD_model_2026-04.json",
+                "sha256": _sha256(thr),
+            },
+        },
+        "deployability": {"live_deployable": True, "model_month": "2026-04"},
+    }
+    lock_path = bundle_dir / "eurusd_breakout_live_lock.json"
+    lock_path.write_text(json.dumps(lock))
+
+    parsed = BundlePaths.from_lock(lock_path)
+    assert parsed.family == "test_breakout"
+    assert parsed.predictions().name == "eurusd_breakout_predictions.parquet"
+    assert parsed.model_cbm().name == "EURUSD_model_2026-04.cbm"
