@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +10,7 @@ from scripts.run_stage12_stage13_certification import (
     _resolve_model_json,
     _resolve_model_month,
     _run_stage13_matrix_replay,
+    main,
     run_stage12_stage13_certification,
 )
 
@@ -212,3 +214,131 @@ def test_stage13_matrix_replay_fails_fast_without_jforex_credentials(monkeypatch
     assert result["signal_pass"] is False
     assert result["execution_pass"] is False
     assert "BEHEMOTH_JFOREX_JNLP_URI" in result["details"]
+
+
+def test_main_returns_nonzero_when_final_certification_fails(monkeypatch, tmp_path: Path) -> None:
+    def _stage12_fail(**kwargs):
+        out_dir = kwargs["out_dir"]
+        symbol = kwargs["symbol"]
+        pd.DataFrame(
+            [
+                {
+                    "symbol": symbol,
+                    "stage12_api_parity_pass": False,
+                    "certification_outcome": "FAIL",
+                    "go_decision": "NO_GO",
+                }
+            ]
+        ).to_csv(out_dir / f"{symbol}_stage12_api_parity_summary.csv", index=False)
+        return {"certification_outcome": "FAIL", "go_decision": "NO_GO"}
+
+    def _stage13_empty(**kwargs):
+        return pd.DataFrame(), pd.DataFrame()
+
+    monkeypatch.setattr(
+        "scripts.run_stage12_stage13_certification._stage12_default_runner",
+        _stage12_fail,
+    )
+    monkeypatch.setattr(
+        "scripts.run_stage12_stage13_certification._stage13_default_runner",
+        _stage13_empty,
+    )
+
+    exit_code = main(
+        [
+            "--symbols",
+            "EURUSD",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--predictions-dir",
+            str(tmp_path / "predictions"),
+            "--reconcile-dir",
+            str(tmp_path),
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 1
+
+
+def test_main_uses_lock_bundle_predictions_for_stage12(monkeypatch, tmp_path: Path) -> None:
+    models_dir = tmp_path / "models"
+    models_dir.mkdir()
+    (models_dir / "EURUSD_model_2026-02.json").write_text("{}\n")
+    missing_predictions_dir = tmp_path / "missing-active-predictions"
+    lock_dir = tmp_path / "bundle" / "2026-02"
+    lock_dir.mkdir(parents=True)
+    locked_predictions = lock_dir / "eurusd_oco_locked_predictions.parquet"
+    pd.DataFrame([{"symbol": "EURUSD", "test_month": "2026-02"}]).to_parquet(
+        locked_predictions,
+        index=False,
+    )
+    (lock_dir / "eurusd_oco_live_lock.json").write_text(
+        json.dumps({"artifacts": {"predictions_path": str(locked_predictions)}}) + "\n"
+    )
+    captured: dict[str, Path] = {}
+
+    def _fake_validate_api_parity_run(**kwargs):
+        captured["predictions_parquet"] = kwargs["predictions_parquet"]
+        pd.DataFrame(
+            [
+                {
+                    "symbol": kwargs["symbol"],
+                    "stage12_api_parity_pass": True,
+                    "certification_outcome": "PASS",
+                    "go_decision": "GO",
+                }
+            ]
+        ).to_csv(kwargs["out_summary"], index=False)
+        return True
+
+    def _stage13_pass(**kwargs):
+        return (
+            pd.DataFrame(
+                [
+                    {
+                        "symbol": "EURUSD",
+                        "stage13_dukascopy_testclient_pass": True,
+                        "certification_outcome": "PASS",
+                        "go_decision": "GO",
+                    }
+                ]
+            ),
+            pd.DataFrame(),
+        )
+
+    monkeypatch.setattr(
+        "scripts.run_stage12_stage13_certification.validate_api_parity_run",
+        _fake_validate_api_parity_run,
+    )
+    monkeypatch.setattr(
+        "scripts.run_stage12_stage13_certification._generate_stage13_replay_artifacts",
+        lambda **kwargs: {},
+    )
+    monkeypatch.setattr(
+        "scripts.run_stage12_stage13_certification._stage13_default_runner",
+        _stage13_pass,
+    )
+
+    exit_code = main(
+        [
+            "--symbols",
+            "EURUSD",
+            "--models-dir",
+            str(models_dir),
+            "--model-month",
+            "2026-02",
+            "--predictions-dir",
+            str(missing_predictions_dir),
+            "--lock-dir",
+            str(lock_dir),
+            "--reconcile-dir",
+            str(tmp_path / "reconcile"),
+            "--out-dir",
+            str(tmp_path / "out"),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["predictions_parquet"] == locked_predictions

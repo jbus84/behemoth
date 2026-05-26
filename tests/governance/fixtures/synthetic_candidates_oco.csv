@@ -1,0 +1,11 @@
+candidate_id,symbol,bar_ticks,horizon,family,barrier_pips,regime,mean_gross_pips_train,train_count,both_window_rate,p_up_first,random_baseline_z,selection_pass,quality_tier
+c01,EURUSD,1000,3,oco_first_touch,2.0,london,0.20,800,0.72,0.51,1.8,True,B
+c02,EURUSD,1000,3,oco_first_touch,2.0,london,0.18,750,0.71,0.50,1.6,True,B
+c03,EURUSD,1000,3,oco_first_touch,2.0,asia,0.05,600,0.65,0.48,0.4,False,D
+c04,EURUSD,1000,5,oco_first_touch,2.0,london,0.30,900,0.74,0.52,2.4,True,A
+c05,EURUSD,1000,5,oco_first_touch,3.0,london,0.25,500,0.60,0.50,1.5,True,B
+c06,EURUSD,1000,5,oco_first_touch,3.0,asia,-0.02,400,0.55,0.47,-0.2,False,D
+c07,EURUSD,1000,3,oco_first_touch,3.0,ny,0.10,300,0.58,0.49,0.7,False,C
+c08,EURUSD,1000,3,oco_first_touch,2.0,ny,0.12,650,0.70,0.51,1.0,False,C
+c09,EURUSD,1000,5,oco_first_touch,2.0,ny,0.08,550,0.68,0.50,0.6,False,C
+c10,EURUSD,1000,5,oco_first_touch,3.0,ny,0.05,250,0.55,0.48,0.3,False,D

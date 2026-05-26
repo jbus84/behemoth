@@ -72,7 +72,7 @@ Runs the 6 core analysis scripts in sequence:
 | 2c | `run_tick_opportunity_monthly_wfo.py` | Base Walk-Forward Optimization |
 | 2d | `run_tick_opportunity_monthly_wfo.py` | OCO Fullcap WFO |
 | 2e | `analyze_oco_stop_limit_tickfill.py` | Stop-limit realism check |
-| 2f | `select_oco_reduced_core_rolling.py` | Reduced core state selection |
+| 2f | `governance/run_governance_all.py` | Reduced core state selection |
 
 Skip with `--skip-ml` if analysis data is already generated.
 
@@ -82,7 +82,7 @@ These only run if the reduced core produced qualifying states (i.e. the state sc
 
 | Step | Script | Purpose |
 |------|--------|---------|
-| 3a | `verify_oco_tick_exact_shortlist.py` | Tick-exact contract verification |
+| 3a | `governance/run_governance_all.py` | Tick-exact contract verification |
 | 3b | `analyze_oco_monthly_wfo_robustness.py` | Cost-stress robustness analysis |
 
 > [!NOTE]

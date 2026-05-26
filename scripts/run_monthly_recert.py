@@ -178,6 +178,13 @@ def _bundle_models_dir(bundle_dir: Path) -> Path:
     return bundle_dir / BUNDLE_MODELS_SUBDIR
 
 
+def _resolve_repo_path(path_value: str) -> Path:
+    path = Path(str(path_value).strip())
+    if path.is_absolute():
+        return path
+    return _repo_root() / path
+
+
 def _run_report_dir(report_root: str, model_month: str) -> str:
     run_dir = Path(report_root) / model_month / MONTHLY_RECERT_RUN_DIRNAME
     (_repo_root() / run_dir).mkdir(parents=True, exist_ok=True)
@@ -302,6 +309,28 @@ def _validate_month_bundle(bundle_dir: Path) -> None:
         ):
             raise SystemExit(
                 f"[monthly-recert] incomplete month build bundle: non-local model artifact path for {symbol}"
+            )
+        live_deployable = bool(artifacts.get("live_deployable", False))
+        prediction_path_raw = str(artifacts.get("predictions_path", "")).strip()
+        if live_deployable and not prediction_path_raw:
+            raise SystemExit(
+                f"[monthly-recert] incomplete month build bundle: missing predictions path for {symbol}"
+            )
+        if prediction_path_raw and not _resolve_repo_path(prediction_path_raw).is_file():
+            raise SystemExit(
+                f"[monthly-recert] incomplete month build bundle: missing predictions artifact for {symbol}: "
+                f"{prediction_path_raw}"
+            )
+
+        states_path_raw = str(artifacts.get("reduced_states_csv_path", "")).strip()
+        if live_deployable and not states_path_raw:
+            raise SystemExit(
+                f"[monthly-recert] incomplete month build bundle: missing allowed states path for {symbol}"
+            )
+        if states_path_raw and not _resolve_repo_path(states_path_raw).is_file():
+            raise SystemExit(
+                f"[monthly-recert] incomplete month build bundle: missing allowed states artifact for {symbol}: "
+                f"{states_path_raw}"
             )
 
 
