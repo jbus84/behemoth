@@ -3193,6 +3193,7 @@ async def open_trade(req: TradeOpenRequest):
         horizon=req.horizon,
         reservation_id=req.reservation_id,
         run_id=run_id,
+        family=req.family,
     )
     if _config.account_risk_enabled and (_account_risk_profile is not None):
         _state.promote_account_risk_reservation(

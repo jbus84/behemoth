@@ -2738,6 +2738,29 @@ class TestTradeEndpoints:
             assert r.status_code == 200
             assert r.json()["internal_trade_id"] == 123
 
+    def test_open_trade_passes_family(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        with mock.patch.object(server._state, "open_trade", return_value=123) as mock_open:
+            r = client.post(
+                "/trades/open",
+                json={
+                    "symbol": "EURUSD",
+                    "candidate_uid": "test_cand",
+                    "broker_pos_id": "456",
+                    "side": "BUY",
+                    "entry_price": 1.1000,
+                    "entry_ts": "2025-01-01T00:00:00Z",
+                    "horizon": 12,
+                    "family": "directional",
+                },
+            )
+            assert r.status_code == 200
+            call_kwargs = mock_open.call_args.kwargs
+            assert call_kwargs.get("family") == "directional"
+
     @pytest.mark.requires_models
     def test_touch_trade_success(self, client):
         import unittest.mock as mock
