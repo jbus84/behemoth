@@ -1781,8 +1781,11 @@ def _resolve_historical_prediction_payload_overrides(
     close_ts_utc = _as_utc_ts(close_ts)
     out: dict[str, dict[str, Any]] = {}
     for cand in candidates:
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
         canonical_uid = (
-            f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+            f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         )
         rows = rows_by_uid.get(canonical_uid, [])
         if not rows:
@@ -1827,8 +1830,11 @@ def _apply_historical_prediction_universe_gate(
         tolerance = int(_config.historical_prediction_ordinal_tolerance)
         filtered: list[Any] = []
         for cand in candidates:
+            family = str(getattr(cand, "family", "") or "").strip()
+            if not family:
+                family = "oco_first_touch"
             canonical_uid = (
-                f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
             )
             ordinal_list = ordinal_index.get(canonical_uid, [])
             if not ordinal_list:
@@ -1855,8 +1861,11 @@ def _apply_historical_prediction_universe_gate(
         tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
         filtered: list[Any] = []
         for cand in candidates:
+            family = str(getattr(cand, "family", "") or "").strip()
+            if not family:
+                family = "oco_first_touch"
             canonical_uid = (
-                f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
             )
             ts_rows = candidate_index.get(canonical_uid, [])
             if not ts_rows:
@@ -1894,8 +1903,11 @@ def _apply_historical_prediction_universe_gate(
         return []
     filtered: list[Any] = []
     for cand in candidates:
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
         canonical_uid = (
-            f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+            f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         )
         if canonical_uid in allowed:
             filtered.append(cand)
@@ -2421,50 +2433,65 @@ def _orchestrator_build_predictions_fn(
 ) -> list[OcoPrediction]:
     """Inject step-5 logic (inference + threshold + allocator) into the orchestrator.
 
-    The orchestrator is HTTP/contract-agnostic, so this closure resolves the
-    runtime contract, model, threshold config, and historical-prediction
-    overrides from server-module state, then delegates to ``_build_predictions``.
-    Results are sorted by ``pred_prob`` descending (highest first), matching
-    the original predict pipeline.
+    Dispatches per-family: groups candidates by their family tag, resolves the
+    runtime contract and model for each family, then delegates to
+    ``_build_predictions``. Results are merged and sorted by ``pred_prob``
+    descending.
     """
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
-    contract = _resolve_runtime_contract(sym, close_ts)
-    model, thr_cfg = _ensure_model_and_threshold(contract)
+
     requested_volume_units = _resolve_requested_volume_units(req)
-    # Check if historical predictions are available via bundle_paths
-    has_predictions = False
-    if _is_historical_mode():
-        try:
-            _ = contract.bundle_paths.predictions()
-            has_predictions = True
-        except Exception:
-            has_predictions = False
-    historical_prediction_universe_gated = bool(has_predictions)
-    results, _candidate_trace_rows = _build_predictions(
-        sym=sym,
-        candidates=candidates,
-        model=model,
-        base_features_by_ticks=base_features_by_ticks,
-        regime_quantiles_by_ticks=regime_quantiles_by_ticks,
-        close_ts=close_ts,
-        thr_cfg=thr_cfg,
-        account_risk_eval=account_risk_eval,
-        account_risk_enabled_effective=account_risk_enabled_effective,
-        account_risk_enabled_override=account_risk_enabled_override,
-        requested_volume_units=requested_volume_units,
-        model_month=contract.model_month,
-        cap_pips=contract.cap_pips,
-        run_id=run_id,
-        skip_regime_gate=historical_prediction_universe_gated,
-        historical_prediction_overrides=_resolve_historical_prediction_payload_overrides(
-            contract=contract,
+    all_results: list[OcoPrediction] = []
+
+    # Group candidates by family
+    by_family: dict[str, list[Any]] = {}
+    for cand in candidates:
+        fam = str(getattr(cand, "family", "") or "").strip()
+        # Fallback for candidates without a family tag (legacy/historical fixtures)
+        if not fam:
+            fam = "oco_first_touch"
+        by_family.setdefault(fam, []).append(cand)
+
+    for family, family_cands in by_family.items():
+        family_contract = _resolve_runtime_contract_for_family(sym, family, close_ts)
+        model, thr_cfg = _ensure_model_and_threshold(family_contract)
+
+        has_predictions = False
+        if _is_historical_mode():
+            try:
+                _ = family_contract.bundle_paths.predictions()
+                has_predictions = True
+            except Exception:
+                has_predictions = False
+        historical_prediction_universe_gated = bool(has_predictions)
+
+        results, _candidate_trace_rows = _build_predictions(
+            sym=sym,
+            candidates=family_cands,
+            model=model,
+            base_features_by_ticks=base_features_by_ticks,
+            regime_quantiles_by_ticks=regime_quantiles_by_ticks,
             close_ts=close_ts,
-            candidates=candidates,
-        ),
-    )
-    results.sort(key=lambda p: p.pred_prob, reverse=True)
-    return results
+            thr_cfg=thr_cfg,
+            account_risk_eval=account_risk_eval,
+            account_risk_enabled_effective=account_risk_enabled_effective,
+            account_risk_enabled_override=account_risk_enabled_override,
+            requested_volume_units=requested_volume_units,
+            model_month=family_contract.model_month,
+            cap_pips=family_contract.cap_pips,
+            run_id=run_id,
+            skip_regime_gate=historical_prediction_universe_gated,
+            historical_prediction_overrides=_resolve_historical_prediction_payload_overrides(
+                contract=family_contract,
+                close_ts=close_ts,
+                candidates=family_cands,
+            ),
+        )
+        all_results.extend(results)
+
+    all_results.sort(key=lambda p: p.pred_prob, reverse=True)
+    return all_results
 
 
 def _orchestrator_register_scans_fn(
@@ -2578,7 +2605,10 @@ def _build_predictions(
                 "barrier_pips": float(cand.barrier_pips),
             }
         )
-        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
+        canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         locked_payload = (
             (historical_prediction_overrides or {}).get(canonical_uid)
             if historical_prediction_overrides is not None
@@ -3055,7 +3085,10 @@ async def predict_warmup(req: WarmupRequest) -> dict:
         with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
             pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
 
-        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
+        canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         unique_values = int(np.unique(np.round(pred_probs, 12)).size)
         n_valid = int(len(pred_probs))
         stats[canonical_uid] = {
