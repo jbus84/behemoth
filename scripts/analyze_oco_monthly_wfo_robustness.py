@@ -139,13 +139,13 @@ def _apply_reduced_core_schedule_filter(
         raise RuntimeError(
             f"reduced_state_schedule_csv is empty: {p}\n"
             "Run the reduced-core mining pipeline first to populate this file, e.g.:\n"
-            "  uv run python scripts/legacy/select_oco_reduced_core_rolling.py"
+            "  uv run python scripts/select_reduced_core_regimes.py"
         ) from None
     if s.empty:
         raise RuntimeError(
             f"reduced_state_schedule_csv has no rows: {p}\n"
             "Run the reduced-core mining pipeline first to populate this file, e.g.:\n"
-            "  uv run python scripts/legacy/select_oco_reduced_core_rolling.py"
+            "  uv run python scripts/select_reduced_core_regimes.py"
         )
     if "test_month" not in s.columns:
         raise ValueError("reduced_state_schedule_csv missing required column: test_month")

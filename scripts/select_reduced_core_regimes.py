@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Select OCO reduced core with strict rolling month-by-month state selection.
+"""Stage 5: select rolling reduced-core regimes for governance bundles.
 
-This is the leakage-safe alternative to post-hoc reduced-core filtering:
-- For each test month M, select states using only prior train months.
-- Apply selected states to month M events only.
+OCO-specific implementation. For each test month M, selects the state
+universe using only prior train months (leakage-safe alternative to
+post-hoc reduced-core filtering), then applies the selected states to
+month M events only.
+
+Previously located at scripts/legacy/select_oco_reduced_core_rolling.py.
 """
 
 from __future__ import annotations

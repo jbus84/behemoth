@@ -188,7 +188,7 @@ stages:
         severity: critical
         description: Reduced-Core Rolling must produce a valid monthly Shortlist.
     owning_files:
-      - scripts/legacy/select_oco_reduced_core_rolling.py
+      - scripts/select_reduced_core_regimes.py
       - scripts/onboard_symbol.py
       - configs/research/experiments/${symbol}_oco_reduced_core_rolling.yaml
       - Makefile
@@ -197,7 +197,7 @@ stages:
     graphify:
       <<: *default_stage_graphify
       seeds:
-        - scripts/legacy/select_oco_reduced_core_rolling.py
+        - scripts/select_reduced_core_regimes.py
         - scripts/onboard_symbol.py
         - Makefile
 
@@ -220,7 +220,7 @@ stages:
         severity: critical
         description: Tick-Exact Verification must confirm the Shortlist under exact replay.
     owning_files:
-      - scripts/legacy/verify_oco_tick_exact_shortlist.py
+      - scripts/verify_tick_exact_shortlist.py
       - scripts/onboard_symbol.py
       - Makefile
     tests:
@@ -228,7 +228,7 @@ stages:
     graphify:
       <<: *default_stage_graphify
       seeds:
-        - scripts/legacy/verify_oco_tick_exact_shortlist.py
+        - scripts/verify_tick_exact_shortlist.py
         - scripts/onboard_symbol.py
         - Makefile
 

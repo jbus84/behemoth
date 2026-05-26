@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Tick-exact contract check for reduced OCO shortlist predictions."""
+"""Stage 6: verify tick-exact shortlist for governance bundles.
+
+OCO-specific implementation. Runs the tick-exact contract check
+against the reduced shortlist predictions produced by Stage 5.
+
+Previously located at scripts/legacy/verify_oco_tick_exact_shortlist.py.
+"""
 
 from __future__ import annotations
 

@@ -1196,7 +1196,7 @@ def run(
                 ],
                 [
                     sys.executable,
-                    str(ROOT / "scripts/legacy/verify_oco_tick_exact_shortlist.py"),
+                    str(ROOT / "scripts/verify_tick_exact_shortlist.py"),
                     "--symbol",
                     symbol,
                     "--dataset-dir",
