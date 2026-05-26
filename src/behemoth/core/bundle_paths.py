@@ -14,10 +14,15 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 class BundleIntegrityError(RuntimeError):
@@ -35,8 +40,7 @@ _LOG = logging.getLogger("behemoth.governance")
 
 def _oco_style_layout(family: str) -> tuple[BundleArtifactSpec, ...]:
     """Build the eight-artifact spec tuple for a family that follows the OCO-style
-    layout (per-symbol predictions, per-symbol allowed states, per-symbol-per-month
-    model + threshold, optional configs + summaries)."""
+    layout. Optionality comes from the required=False flag in config and summary specs."""
     return (
         BundleArtifactSpec("predictions",          f"{{symbol_lower}}_{family}_locked_predictions.parquet", True),
         BundleArtifactSpec("allowed_states_csv",   f"{{symbol_lower}}_{family}_allowed_states.csv",         True),
@@ -49,24 +53,31 @@ def _oco_style_layout(family: str) -> tuple[BundleArtifactSpec, ...]:
     )
 
 
-_MINING_FAMILY_NAMES: tuple[str, ...] = (
-    "oco_first_touch",
-    "oco_asymmetric",
-    "directional",
-    "directional_inverse",
-    "directional_run",
-    "double_touch",
-    "pullback",
-    "no_touch",
-    "dollar_residual",
-    "dispersion_rank",
-    "lead_lag",
-)
+try:
+    from scripts.mining_family import FAMILY_REGISTRY
+    BUNDLE_LAYOUTS: dict[str, tuple[BundleArtifactSpec, ...]] = {
+        family: _oco_style_layout(family) for family in FAMILY_REGISTRY
+    }
+except ImportError as _e:
+    # Fallback if import cycle is detected: keep canonical list and explain why.
+    _MINING_FAMILY_NAMES: tuple[str, ...] = (
+        "oco_first_touch",
+        "oco_asymmetric",
+        "directional",
+        "directional_inverse",
+        "directional_run",
+        "double_touch",
+        "pullback",
+        "no_touch",
+        "dollar_residual",
+        "dispersion_rank",
+        "lead_lag",
+    )
+    BUNDLE_LAYOUTS: dict[str, tuple[BundleArtifactSpec, ...]] = {
+        family: _oco_style_layout(family) for family in _MINING_FAMILY_NAMES
+    }
 
-
-BUNDLE_LAYOUTS: dict[str, tuple[BundleArtifactSpec, ...]] = {
-    family: _oco_style_layout(family) for family in _MINING_FAMILY_NAMES
-}
+# FIXME(sub-project D/E): lead_lag, dispersion_rank, dollar_residual are cross-sectional, not per-symbol; refine layout when those families come online.
 
 
 def bundle_layout_for(family: str) -> tuple[BundleArtifactSpec, ...]:
