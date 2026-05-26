@@ -33,6 +33,7 @@ try:
         _build_directional_events,
         _build_oco_events,
     )
+    from scripts.mining_family import FAMILY_REGISTRY
     from scripts.run_tick_opportunity_mining import (
         _parse_ints,
         _prepare_frame,
@@ -43,6 +44,7 @@ except ModuleNotFoundError:
         _build_directional_events,
         _build_oco_events,
     )
+    from mining_family import FAMILY_REGISTRY  # type: ignore
     from run_tick_opportunity_mining import (  # type: ignore
         _parse_ints,
         _prepare_frame,
@@ -55,6 +57,7 @@ DEFAULTS: dict[str, Any] = {
     "dataset_dir": "data/analysis/tick_velocity",
     "candidate_dir": "data/analysis/tick_opportunity_mining",
     "library": "both",  # directional|oco|both
+    "families": "",
     "train_years_for_state_fit": "2022,2023,2024",
     "eval_year": 2025,
     "eval_start_month": "",
@@ -77,6 +80,21 @@ DEFAULTS: dict[str, Any] = {
     "out_dir": "data/analysis/tick_opportunity_mining/wfo_m3to1",
     "report_out": "docs/analysis/eurusd_tick_opportunity_monthly_wfo_report.md",
 }
+
+_FAMILY_CANDIDATE_LIBRARY: dict[str, str] = {
+    "directional": "directional",
+    "directional_inverse": "directional",
+    "directional_run": "directional",
+    "double_touch": "directional",
+    "pullback": "directional",
+    "oco_first_touch": "oco",
+    "oco_asymmetric": "oco_asymmetric",
+    "no_touch": "no_touch",
+    "dollar_residual": "dollar_residual",
+    "dispersion_rank": "dispersion_rank",
+    "lead_lag": "lead_lag",
+}
+_SUPPORTED_WFO_REPLAY_FAMILIES = {"directional", "oco_first_touch"}
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -106,6 +124,89 @@ def _merge_config(args: argparse.Namespace) -> dict[str, Any]:
 
 def _parse_float_list(raw: str) -> list[float]:
     return [float(x.strip()) for x in str(raw).split(",") if x.strip()]
+
+
+def _parse_requested_families(raw: Any) -> list[str]:
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        parts = [x.strip().lower() for x in raw.split(",") if x.strip()]
+    elif isinstance(raw, (list, tuple)):
+        parts = [str(x).strip().lower() for x in raw if str(x).strip()]
+    else:
+        raise ValueError("families must be a comma-separated string or YAML list")
+    unknown = [family for family in parts if family not in FAMILY_REGISTRY]
+    if unknown:
+        raise ValueError(
+            f"unknown family in families: {unknown}; expected one of {sorted(FAMILY_REGISTRY)}"
+        )
+    return parts
+
+
+def _candidate_library_for_family(family: str) -> str:
+    key = str(family).strip().lower()
+    if key not in _FAMILY_CANDIDATE_LIBRARY:
+        raise ValueError(f"unknown family {family!r}; expected one of {sorted(FAMILY_REGISTRY)}")
+    return _FAMILY_CANDIDATE_LIBRARY[key]
+
+
+def _libraries_for_requested_families(families: list[str]) -> list[str]:
+    order = [
+        "directional",
+        "oco",
+        "oco_asymmetric",
+        "no_touch",
+        "dollar_residual",
+        "dispersion_rank",
+        "lead_lag",
+    ]
+    requested = {_candidate_library_for_family(family) for family in families}
+    return [lib for lib in order if lib in requested]
+
+
+def _plan_wfo_inputs(cfg: dict[str, Any]) -> dict[str, list[str] | None]:
+    requested_families = _parse_requested_families(cfg.get("families", ""))
+    if requested_families:
+        return {
+            lib: [
+                family
+                for family in requested_families
+                if _candidate_library_for_family(family) == lib
+            ]
+            for lib in _libraries_for_requested_families(requested_families)
+        }
+
+    libs_raw = str(cfg["library"]).strip().lower()
+    libs = ["directional", "oco"] if libs_raw == "both" else [libs_raw]
+    for lib in libs:
+        if lib not in {"directional", "oco"}:
+            raise ValueError("library must be directional|oco|both")
+    return {lib: None for lib in libs}
+
+
+def _filter_candidate_families(
+    cands: pd.DataFrame, *, families: list[str] | None
+) -> pd.DataFrame:
+    if not families:
+        return cands
+    if "family" not in cands.columns:
+        raise ValueError("candidate CSV is missing required family column")
+    wanted = {str(family).strip().lower() for family in families}
+    out = cands[cands["family"].astype(str).str.lower().isin(wanted)].copy()
+    return out
+
+
+def _ensure_wfo_replay_supported(families: list[str] | None) -> None:
+    if not families:
+        return
+    wanted = {str(family).strip().lower() for family in families}
+    unsupported = sorted(wanted - _SUPPORTED_WFO_REPLAY_FAMILIES)
+    if unsupported:
+        raise NotImplementedError(
+            "Monthly WFO replay is not implemented for family-driven configs "
+            f"using {unsupported}. Supported replay families: "
+            f"{sorted(_SUPPORTED_WFO_REPLAY_FAMILIES)}"
+        )
 
 
 def _safe_numeric(s: pd.Series) -> pd.Series:
@@ -143,6 +244,7 @@ def _select_candidate_universe(
 def _build_events_for_library(
     *,
     library: str,
+    families: list[str] | None = None,
     symbol: str,
     dataset_dir: Path,
     candidate_dir: Path,
@@ -157,6 +259,7 @@ def _build_events_for_library(
     oco_hold_mode: str,
 ) -> pd.DataFrame:
     lib = str(library).strip().lower()
+    _ensure_wfo_replay_supported(families)
     if lib not in {"directional", "oco"}:
         raise ValueError(f"bad library: {library}")
     c_path = candidate_dir / f"{symbol}_{lib}_candidates.csv"
@@ -167,6 +270,7 @@ def _build_events_for_library(
     except pd.errors.EmptyDataError:
         # Empty CSV from upstream mining stage (no-trade condition)
         return pd.DataFrame()
+    c = _filter_candidate_families(c, families=families)
     c = _select_candidate_universe(
         c,
         symbol=symbol,
@@ -705,6 +809,9 @@ def _write_report(
     lines.append("")
     lines.append("## Setup")
     lines.append(f"- library: `{cfg['library']}`")
+    families = _parse_requested_families(cfg.get("families", ""))
+    if families:
+        lines.append(f"- families: `{','.join(families)}`")
     lines.append(f"- train_years_for_state_fit: `{cfg['train_years_for_state_fit']}`")
     eval_start_month = str(cfg.get("eval_start_month", "")).strip()
     eval_end_month = str(cfg.get("eval_end_month", "")).strip()
@@ -790,6 +897,7 @@ def main() -> None:
     p.add_argument("--dataset-dir", default=None)
     p.add_argument("--candidate-dir", default=None)
     p.add_argument("--library", default=None)
+    p.add_argument("--families", default=None)
     p.add_argument("--train-years-for-state-fit", default=None)
     p.add_argument("--eval-year", type=int, default=None)
     p.add_argument("--eval-start-month", default=None)
@@ -837,7 +945,7 @@ def main() -> None:
         today = date.today()
         last_complete = date(today.year, today.month, 1) - timedelta(days=1)
         eval_end_month = f"{last_complete.year}-{last_complete.month:02d}"
-    libs_raw = str(cfg["library"]).strip().lower()
+    wfo_inputs = _plan_wfo_inputs(cfg)
     oco_include_no_touch = bool(cfg.get("oco_include_no_touch", DEFAULTS["oco_include_no_touch"]))
     threshold_mode = str(cfg.get("threshold_mode", DEFAULTS["threshold_mode"])).strip().lower()
     if threshold_mode not in {"rolling_days", "train_quantile"}:
@@ -845,11 +953,6 @@ def main() -> None:
     oco_hold_mode = str(cfg.get("oco_hold_mode", DEFAULTS["oco_hold_mode"])).strip().lower()
     if oco_hold_mode not in {"from_touch", "from_start"}:
         raise ValueError("oco_hold_mode must be from_touch|from_start")
-    libs = ["directional", "oco"] if libs_raw == "both" else [libs_raw]
-    for lib in libs:
-        if lib not in {"directional", "oco"}:
-            raise ValueError("library must be directional|oco|both")
-
     rolling_train_months = int(cfg["rolling_train_months"])
     if bool(eval_start_month) ^ bool(eval_end_month):
         raise ValueError("eval_start_month and eval_end_month must be set together")
@@ -876,9 +979,10 @@ def main() -> None:
     out_dir = Path(str(cfg["out_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for lib in libs:
+    for lib, requested_families in wfo_inputs.items():
         ev = _build_events_for_library(
             library=lib,
+            families=requested_families,
             symbol=symbol,
             dataset_dir=dataset_dir,
             candidate_dir=candidate_dir,
