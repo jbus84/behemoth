@@ -87,6 +87,8 @@ def test_main_builds_candidate_month_bundle(monkeypatch) -> None:
             "run",
             "python",
             "scripts/freeze_monthly_bundle.py",
+            "--family",
+            "oco_first_touch",
             "--allow-dirty",
             "--symbols",
             "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD",
@@ -235,6 +237,36 @@ def test_materialize_bundle_models_raises_on_invalid_bundle(monkeypatch, tmp_pat
 
     with pytest.raises(SystemExit, match=r"bundle failed validation"):
         run_monthly_build._materialize_bundle_models(bundle_dir)
+
+
+def test_run_monthly_build_passes_family_to_freeze(monkeypatch) -> None:
+    """run_monthly_build invokes freeze with --family oco_first_touch."""
+    from scripts import run_monthly_build
+
+    captured: list[list[str]] = []
+
+    class _Result:
+        returncode = 0
+
+    def _fake_run(cmd, cwd=None):
+        captured.append(list(cmd))
+        return _Result()
+
+    monkeypatch.setattr(run_monthly_build.subprocess, "run", _fake_run)
+    monkeypatch.setattr(run_monthly_build, "_materialize_bundle_models", lambda _bundle_dir: None)
+    monkeypatch.setattr(run_monthly_build, "_derive_model_month", lambda _arg: "2026-04")
+
+    run_monthly_build.main_with_args(["--model-month", "2026-04"])
+
+    freeze_invocations = [
+        c for c in captured
+        if any("freeze_monthly_bundle.py" in part for part in c)
+    ]
+    assert freeze_invocations, "expected at least one freeze invocation"
+    for cmd in freeze_invocations:
+        assert "--family" in cmd, f"freeze invocation missing --family: {cmd}"
+        family_index = cmd.index("--family")
+        assert cmd[family_index + 1] == "oco_first_touch", cmd
 
 
 def test_sync_candidate_model_artifacts_can_use_bundle_or_candidate_lock_source(
