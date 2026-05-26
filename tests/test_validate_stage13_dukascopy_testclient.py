@@ -18,8 +18,11 @@ def _write_lock(path: Path, *, symbol: str, deployable: bool, reason: str = "") 
     path.write_text(
         json.dumps(
             {
-                "schema_version": 2,
+                "schema_version": 3,
                 "symbol": symbol,
+                "bundle": {
+                    "family": "oco_first_touch_clean",
+                },
                 "deployability": {
                     "live_deployable": deployable,
                 },

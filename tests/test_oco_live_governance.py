@@ -178,9 +178,14 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
         return h.hexdigest()
 
     lock = {
-        "schema_version": 2,
+        "schema_version": 3,
         "frozen_at_utc": "2026-02-25T00:00:00+00:00",
         "symbol": "EURUSD",
+        "bundle": {
+            "month": "2026-02",
+            "dir_relpath": str(tmp_path),
+            "family": "oco_first_touch_clean",
+        },
         "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
             "wfo_config": {"path": "wfo.yaml", "sha256": _sha(wfo)},
@@ -354,9 +359,14 @@ def test_validate_lock_state_csv_defaults_to_lock_artifact_latest_month(tmp_path
         return h.hexdigest()
 
     lock = {
-        "schema_version": 2,
+        "schema_version": 3,
         "frozen_at_utc": "2026-02-25T00:00:00+00:00",
         "symbol": "EURUSD",
+        "bundle": {
+            "month": "2026-02",
+            "dir_relpath": str(tmp_path),
+            "family": "oco_first_touch_clean",
+        },
         "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
             "wfo_config": {"path": str(wfo), "sha256": _sha(wfo)},

@@ -12,8 +12,13 @@ def _write_lock(history_dir: Path, month: str, symbol: str, *, live_deployable: 
     month_dir = history_dir / month
     month_dir.mkdir(parents=True, exist_ok=True)
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": symbol,
+        "bundle": {
+            "month": month,
+            "dir_relpath": str(month_dir),
+            "family": "oco_first_touch_clean",
+        },
         "deployability": {
             "model_month": month,
             "live_deployable": live_deployable,

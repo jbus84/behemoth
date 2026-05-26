@@ -25,8 +25,11 @@ def _write_lock(
     reason: str = "",
 ) -> None:
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "symbol": symbol,
+        "bundle": {
+            "family": "oco_first_touch_clean",
+        },
         "deployability": {
             "live_deployable": deployable,
         },
