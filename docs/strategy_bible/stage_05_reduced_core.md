@@ -124,13 +124,13 @@ flowchart TD
 
 ## Reproduction Commands
 ```bash
-uv run python scripts/legacy/select_oco_reduced_core_rolling.py \
+uv run python scripts/select_reduced_core_regimes.py \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 uv run python scripts/validate_oco_rule_universe_registry.py
 ```
 
 ## Traceability
-- `scripts/legacy/select_oco_reduced_core_rolling.py`
+- `scripts/select_reduced_core_regimes.py`
 - `scripts/validate_oco_rule_universe_registry.py`
 - `docs/analysis/*_oco_reduced_core_rolling_report.md`
 - `docs/analysis/oco_rule_universe_registry_report.md`

@@ -7,8 +7,8 @@
 - `scripts/run_tick_opportunity_mining.py`
 - `scripts/run_tick_opportunity_monthly_wfo.py`
 - `scripts/analyze_oco_stop_limit_tickfill.py`
-- `scripts/legacy/select_oco_reduced_core_rolling.py`
-- `scripts/legacy/verify_oco_tick_exact_shortlist.py`
+- `scripts/select_reduced_core_regimes.py`
+- `scripts/verify_tick_exact_shortlist.py`
 - `scripts/analyze_oco_monthly_wfo_robustness.py`
 - `scripts/build_global_tick_bars_offset.py`
 - `scripts/run_offset_tickbar_robustness.py`
