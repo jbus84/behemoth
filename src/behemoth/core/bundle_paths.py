@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -26,6 +28,9 @@ class BundleArtifactSpec(NamedTuple):
     v2_key: str
     target_relpath_template: str
     required: bool
+
+
+_LOG = logging.getLogger("behemoth.governance")
 
 
 BUNDLE_LAYOUTS: dict[str, tuple[BundleArtifactSpec, ...]] = {
@@ -160,3 +165,24 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def lock_filename(symbol: str) -> str:
+    """Canonical lock filename for a symbol."""
+    return f"{symbol.lower()}_oco_live_lock.json"
+
+
+def iter_locks(bundle_dir: Path, family: str | None = None) -> Iterator[Path]:
+    """Yield every *_live_lock.json in bundle_dir, optionally filtering by family."""
+    matches = sorted(Path(bundle_dir).glob("*_live_lock.json"))
+    if family is None:
+        yield from matches
+        return
+    for lock_path in matches:
+        try:
+            bp = BundlePaths.from_lock(lock_path)
+        except (BundleIntegrityError, json.JSONDecodeError) as exc:
+            _LOG.warning("failed to parse %s: %s", lock_path, exc)
+            continue
+        if bp.family == family:
+            yield lock_path
