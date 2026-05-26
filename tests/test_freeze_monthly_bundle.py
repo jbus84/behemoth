@@ -8,7 +8,9 @@ import pandas as pd
 import pytest
 
 from scripts.freeze_monthly_bundle import (
+    _default_paths,
     _filter_months,
+    _model_month_pairs,
     _model_valid_through,
     _state_universe_for_month,
     run,
@@ -94,6 +96,33 @@ def test_model_valid_through_is_end_of_deployment_month() -> None:
     # Malformed input degrades to empty string, not a crash.
     assert _model_valid_through("") == ""
     assert _model_valid_through("not-a-month") == ""
+
+
+def test_default_paths_use_family_artifact_names_for_non_oco(tmp_path: Path) -> None:
+    paths = _default_paths(
+        "EURUSD",
+        config_dir=tmp_path / "configs",
+        analysis_dir=tmp_path / "analysis",
+        family="directional",
+    )
+
+    assert paths["wfo_config"].name == "eurusd_tick_opportunity_monthly_wfo_directional.yaml"
+    assert paths["reduced_config"].name == "eurusd_directional_reduced_core_rolling.yaml"
+    assert paths["state_schedule"].name == "EURUSD_directional_reduced_state_schedule.csv"
+    assert paths["predictions"].name == "EURUSD_directional_monthly_predictions.parquet"
+    assert "wfo_m3to1_directional_fullcap" in paths["predictions"].as_posix()
+
+
+def test_model_month_pairs_use_family_model_names(tmp_path: Path) -> None:
+    (tmp_path / "EURUSD_directional_model_2026-02.cbm").write_bytes(b"cbm")
+    (tmp_path / "EURUSD_directional_model_2026-02.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "EURUSD_model_2026-02.cbm").write_bytes(b"legacy")
+    (tmp_path / "EURUSD_model_2026-02.json").write_text("{}", encoding="utf-8")
+
+    pairs = _model_month_pairs("EURUSD", models_dir=tmp_path, family="directional")
+
+    assert sorted(pairs) == ["2026-02"]
+    assert pairs["2026-02"][0].name == "EURUSD_directional_model_2026-02.cbm"
 
 
 def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_path: Path) -> None:
@@ -199,8 +228,8 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
 
     month_dir = out_dir / "2026-02"
     lock_path = month_dir / f"{sl}_oco_first_touch_live_lock.json"
-    states_path = month_dir / f"{sl}_oco_allowed_states.csv"
-    preds_path = month_dir / f"{sl}_oco_locked_predictions.parquet"
+    states_path = month_dir / f"{sl}_oco_first_touch_allowed_states.csv"
+    preds_path = month_dir / f"{sl}_oco_first_touch_locked_predictions.parquet"
 
     assert lock_path.exists()
     assert states_path.exists()

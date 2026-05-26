@@ -355,3 +355,32 @@ def test_run_reports_non_object_top_level_lock_payload_and_continues(
     assert "FAIL" in out
     assert "malformed lock metadata" in out
     assert (target_dir / cbm.name).exists()
+
+
+def test_run_syncs_requested_family_artifacts_without_lock_dir(tmp_path: Path) -> None:
+    source_dir = tmp_path / "models_src"
+    target_dir = tmp_path / "models_dst"
+    source_dir.mkdir()
+    target_dir.mkdir()
+    cbm = source_dir / "EURUSD_directional_model_2026-02.cbm"
+    thr = source_dir / "EURUSD_directional_model_2026-02.json"
+    cbm.write_bytes(b"directional-cbm")
+    thr.write_text('{"threshold": 0.6}', encoding="utf-8")
+    (source_dir / "EURUSD_oco_first_touch_model_2026-02.cbm").write_bytes(b"oco")
+    (source_dir / "EURUSD_oco_first_touch_model_2026-02.json").write_text(
+        "{}",
+        encoding="utf-8",
+    )
+
+    exit_code = run(
+        lock_dir=None,
+        source_models_dir=source_dir,
+        target_models_dir=target_dir,
+        symbols=["EURUSD"],
+        model_month="2026-02",
+        family="directional",
+    )
+
+    assert exit_code == 0
+    assert (target_dir / cbm.name).read_bytes() == b"directional-cbm"
+    assert not (target_dir / "EURUSD_oco_first_touch_model_2026-02.cbm").exists()

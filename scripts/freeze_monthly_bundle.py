@@ -158,38 +158,107 @@ def _pick_first_existing(*paths: Path) -> Path:
     return paths[0]
 
 
-def _default_paths(symbol: str, *, config_dir: Path, analysis_dir: Path) -> dict[str, Path]:
+def _wfo_dir_name(family: str) -> str:
+    return f"wfo_m3to1_{str(family).strip()}_fullcap"
+
+
+def _default_paths(
+    symbol: str, *, config_dir: Path, analysis_dir: Path, family: str = "oco_first_touch"
+) -> dict[str, Path]:
     s = str(symbol).upper().strip()
     sl = s.lower()
+    fam = str(family).strip()
+    oco_legacy = fam == "oco_first_touch"
     return {
         "wfo_config": _pick_first_existing(
-            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
-            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling.yaml",
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_{fam}.yaml",
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_{fam}_fullcap.yaml",
+            *(
+                [
+                    config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+                    config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling.yaml",
+                ]
+                if oco_legacy
+                else []
+            ),
         ),
         "reduced_config": _pick_first_existing(
-            config_dir / f"{sl}_oco_reduced_core.yaml",
-            config_dir / f"{sl}_oco_reduced_core_rolling.yaml",
+            config_dir / f"{sl}_{fam}_reduced_core_rolling.yaml",
+            config_dir / f"{sl}_{fam}_reduced_core.yaml",
+            *(
+                [
+                    config_dir / f"{sl}_oco_reduced_core_rolling.yaml",
+                    config_dir / f"{sl}_oco_reduced_core.yaml",
+                ]
+                if oco_legacy
+                else []
+            ),
         ),
         "state_schedule": _pick_first_existing(
-            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_state_schedule.csv",
-            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_state_schedule.csv",
+            analysis_dir / "reduced_core_rolling" / f"{s}_{fam}_reduced_state_schedule.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_reduced_state_schedule.csv",
+            *(
+                [
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_state_schedule.csv",
+                    analysis_dir
+                    / f"reduced_core_rolling_{sl}"
+                    / f"{s}_oco_reduced_state_schedule.csv",
+                ]
+                if oco_legacy
+                else []
+            ),
         ),
         "tick_exact_summary": _pick_first_existing(
-            analysis_dir / "reduced_core" / f"{s}_oco_tick_exact_summary.csv",
-            analysis_dir / "reduced_core_rolling" / f"{s}_oco_tick_exact_summary.csv",
-            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_tick_exact_summary.csv",
+            analysis_dir / "reduced_core" / f"{s}_{fam}_tick_exact_summary.csv",
+            analysis_dir / "reduced_core_rolling" / f"{s}_{fam}_tick_exact_summary.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_tick_exact_summary.csv",
+            *(
+                [
+                    analysis_dir / "reduced_core" / f"{s}_oco_tick_exact_summary.csv",
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_tick_exact_summary.csv",
+                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_tick_exact_summary.csv",
+                ]
+                if oco_legacy
+                else []
+            ),
         ),
         "reduced_summary": _pick_first_existing(
-            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_summary.csv",
-            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_summary.csv",
+            analysis_dir / "reduced_core_rolling" / f"{s}_{fam}_reduced_summary.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_reduced_summary.csv",
+            *(
+                [
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_summary.csv",
+                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_summary.csv",
+                ]
+                if oco_legacy
+                else []
+            ),
         ),
         "reduced_monthly": _pick_first_existing(
-            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_monthly.csv",
-            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_monthly.csv",
+            analysis_dir / "reduced_core_rolling" / f"{s}_{fam}_reduced_monthly.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_reduced_monthly.csv",
+            *(
+                [
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_monthly.csv",
+                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_monthly.csv",
+                ]
+                if oco_legacy
+                else []
+            ),
         ),
         "predictions": _pick_first_existing(
-            analysis_dir / "wfo_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
-            analysis_dir / f"wfo_m3to1_oco_fullcap_{sl}" / f"{s}_oco_monthly_predictions.parquet",
+            analysis_dir / _wfo_dir_name(fam) / f"{s}_{fam}_monthly_predictions.parquet",
+            analysis_dir / f"{_wfo_dir_name(fam)}_{sl}" / f"{s}_{fam}_monthly_predictions.parquet",
+            *(
+                [
+                    analysis_dir / "wfo_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
+                    analysis_dir
+                    / f"wfo_m3to1_oco_fullcap_{sl}"
+                    / f"{s}_oco_monthly_predictions.parquet",
+                ]
+                if oco_legacy
+                else []
+            ),
         ),
         "tick_fill_caps": _pick_first_existing(
             analysis_dir / "stop_limit_tickfill_fullcap" / f"{s}_stop_limit_tickfill_caps.csv",
@@ -198,17 +267,24 @@ def _default_paths(symbol: str, *, config_dir: Path, analysis_dir: Path) -> dict
     }
 
 
-def _model_month_pairs(symbol: str, *, models_dir: Path) -> dict[str, tuple[Path, Path]]:
+def _model_month_pairs(
+    symbol: str, *, models_dir: Path, family: str = "oco_first_touch"
+) -> dict[str, tuple[Path, Path]]:
     s = str(symbol).upper().strip()
+    fam = str(family).strip()
     out: dict[str, tuple[Path, Path]] = {}
-    for cbm in sorted(models_dir.glob(f"{s}_model_*.cbm")):
-        month = cbm.stem.split("_")[-1]
-        if not _MONTH_RE.match(month):
-            continue
-        thr = cbm.with_suffix(".json")
-        if not thr.exists():
-            continue
-        out[month] = (cbm, thr)
+    patterns = [f"{s}_{fam}_model_*.cbm"]
+    if fam == "oco_first_touch":
+        patterns.append(f"{s}_model_*.cbm")
+    for pattern in patterns:
+        for cbm in sorted(models_dir.glob(pattern)):
+            month = cbm.stem.split("_")[-1]
+            if not _MONTH_RE.match(month):
+                continue
+            thr = cbm.with_suffix(".json")
+            if not thr.exists():
+                continue
+            out.setdefault(month, (cbm, thr))
     return out
 
 
@@ -309,14 +385,25 @@ def _read_reduced_monthly_status(path: Path, symbol: str) -> dict[str, str]:
     return out
 
 
-def _canonical_candidate_uid(symbol: str, *, bar_ticks: int, horizon: int, state_id: str) -> str:
-    return f"oco|{str(symbol).upper().strip()}|{int(bar_ticks)}|h{int(horizon)}|{str(state_id).strip()}"
+def _library_for_family(family: str) -> str:
+    fam = str(family).strip()
+    return "oco" if fam in {"oco_first_touch", "oco_asymmetric", "double_touch"} else fam
+
+
+def _canonical_candidate_uid(
+    symbol: str, *, family: str, bar_ticks: int, horizon: int, state_id: str
+) -> str:
+    return (
+        f"{_library_for_family(family)}|{str(symbol).upper().strip()}|"
+        f"{int(bar_ticks)}|h{int(horizon)}|{str(state_id).strip()}"
+    )
 
 
 def _freeze_month_predictions(
     *,
     source_predictions: Path,
     symbol: str,
+    family: str,
     month: str,
     states: pd.DataFrame,
     out_path: Path,
@@ -327,6 +414,7 @@ def _freeze_month_predictions(
     allowed = {
         _canonical_candidate_uid(
             symbol,
+            family=family,
             bar_ticks=int(row["bar_ticks"]),
             horizon=int(row["horizon"]),
             state_id=str(row["state_id"]),
@@ -422,13 +510,13 @@ def run(
     index_rows: list[dict[str, Any]] = []
 
     for sym in symbols:
-        paths = _default_paths(sym, config_dir=config_dir, analysis_dir=analysis_dir)
+        paths = _default_paths(sym, config_dir=config_dir, analysis_dir=analysis_dir, family=family)
         for key, p in paths.items():
             if key == "reduced_monthly":
                 continue
             if not p.exists():
                 raise FileNotFoundError(p)
-        model_pairs = _model_month_pairs(sym, models_dir=models_dir)
+        model_pairs = _model_month_pairs(sym, models_dir=models_dir, family=family)
         state_schedule = pd.read_csv(paths["state_schedule"])
         sched_months = sorted(state_schedule["test_month"].dropna().astype(str).unique().tolist())
         reduced_month_status = _read_reduced_monthly_status(paths["reduced_monthly"], sym)
@@ -467,14 +555,17 @@ def run(
             non_deployable_reason = "" if historical_deployable else month_status
             month_dir = out_dir / month
             month_dir.mkdir(parents=True, exist_ok=True)
-            states_out = month_dir / f"{str(sym).lower()}_oco_allowed_states.csv"
+            states_out = month_dir / f"{str(sym).lower()}_{family}_allowed_states.csv"
             if historical_deployable:
                 states, states_sha = _state_universe_for_month(paths["state_schedule"], sym, month)
                 states.to_csv(states_out, index=False)
-                frozen_pred_out = month_dir / f"{str(sym).lower()}_oco_locked_predictions.parquet"
+                frozen_pred_out = (
+                    month_dir / f"{str(sym).lower()}_{family}_locked_predictions.parquet"
+                )
                 frozen_pred_path, frozen_pred_sha = _freeze_month_predictions(
                     source_predictions=paths["predictions"],
                     symbol=sym,
+                    family=family,
                     month=month,
                     states=states,
                     out_path=frozen_pred_out,
