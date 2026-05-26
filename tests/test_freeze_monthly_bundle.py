@@ -198,7 +198,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
     )
 
     month_dir = out_dir / "2026-02"
-    lock_path = month_dir / f"{sl}_oco_live_lock.json"
+    lock_path = month_dir / f"{sl}_oco_first_touch_live_lock.json"
     states_path = month_dir / f"{sl}_oco_allowed_states.csv"
     preds_path = month_dir / f"{sl}_oco_locked_predictions.parquet"
 

@@ -139,7 +139,7 @@ def load_runtime_events_frame(path: Path) -> pd.DataFrame:
 
 
 def load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
-    path = lock_dir / lock_filename(symbol)
+    path = lock_dir / lock_filename(symbol, "oco_first_touch")
     if not path.exists():
         return {"historical_deployable": True, "non_deployable_reason": ""}
     try:
@@ -155,7 +155,7 @@ def load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | 
 
 def load_state_universe_uids(lock_dir: Path, symbol: str) -> list[str]:
     """Extract canonical candidate_uids from the lock's state_universe."""
-    path = lock_dir / lock_filename(symbol)
+    path = lock_dir / lock_filename(symbol, "oco_first_touch")
     if not path.exists():
         return []
     try:

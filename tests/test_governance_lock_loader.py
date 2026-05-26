@@ -20,7 +20,7 @@ class FakeLiveSource(LockSource):
 def test_load_contract(tmp_path: Path) -> None:
     import hashlib
 
-    lock = tmp_path / "EURUSD_oco_live_lock.json"
+    lock = tmp_path / "EURUSD_oco_first_touch_live_lock.json"
 
     # Create model files
     models_dir = tmp_path / "models"
@@ -67,7 +67,7 @@ def _write_v3_lock(tmp_path: Path, locked_runtime: dict | None = None) -> Path:
     """Helper to create a v3 lock file with required model files."""
     import hashlib
 
-    lock = tmp_path / "EURUSD_oco_live_lock.json"
+    lock = tmp_path / "EURUSD_oco_first_touch_live_lock.json"
 
     # Create model files
     models_dir = tmp_path / "models"

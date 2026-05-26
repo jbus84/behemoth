@@ -79,7 +79,7 @@ def _to_num_set(vals: list[Any]) -> set[int]:
 
 
 def _lock_for_symbol(lock_dir: Path, symbol: str) -> Path:
-    return lock_dir / lock_filename(symbol)
+    return lock_dir / lock_filename(symbol, "oco_first_touch")
 
 
 def _reduced_states_for_symbol(base: Path, symbol: str) -> Path:

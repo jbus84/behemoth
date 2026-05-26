@@ -1,0 +1,28 @@
+symbol: USDJPY
+
+# Inputs from full-cap monthly WFO
+candidate_csv: data/analysis/tick_opportunity_mining/USDJPY_oco_candidates.csv
+pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet
+
+# Reduced-core policy
+family_keep: oco_first_touch
+barrier_keep: "2,3,5"
+horizon_keep: "5,6"
+locked_quantile: 0.9
+selection_mode: auto
+
+# State reduction and overlap control
+overlap_corr_max: 0.85
+max_states: 12
+min_states: 4
+min_state_avg_rows: 200
+min_positive_months: 8
+bootstrap_paths: 1200
+seed: 42
+
+# Portfolio gate for reduced core
+capacity_floor_monthly: 3000
+
+out_state_csv: data/analysis/tick_opportunity_mining/reduced_core/USDJPY_oco_reduced_states.csv
+out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core/USDJPY_oco_reduced_monthly_gate.csv
+report_out: docs/analysis/usdjpy_oco_reduced_core_selection_report.md

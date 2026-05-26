@@ -32,7 +32,7 @@ def test_compute_lock_fingerprint_is_stable_for_same_files(tmp_path: Path) -> No
         "symbol,state_id\nEURUSD,s1\n",
         encoding="utf-8",
     )
-    (governance_dir / "eurusd_oco_live_lock.json").write_text(
+    (governance_dir / "eurusd_oco_first_touch_live_lock.json").write_text(
         '{"symbol":"EURUSD"}\n',
         encoding="utf-8",
     )
@@ -110,7 +110,7 @@ def test_compare_runtime_context_blocks_live_sensitive_git_dirty() -> None:
 def test_load_promoted_model_month_reads_live_lock_artifacts(tmp_path: Path) -> None:
     governance_dir = tmp_path / "oco"
     governance_dir.mkdir()
-    (governance_dir / "eurusd_oco_live_lock.json").write_text(
+    (governance_dir / "eurusd_oco_first_touch_live_lock.json").write_text(
         json.dumps(
             {
                 "schema_version": 3,
@@ -130,7 +130,7 @@ def test_load_promoted_model_month_reads_live_lock_artifacts(tmp_path: Path) -> 
         + "\n",
         encoding="utf-8",
     )
-    (governance_dir / "audusd_oco_live_lock.json").write_text(
+    (governance_dir / "audusd_oco_first_touch_live_lock.json").write_text(
         json.dumps(
             {
                 "schema_version": 3,

@@ -50,7 +50,7 @@ def _make_valid_bundle(tmp_path: Path) -> Path:
         },
         "deployability": {"live_deployable": True, "model_month": "2026-04"},
     }
-    (bundle / "eurusd_oco_live_lock.json").write_text(json.dumps(lock, indent=2))
+    (bundle / "eurusd_oco_first_touch_live_lock.json").write_text(json.dumps(lock, indent=2))
     return bundle
 
 
@@ -86,7 +86,7 @@ def test_fails_when_sha_drifts(tmp_path: Path) -> None:
 
 def test_fails_for_v1_lock(tmp_path: Path) -> None:
     bundle = _make_valid_bundle(tmp_path)
-    lock_path = bundle / "eurusd_oco_live_lock.json"
+    lock_path = bundle / "eurusd_oco_first_touch_live_lock.json"
     data = json.loads(lock_path.read_text())
     data["schema_version"] = 1
     lock_path.write_text(json.dumps(data))
@@ -97,7 +97,7 @@ def test_fails_for_v1_lock(tmp_path: Path) -> None:
 
 def test_fails_when_family_missing(tmp_path: Path) -> None:
     bundle = _make_valid_bundle(tmp_path)
-    lock_path = bundle / "eurusd_oco_live_lock.json"
+    lock_path = bundle / "eurusd_oco_first_touch_live_lock.json"
     data = json.loads(lock_path.read_text())
     data["bundle"].pop("family", None)
     lock_path.write_text(json.dumps(data))
@@ -108,7 +108,7 @@ def test_fails_when_family_missing(tmp_path: Path) -> None:
 
 def test_fails_when_family_unknown(tmp_path: Path) -> None:
     bundle = _make_valid_bundle(tmp_path)
-    lock_path = bundle / "eurusd_oco_live_lock.json"
+    lock_path = bundle / "eurusd_oco_first_touch_live_lock.json"
     data = json.loads(lock_path.read_text())
     data["bundle"]["family"] = "not_a_real_family"
     lock_path.write_text(json.dumps(data))

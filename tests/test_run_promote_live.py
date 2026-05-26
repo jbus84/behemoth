@@ -48,7 +48,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     source_threshold_json = model_dir / "EURUSD_model_2026-02.json"
     source_model_cbm.write_text("cbm\n")
     source_threshold_json.write_text('{"threshold": 1.23}\n')
-    lock_path = build_bundle_dir / "eurusd_oco_live_lock.json"
+    lock_path = build_bundle_dir / "eurusd_oco_first_touch_live_lock.json"
     lock_path.write_text(
         json.dumps(
             {
@@ -116,7 +116,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     run_promote_live.main()
 
     assert verify_calls == ["data/analysis/backtest_reconcile:2026-02"]
-    promoted_lock = archive_dir / "2026-02" / "eurusd_oco_live_lock.json"
+    promoted_lock = archive_dir / "2026-02" / "eurusd_oco_first_touch_live_lock.json"
     promoted_data = json.loads(promoted_lock.read_text())
     # v3 locks are bundle-relative; paths should NOT be rewritten during promotion
     assert (
@@ -231,7 +231,7 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(monkeypatch, tmp_path
     active_dir = tmp_path / "configs/research/governance/oco"
     archive_dir.mkdir(parents=True)
     active_dir.mkdir(parents=True)
-    (active_dir / "audusd_oco_live_lock.json").write_text("stale\n", encoding="utf-8")
+    (active_dir / "audusd_oco_first_touch_live_lock.json").write_text("stale\n", encoding="utf-8")
 
     for symbol in ("EURUSD", "AUDUSD"):
         lower = symbol.lower()
@@ -243,7 +243,7 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(monkeypatch, tmp_path
         model_thr.write_text('{"threshold": 1.23}\n', encoding="utf-8")
         allowed_states = build_bundle_dir / f"{lower}_oco_allowed_states.csv"
         allowed_states.write_text("symbol,state_id\n", encoding="utf-8")
-        (build_bundle_dir / f"{lower}_oco_live_lock.json").write_text(
+        (build_bundle_dir / f"{lower}_oco_first_touch_live_lock.json").write_text(
             json.dumps(
                 {
                     "schema_version": 3,
@@ -343,8 +343,8 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(monkeypatch, tmp_path
     with pytest.raises(SystemExit, match=r"required GO symbols are not GO"):
         run_promote_live.main()
 
-    assert not (archive_dir / "2026-02" / "eurusd_oco_live_lock.json").exists()
-    assert (active_dir / "audusd_oco_live_lock.json").read_text(encoding="utf-8") == "stale\n"
+    assert not (archive_dir / "2026-02" / "eurusd_oco_first_touch_live_lock.json").exists()
+    assert (active_dir / "audusd_oco_first_touch_live_lock.json").read_text(encoding="utf-8") == "stale\n"
 
 
 def test_verify_cert_requires_dag_provenance_fields(tmp_path) -> None:

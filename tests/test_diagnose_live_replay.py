@@ -71,7 +71,7 @@ def test_load_states_reads_state_universe_rows(tmp_path: Path) -> None:
             ]
         }
     }
-    (governance_dir / "eurusd_oco_live_lock.json").write_text(json.dumps(lock), encoding="utf-8")
+    (governance_dir / "eurusd_oco_first_touch_live_lock.json").write_text(json.dumps(lock), encoding="utf-8")
 
     rows = _load_states("EURUSD", str(governance_dir))
 

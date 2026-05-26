@@ -287,7 +287,7 @@ def test_main_uses_lock_bundle_predictions_for_stage12(monkeypatch, tmp_path: Pa
         locked_predictions,
         index=False,
     )
-    (lock_dir / "eurusd_oco_live_lock.json").write_text(
+    (lock_dir / "eurusd_oco_first_touch_live_lock.json").write_text(
         json.dumps(
             {
                     "schema_version": 3,

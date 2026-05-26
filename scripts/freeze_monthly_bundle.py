@@ -378,7 +378,7 @@ def _prune_stale_symbol_month_files(
         if month_dir.name in keep:
             continue
         for fp in (
-            month_dir / f"{sym_l}_oco_live_lock.json",
+            month_dir / f"{sym_l}_oco_first_touch_live_lock.json",
             month_dir / f"{sym_l}_oco_allowed_states.csv",
             month_dir / f"{sym_l}_oco_locked_predictions.parquet",
         ):
@@ -609,7 +609,7 @@ def run(
                     "non_deployable_reason": non_deployable_reason,
                 },
             }
-            lock_out = month_dir / f"{str(sym).lower()}_oco_live_lock.json"
+            lock_out = month_dir / f"{str(sym).lower()}_oco_first_touch_live_lock.json"
             lock_out.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
             out_paths.extend([lock_out, states_out])

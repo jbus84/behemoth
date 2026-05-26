@@ -86,7 +86,7 @@ def _pick_int(row: pd.Series, candidates: tuple[str, ...]) -> int | None:
 
 
 def _load_lock_status(lock_dir: Path, symbol: str) -> dict[str, Any]:
-    path = lock_dir / lock_filename(symbol)
+    path = lock_dir / lock_filename(symbol, "oco_first_touch")
     if not path.exists():
         return {"historical_deployable": True, "non_deployable_reason": ""}
     try:

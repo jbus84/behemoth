@@ -229,7 +229,7 @@ def _build_bars_from_ticks(ticks: pl.DataFrame, *, bar_ticks: int) -> pl.DataFra
 
 
 def _load_states(symbol: str, governance_dir: str) -> list[dict]:
-    lock_path = Path(governance_dir) / lock_filename(symbol)
+    lock_path = Path(governance_dir) / lock_filename(symbol, "oco_first_touch")
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
     rows = lock.get("state_universe", {}).get("rows", [])
     if not isinstance(rows, list):

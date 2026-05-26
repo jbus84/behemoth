@@ -44,7 +44,7 @@ def _create_bundle_paths_for_test(tmp_dir: Path, symbol: str = "EURUSD", model_m
     json_sha = hashlib.sha256(json_file.read_bytes()).hexdigest()
     pred_sha = hashlib.sha256(pred_file.read_bytes()).hexdigest()
 
-    lock = tmp_dir / f"{symbol}_oco_live_lock.json"
+    lock = tmp_dir / f"{symbol}_oco_first_touch_live_lock.json"
     lock_data = {
         "schema_version": 3,
         "symbol": symbol,
@@ -103,7 +103,7 @@ def test_candidate_catalog_resolves_historical_fallback_month() -> None:
         historical._entries[("EURUSD", "2026-03")] = HistoricalLockEntry(
             symbol="EURUSD",
             month="2026-03",
-            lock_path="locks/2026-03/EURUSD_oco_live_lock.json",
+            lock_path="locks/2026-03/EURUSD_oco_first_touch_live_lock.json",
             candidates=[_candidate()],
             cap_pips=1.2,
             bundle_paths=bundle_paths,
@@ -120,7 +120,7 @@ def test_candidate_catalog_resolves_historical_fallback_month() -> None:
 
         assert contract.source == "historical"
         assert contract.cache_key == "EURUSD|2026-03"
-        assert contract.lock_path == "locks/2026-03/EURUSD_oco_live_lock.json"
+        assert contract.lock_path == "locks/2026-03/EURUSD_oco_first_touch_live_lock.json"
         assert catalog.active_bar_ticks("EURUSD") == [100]
 
 

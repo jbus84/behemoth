@@ -16,7 +16,7 @@ def _write_v3_lock_with_predictions(tmp_path: Path, predictions_path: Path | str
     """Helper to create a v3 lock file with predictions artifact."""
     import hashlib
 
-    lock = tmp_path / "EURUSD_oco_live_lock.json"
+    lock = tmp_path / "EURUSD_oco_first_touch_live_lock.json"
     models_dir = tmp_path / "models"
     models_dir.mkdir(exist_ok=True)
 

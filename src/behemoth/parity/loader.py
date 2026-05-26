@@ -42,7 +42,7 @@ def load_runtime_events(
 
 
 def load_governance_lock(*, governance_lock_dir: Path, symbol: str) -> dict:
-    lock = governance_lock_dir / lock_filename(symbol)
+    lock = governance_lock_dir / lock_filename(symbol, "oco_first_touch")
     if not lock.exists():
         return {}
     return json.loads(lock.read_text())

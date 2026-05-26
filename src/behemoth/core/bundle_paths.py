@@ -167,9 +167,14 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def lock_filename(symbol: str) -> str:
-    """Canonical lock filename for a symbol."""
-    return f"{symbol.lower()}_oco_live_lock.json"
+def lock_filename(symbol: str, family: str) -> str:
+    """Canonical lock filename for a (symbol, family) pair.
+
+    Every governance lock lives at `<bundle_dir>/<lock_filename(symbol, family)>`.
+    Adding a new mining family means registering it in BUNDLE_LAYOUTS and using
+    its key as the `family` argument here.
+    """
+    return f"{symbol.lower()}_{family}_live_lock.json"
 
 
 def iter_locks(bundle_dir: Path, family: str | None = None) -> Iterator[Path]:

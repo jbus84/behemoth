@@ -76,7 +76,7 @@ def _default_paths(symbol: str) -> SymbolPaths:
         f"data/analysis/tick_opportunity_mining/{folder}/{s}_oco_monthly_predictions.parquet"
     )
 
-    lock = Path("configs/research/governance/oco") / lock_filename(s_low)
+    lock = Path("configs/research/governance/oco") / lock_filename(s_low, "oco_first_touch")
     return SymbolPaths(symbol=s, pred_path=pred, lock_path=lock)
 
 

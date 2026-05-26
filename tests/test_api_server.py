@@ -146,7 +146,7 @@ class TestBundlePathsThresholdOverrides:
             },
             "deployability": {"live_deployable": True, "model_month": "2026-03"},
         }
-        lock_path = bundle_dir / "gbpusd_oco_live_lock.json"
+        lock_path = bundle_dir / "gbpusd_oco_first_touch_live_lock.json"
         lock_path.write_text(json.dumps(lock))
 
         bp = BundlePaths.from_lock(lock_path)

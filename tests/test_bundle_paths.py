@@ -59,7 +59,7 @@ def _write_v3_bundle(
         },
         "deployability": {"live_deployable": True, "model_month": "2026-04"},
     }
-    lock_path = bundle_dir / f"{symbol.lower()}_oco_live_lock.json"
+    lock_path = bundle_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json"
     lock_path.write_text(json.dumps(lock, indent=2))
     return lock_path
 
@@ -104,7 +104,7 @@ def _write_v3_bundle_at(
         },
         "deployability": {"live_deployable": True, "model_month": "2026-04"},
     }
-    lock_path = bundle_dir / f"{symbol.lower()}_oco_live_lock.json"
+    lock_path = bundle_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json"
     lock_path.write_text(json.dumps(lock, indent=2))
     return lock_path
 
@@ -281,8 +281,8 @@ def test_iter_locks_yields_all_live_locks(tmp_path: Path) -> None:
 
     bundle = tmp_path / "2026-04"
     bundle.mkdir()
-    a = bundle / "eurusd_oco_live_lock.json"
-    b = bundle / "gbpusd_oco_live_lock.json"
+    a = bundle / "eurusd_oco_first_touch_live_lock.json"
+    b = bundle / "gbpusd_oco_first_touch_live_lock.json"
     a.write_text("{}")
     b.write_text("{}")
     (bundle / "not_a_lock.json").write_text("{}")
@@ -328,7 +328,7 @@ def test_iter_locks_skips_invalid_locks_with_warning(tmp_path: Path, caplog) -> 
     bundle = tmp_path / "2026-04"
     bundle.mkdir()
     good = _write_v3_bundle_at(bundle, symbol="EURUSD", family="oco_first_touch_clean")
-    bad = bundle / "broken_oco_live_lock.json"
+    bad = bundle / "broken_oco_first_touch_live_lock.json"
     bad.write_text("{not json")
 
     assert good in iter_locks(bundle)
@@ -344,5 +344,16 @@ def test_iter_locks_skips_invalid_locks_with_warning(tmp_path: Path, caplog) -> 
 def test_lock_filename_returns_canonical_form() -> None:
     from src.behemoth.core.bundle_paths import lock_filename
 
-    assert lock_filename("EURUSD") == "eurusd_oco_live_lock.json"
-    assert lock_filename("eurusd") == "eurusd_oco_live_lock.json"
+    assert lock_filename("EURUSD", "oco_first_touch") == "eurusd_oco_first_touch_live_lock.json"
+    assert lock_filename("eurusd", "oco_first_touch") == "eurusd_oco_first_touch_live_lock.json"
+
+
+def test_lock_filename_requires_family() -> None:
+    """lock_filename takes (symbol, family); passing one arg is a TypeError."""
+    from src.behemoth.core.bundle_paths import lock_filename
+
+    assert lock_filename("EURUSD", "directional") == "eurusd_directional_live_lock.json"
+    assert lock_filename("eurusd", "oco_first_touch") == "eurusd_oco_first_touch_live_lock.json"
+
+    with pytest.raises(TypeError):
+        lock_filename("EURUSD")  # type: ignore[call-arg]

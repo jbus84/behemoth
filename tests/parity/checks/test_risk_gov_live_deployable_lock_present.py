@@ -25,7 +25,7 @@ def _write_lock(history_dir: Path, month: str, symbol: str, *, live_deployable: 
         },
         "artifacts": {},
     }
-    (month_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(json.dumps(payload))
+    (month_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json").write_text(json.dumps(payload))
 
 
 def test_passes_when_deployable_lock_present(tmp_path: Path) -> None:

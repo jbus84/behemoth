@@ -286,7 +286,7 @@ def _read_live_deployment_verdict(
     or because the lock file is missing/unreadable. ``reason`` carries a
     human-readable summary suitable for inclusion in a deviation finding.
     """
-    lock_path = Path(governance_dir) / lock_filename(symbol_upper)
+    lock_path = Path(governance_dir) / lock_filename(symbol_upper, "oco_first_touch")
     try:
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -379,7 +379,7 @@ def score_governance_predictions_for_window(
             layer="governance_predictions",
             finding_id="missing_governance_states",
             reason=f"governance states unavailable: {exc}",
-            source_path=governance_dir / lock_filename(symbol_upper),
+            source_path=governance_dir / lock_filename(symbol_upper, "oco_first_touch"),
         )
         return _empty_governance_predictions()
 
@@ -444,7 +444,7 @@ def score_governance_predictions_for_window(
                 finding_id="governance_state_scoring_failed",
                 reason=f"governance state scoring failed: {exc}",
                 source_path=governance_dir
-                / lock_filename(symbol_upper),
+                / lock_filename(symbol_upper, "oco_first_touch"),
             )
             continue
         if not scored.is_empty():

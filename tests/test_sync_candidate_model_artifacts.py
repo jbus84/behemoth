@@ -35,7 +35,7 @@ def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -
             "live_deployable": True,
         },
     }
-    (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
+    (lock_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json").write_text(
         json.dumps(payload),
         encoding="utf-8",
     )
@@ -201,7 +201,7 @@ def test_run_reports_malformed_lock_and_continues(tmp_path: Path, capsys) -> Non
     cbm.write_bytes(b"eur")
     thr.write_text('{"threshold": 0.5}', encoding="utf-8")
     _write_lock(lock_dir, "EURUSD", "2026-02", cbm, thr)
-    (lock_dir / "gbpusd_oco_live_lock.json").write_text("{bad json", encoding="utf-8")
+    (lock_dir / "gbpusd_oco_first_touch_live_lock.json").write_text("{bad json", encoding="utf-8")
 
     exit_code = run(
         lock_dir=lock_dir,
@@ -236,7 +236,7 @@ def test_run_reports_structurally_malformed_lock_and_cleans_stale_targets(
     cbm.write_bytes(b"eur")
     thr.write_text('{"threshold": 0.5}', encoding="utf-8")
     _write_lock(lock_dir, "EURUSD", "2026-02", cbm, thr)
-    (lock_dir / "gbpusd_oco_live_lock.json").write_text(
+    (lock_dir / "gbpusd_oco_first_touch_live_lock.json").write_text(
         json.dumps({"symbol": "GBPUSD", "artifacts": ["bad"]}),
         encoding="utf-8",
     )
@@ -279,7 +279,7 @@ def test_run_removes_stale_target_files_when_expected_hash_missing(
     thr = source_dir / "EURUSD_model_2026-02.json"
     cbm.write_bytes(b"eur")
     thr.write_text('{"threshold": 0.5}', encoding="utf-8")
-    (lock_dir / "eurusd_oco_live_lock.json").write_text(
+    (lock_dir / "eurusd_oco_first_touch_live_lock.json").write_text(
         json.dumps(
             {
                 "schema_version": 3,
@@ -339,7 +339,7 @@ def test_run_reports_non_object_top_level_lock_payload_and_continues(
     cbm.write_bytes(b"eur")
     thr.write_text('{"threshold": 0.5}', encoding="utf-8")
     _write_lock(lock_dir, "EURUSD", "2026-02", cbm, thr)
-    (lock_dir / "gbpusd_oco_live_lock.json").write_text("[]", encoding="utf-8")
+    (lock_dir / "gbpusd_oco_first_touch_live_lock.json").write_text("[]", encoding="utf-8")
 
     exit_code = run(
         lock_dir=lock_dir,

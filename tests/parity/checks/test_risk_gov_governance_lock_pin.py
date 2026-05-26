@@ -26,7 +26,7 @@ def test_matching_month_passes(parity_ctx_factory):
     ctx = parity_ctx_factory(model_month="2026-04")
     for symbol in _SYMBOLS:
         _write_lock(
-            ctx.governance_lock_dir / f"{symbol.lower()}_oco_live_lock.json",
+            ctx.governance_lock_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json",
             "2026-04", f"hash-{symbol.lower()}",
         )
 
@@ -38,7 +38,7 @@ def test_bundle_schema_month_passes(parity_ctx_factory):
     ctx = parity_ctx_factory(model_month="2026-04")
     for symbol in _SYMBOLS:
         _write_bundle_lock(
-            ctx.governance_lock_dir / f"{symbol.lower()}_oco_live_lock.json",
+            ctx.governance_lock_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json",
             "2026-04",
         )
 
@@ -50,11 +50,11 @@ def test_mismatched_month_fails(parity_ctx_factory):
     ctx = parity_ctx_factory(model_month="2026-04")
     for symbol in _SYMBOLS:
         _write_lock(
-            ctx.governance_lock_dir / f"{symbol.lower()}_oco_live_lock.json",
+            ctx.governance_lock_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json",
             "2026-04", f"hash-{symbol.lower()}",
         )
     _write_lock(
-        ctx.governance_lock_dir / "audusd_oco_live_lock.json",
+        ctx.governance_lock_dir / "audusd_oco_first_touch_live_lock.json",
         "2026-03", "abc",
     )
 

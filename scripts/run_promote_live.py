@@ -316,7 +316,7 @@ def _update_active_governance(model_month: str, go_symbols: list[str]) -> None:
 
     for symbol in go_symbols:
         lower = symbol.lower()
-        source_lock = source_dir / lock_filename(symbol)
+        source_lock = source_dir / lock_filename(symbol, "oco_first_touch")
         if not source_lock.exists():
             raise SystemExit(
                 f"[promote-live] missing archived lock for GO symbol {symbol}: {source_lock}"

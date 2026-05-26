@@ -49,7 +49,7 @@ def _write_symbol_lock(
         "locked_runtime": {"production_cap_pips": 1.2},
         "state_universe": {"rows": state_rows},
     }
-    (lock_dir / f"{sym}_oco_live_lock.json").write_text(json.dumps(lock))
+    (lock_dir / f"{sym}_oco_first_touch_live_lock.json").write_text(json.dumps(lock))
 
 
 @pytest.fixture
@@ -154,7 +154,7 @@ class TestRegistryLoading:
                 ]
             },
         }
-        (lock_dir / "EURUSD_oco_live_lock.json").write_text(json.dumps(lock))
+        (lock_dir / "EURUSD_oco_first_touch_live_lock.json").write_text(json.dumps(lock))
 
         reg = CandidateRegistry.load(lock_dir)
 

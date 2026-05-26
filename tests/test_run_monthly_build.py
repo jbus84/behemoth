@@ -39,7 +39,7 @@ def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -
             },
         },
     }
-    (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
+    (lock_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json").write_text(
         json.dumps(payload),
         encoding="utf-8",
     )
@@ -208,7 +208,7 @@ def test_materialize_bundle_models_validates_v2_bundle(monkeypatch, tmp_path) ->
         },
         "deployability": {"live_deployable": True},
     }
-    manifest_path = bundle_dir / "eurusd_oco_live_lock.json"
+    manifest_path = bundle_dir / "eurusd_oco_first_touch_live_lock.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     run_monthly_build._materialize_bundle_models(bundle_dir)
@@ -230,7 +230,7 @@ def test_materialize_bundle_models_raises_on_invalid_bundle(monkeypatch, tmp_pat
         "artifacts": {},
         "deployability": {"live_deployable": True},
     }
-    manifest_path = bundle_dir / "eurusd_oco_live_lock.json"
+    manifest_path = bundle_dir / "eurusd_oco_first_touch_live_lock.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     with pytest.raises(SystemExit, match=r"bundle failed validation"):

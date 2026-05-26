@@ -72,7 +72,7 @@ def test_rule_universe_registry_pass(tmp_path: Path) -> None:
     (mining_base / "reduced_core").mkdir(parents=True, exist_ok=True)
 
     _write_registry(registry, allowed_barrier_keep=[2, 3])
-    _write_lock(lock_dir / "eurusd_oco_live_lock.json")
+    _write_lock(lock_dir / "eurusd_oco_first_touch_live_lock.json")
     _write_reduced_states(mining_base / "reduced_core" / "EURUSD_oco_reduced_states.csv")
 
     checks, issues = run(
@@ -98,7 +98,7 @@ def test_rule_universe_registry_flags_lock_mismatch(tmp_path: Path) -> None:
     (mining_base / "reduced_core").mkdir(parents=True, exist_ok=True)
 
     _write_registry(registry, allowed_barrier_keep=[2])
-    _write_lock(lock_dir / "eurusd_oco_live_lock.json")
+    _write_lock(lock_dir / "eurusd_oco_first_touch_live_lock.json")
     _write_reduced_states(mining_base / "reduced_core" / "EURUSD_oco_reduced_states.csv")
 
     checks, _issues = run(

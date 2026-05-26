@@ -172,7 +172,7 @@ def test_main_requires_existing_month_bundle(monkeypatch, tmp_path) -> None:
 def test_main_rejects_incomplete_month_bundle(monkeypatch, tmp_path) -> None:
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     build_bundle_dir.mkdir(parents=True)
-    (build_bundle_dir / "eurusd_oco_live_lock.json").write_text("{}\n")
+    (build_bundle_dir / "eurusd_oco_first_touch_live_lock.json").write_text("{}\n")
 
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
@@ -315,7 +315,7 @@ def _write_bundle_fixture(build_bundle_dir) -> None:
         thr_path = model_dir / f"{symbol}_model_2026-02.json"
         cbm_path.write_text("cbm\n")
         thr_path.write_text('{"threshold": 1.23}\n')
-        lock_path = build_bundle_dir / f"{lower}_oco_live_lock.json"
+        lock_path = build_bundle_dir / f"{lower}_oco_first_touch_live_lock.json"
         predictions_path = build_bundle_dir / f"{lower}_oco_locked_predictions.parquet"
         states_path = build_bundle_dir / f"{lower}_oco_allowed_states.csv"
         predictions_path.write_text("prediction fixture\n")

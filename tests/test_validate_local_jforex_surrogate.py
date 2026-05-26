@@ -35,7 +35,7 @@ def _write_lock(
         },
         "artifacts": {},
     }
-    (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
+    (lock_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json").write_text(
         json.dumps(payload),
         encoding="utf-8",
     )
