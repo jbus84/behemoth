@@ -39,7 +39,7 @@ def _write_symbol_lock(
         "bundle": {
             "month": model_suffix,
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "model_cbm": {"path": f"models/{cbm.name}", "sha256": _sha256(cbm)},
@@ -127,7 +127,7 @@ class TestRegistryLoading:
             "bundle": {
                 "month": "2026-02",
                 "dir_relpath": ".",
-                "family": "oco_first_touch_clean",
+                "family": "oco_first_touch",
             },
             "artifacts": {
                 "model_cbm": {"path": "models/EURUSD_model_2026-02.cbm", "sha256": _sha256(model_cbm)},

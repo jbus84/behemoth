@@ -136,7 +136,7 @@ class TestBundlePathsThresholdOverrides:
             "bundle": {
                 "month": "2026-03",
                 "dir_relpath": str(bundle_dir),
-                "family": "oco_first_touch_clean",
+                "family": "oco_first_touch",
             },
             "artifacts": {
                 "predictions":          {"path": "gbpusd_oco_locked_predictions.parquet", "sha256": _sha(b"p")},

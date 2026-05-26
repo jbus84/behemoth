@@ -45,7 +45,7 @@ def _write_lock(
         "bundle": {
             "month": month,
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": artifacts,
         "deployability": {"live_deployable": True, "model_month": model_month or month},

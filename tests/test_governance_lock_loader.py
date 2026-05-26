@@ -41,7 +41,7 @@ def test_load_contract(tmp_path: Path) -> None:
         "bundle": {
             "month": "2026-01",
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "model_cbm": {"path": "models/EURUSD_model_2026-01.cbm", "sha256": cbm_sha},
@@ -87,7 +87,7 @@ def _write_v3_lock(tmp_path: Path, locked_runtime: dict | None = None) -> Path:
         "bundle": {
             "month": "2026-01",
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "model_cbm": {"path": "models/EURUSD_model_2026-01.cbm", "sha256": cbm_sha},

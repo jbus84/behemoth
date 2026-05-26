@@ -17,7 +17,7 @@ def _write_lock(history_dir: Path, month: str, symbol: str, *, live_deployable: 
         "bundle": {
             "month": month,
             "dir_relpath": str(month_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "deployability": {
             "model_month": month,

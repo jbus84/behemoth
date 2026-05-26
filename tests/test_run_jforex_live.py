@@ -62,7 +62,7 @@ def _write_live_lock(governance_dir: Path, symbol: str, *, model_month: str, liv
         "bundle": {
             "month": model_month,
             "dir_relpath": str(governance_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "deployability": {
             "live_deployable": live_deployable,
@@ -337,7 +337,7 @@ def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted
         "bundle": {
             "month": "2026-03",
             "dir_relpath": str(governance_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "model_cbm": {

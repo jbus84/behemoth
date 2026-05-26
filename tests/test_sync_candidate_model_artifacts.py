@@ -18,7 +18,7 @@ def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -
         "bundle": {
             "month": month,
             "dir_relpath": str(lock_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "model_cbm": {
@@ -287,7 +287,7 @@ def test_run_removes_stale_target_files_when_expected_hash_missing(
                 "bundle": {
                     "month": "2026-02",
                     "dir_relpath": str(lock_dir),
-                    "family": "oco_first_touch_clean",
+                    "family": "oco_first_touch",
                 },
                 "artifacts": {
                     "model_cbm": {

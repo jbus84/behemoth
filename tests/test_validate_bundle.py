@@ -31,7 +31,7 @@ def _make_valid_bundle(tmp_path: Path) -> Path:
         "bundle": {
             "month": "2026-04",
             "dir_relpath": str(bundle),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "predictions": {

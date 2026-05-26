@@ -1071,7 +1071,7 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
         "bundle": {
             "month": "2026-02",
             "dir_relpath": str(lock_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "deployability": {
             "model_month": "2026-02",

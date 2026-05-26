@@ -96,7 +96,7 @@ def test_live_freeze_emits_schema_v3_with_family_and_bundle_relative_paths(tmp_p
     )
 
     assert manifest["schema_version"] == 3
-    assert manifest["bundle"]["family"] == "oco_first_touch_clean"
+    assert manifest["bundle"]["family"] == "oco_first_touch"
     assert "artifacts" in manifest
     for key, entry in manifest["artifacts"].items():
         if isinstance(entry, dict) and "path" in entry:

@@ -21,7 +21,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
         bundle_dir=lock_path.parent,
         symbol=symbol,
         model_month=month,
-        family="oco_first_touch_clean",
+        family="oco_first_touch",
         _artifacts={},
         _deployability={"live_deployable": True, "model_month": month},
     )
@@ -270,7 +270,7 @@ def _mk_contract(symbol: str = "EURUSD", month: str = "2025-07") -> server._Reso
         bundle_dir=lock_path.parent,
         symbol=symbol,
         model_month=month,
-        family="oco_first_touch_clean",
+        family="oco_first_touch",
         _artifacts={},
         _deployability={"live_deployable": True, "model_month": month},
     )

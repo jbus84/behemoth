@@ -328,7 +328,7 @@ def _write_bundle_fixture(build_bundle_dir) -> None:
                     "bundle": {
                         "month": "2026-02",
                         "dir_relpath": str(build_bundle_dir),
-                        "family": "oco_first_touch_clean",
+                        "family": "oco_first_touch",
                     },
                     "artifacts": {
                         "predictions": {

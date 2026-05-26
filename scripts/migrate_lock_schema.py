@@ -154,7 +154,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundle_dir", type=Path)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument("--family", default="oco_first_touch_clean")
+    parser.add_argument("--family", default="oco_first_touch")
     args = parser.parse_args()
     bundle_dir: Path = args.bundle_dir.resolve()
     repo_root: Path = args.repo_root.resolve()

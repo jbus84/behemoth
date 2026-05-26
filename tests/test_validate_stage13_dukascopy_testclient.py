@@ -21,7 +21,7 @@ def _write_lock(path: Path, *, symbol: str, deployable: bool, reason: str = "") 
                 "schema_version": 3,
                 "symbol": symbol,
                 "bundle": {
-                    "family": "oco_first_touch_clean",
+                    "family": "oco_first_touch",
                 },
                 "deployability": {
                     "live_deployable": deployable,

@@ -23,7 +23,7 @@ def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -
         "bundle": {
             "month": month,
             "dir_relpath": str(lock_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "deployability": {
             "model_month": month,
@@ -186,7 +186,7 @@ def test_materialize_bundle_models_validates_v2_bundle(monkeypatch, tmp_path) ->
         "bundle": {
             "month": "2026-02",
             "dir_relpath": str(bundle_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "predictions": {
@@ -225,7 +225,7 @@ def test_materialize_bundle_models_raises_on_invalid_bundle(monkeypatch, tmp_pat
         "bundle": {
             "month": "2026-02",
             "dir_relpath": str(bundle_dir),
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {},
         "deployability": {"live_deployable": True},

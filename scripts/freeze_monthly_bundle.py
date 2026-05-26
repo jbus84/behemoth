@@ -403,7 +403,7 @@ def run(
     anchor_day_utc: int,
     window_days: int,
     allow_dirty: bool,
-    family: str = "oco_first_touch_clean",
+    family: str = "oco_first_touch",
 ) -> tuple[list[Path], pd.DataFrame]:
     out_dir.mkdir(parents=True, exist_ok=True)
     git_snapshot = _git_info()
@@ -667,7 +667,7 @@ def main() -> None:
     p.add_argument("--models-dir", default="models/oco")
     p.add_argument("--config-dir", default="configs/research/experiments")
     p.add_argument("--analysis-dir", default="data/analysis/tick_opportunity_mining")
-    p.add_argument("--family", default="oco_first_touch_clean")
+    p.add_argument("--family", default="oco_first_touch")
     p.add_argument("--months", default="", help="Optional explicit YYYY-MM list (comma-separated)")
     p.add_argument("--start-month", default="", help="Optional lower bound month YYYY-MM")
     p.add_argument("--end-month", default="", help="Optional upper bound month YYYY-MM")

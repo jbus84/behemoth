@@ -57,7 +57,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
                 "bundle": {
                     "month": "2026-02",
                     "dir_relpath": str(build_bundle_dir),
-                    "family": "oco_first_touch_clean",
+                    "family": "oco_first_touch",
                 },
                 "artifacts": {
                     "predictions": {
@@ -251,7 +251,7 @@ def test_promote_live_blocks_when_required_symbol_is_no_go(monkeypatch, tmp_path
                     "bundle": {
                         "month": "2026-02",
                         "dir_relpath": str(build_bundle_dir),
-                        "family": "oco_first_touch_clean",
+                        "family": "oco_first_touch",
                     },
                     "artifacts": {
                         "model_cbm": {

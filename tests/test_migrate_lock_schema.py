@@ -114,7 +114,7 @@ def test_migration_produces_v3_lock(tmp_path: Path) -> None:
 
     data = json.loads((bundle / "eurusd_oco_live_lock.json").read_text())
     assert data["schema_version"] == 3
-    assert data["bundle"]["family"] == "oco_first_touch_clean"
+    assert data["bundle"]["family"] == "oco_first_touch"
     assert "artifacts" in data
     for legacy_key in (
         "model_cbm_path",
@@ -200,7 +200,7 @@ def test_v2_migration_to_v3_is_idempotent(tmp_path: Path) -> None:
     assert first.returncode == 0, first.stderr
     data = json.loads(lock.read_text(encoding="utf-8"))
     assert data["schema_version"] == 3
-    assert data["bundle"]["family"] == "oco_first_touch_clean"
+    assert data["bundle"]["family"] == "oco_first_touch"
 
     before = lock.read_text(encoding="utf-8")
     second = _run(bundle, tmp_path)

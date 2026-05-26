@@ -211,7 +211,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
         (models_dir / f"{symbol}_model_2026-02.json").read_text(encoding="utf-8")
     )
     assert lock["schema_version"] == 3
-    assert lock["bundle"]["family"] == "oco_first_touch_clean"
+    assert lock["bundle"]["family"] == "oco_first_touch"
     assert lock["historical_backtest"]["deployable"] is False
     assert lock["historical_backtest"]["non_deployable_reason"] == "no_gate_states"
     assert lock["state_universe"]["count"] == 0

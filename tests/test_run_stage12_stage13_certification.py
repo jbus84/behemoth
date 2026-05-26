@@ -295,7 +295,7 @@ def test_main_uses_lock_bundle_predictions_for_stage12(monkeypatch, tmp_path: Pa
                     "bundle": {
                         "month": "2026-02",
                         "dir_relpath": str(lock_dir),
-                        "family": "oco_first_touch_clean",
+                        "family": "oco_first_touch",
                     },
                 "artifacts": {
                     "predictions": {

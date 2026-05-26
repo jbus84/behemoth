@@ -51,7 +51,7 @@ def _create_bundle_paths_for_test(tmp_dir: Path, symbol: str = "EURUSD", model_m
         "bundle": {
             "month": model_month,
             "dir_relpath": ".",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
         },
         "artifacts": {
             "predictions": {"path": "predictions.parquet", "sha256": pred_sha},

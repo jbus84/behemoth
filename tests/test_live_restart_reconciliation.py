@@ -118,7 +118,7 @@ def test_load_promoted_model_month_reads_live_lock_artifacts(tmp_path: Path) -> 
                 "bundle": {
                     "month": "2026-03",
                     "dir_relpath": str(governance_dir),
-                    "family": "oco_first_touch_clean",
+                    "family": "oco_first_touch",
                 },
                 "deployability": {
                     "live_deployable": True,
@@ -138,7 +138,7 @@ def test_load_promoted_model_month_reads_live_lock_artifacts(tmp_path: Path) -> 
                 "bundle": {
                     "month": "2026-04",
                     "dir_relpath": str(governance_dir),
-                    "family": "oco_first_touch_clean",
+                    "family": "oco_first_touch",
                 },
                 "deployability": {
                     "live_deployable": False,
