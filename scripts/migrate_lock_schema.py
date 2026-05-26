@@ -1,4 +1,3 @@
-# scripts/migrate_lock_to_v2.py
 """One-shot migration: rewrite every *_oco_live_lock.json in a bundle to schema_version=3.
 
 - Bundle-relative paths only.

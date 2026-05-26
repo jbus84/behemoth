@@ -1,4 +1,3 @@
-# tests/test_migrate_lock_to_v2.py
 from __future__ import annotations
 
 import hashlib
