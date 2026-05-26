@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field, model_validator
 from src.behemoth.api.cache_manager import CacheManager
 from src.behemoth.api.dashboard import router as dashboard_router
 from src.behemoth.api.predict_orchestrator import PredictionOrchestrator
-from src.behemoth.core.bundle_paths import BundlePaths
+from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths
 from src.behemoth.core.candidate_catalog import CandidateCatalog, CatalogContext
 from src.behemoth.core.features import (
     FeatureConfig,
@@ -834,6 +834,17 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logger.warning(
             "Governance lock source not found — using empty registry and default 100-tick aggregator"
         )
+    except BundleIntegrityError as exc:
+        _registry = None
+        _historical_registry = None
+        _historical_entries_loaded = 0
+        _historical_preflight_failed_checks = 0
+        _historical_preflight_summary = ""
+        _aggregators = {100: TickAggregator(bar_ticks=100)}
+        logger.warning(
+            "Governance bundle integrity issue — using empty registry and default 100-tick aggregator: %s",
+            exc,
+        )
     _models_dir = Path(_config.models_dir)
     _load_models()
     _load_seed_files()
@@ -908,9 +919,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         await position_summary_task
 
     _barrier_manager = None
-    if _state:
+    if _state and hasattr(_state, "close"):
         _state.close()
-        _state = None
+    _state = None
 
 
 async def _monitor_ledger() -> None:
@@ -1048,19 +1059,23 @@ def _load_models() -> None:
         return
 
     for sym in _config.symbols:
-        bundle_paths = _registry.get_bundle_paths(sym)
-        if not bundle_paths:
-            logger.error("No governance bundle paths for %s — skipping model load.", sym)
+        try:
+            bundle_paths = _registry.get_bundle_paths(sym)
+            if not bundle_paths:
+                logger.error("No governance bundle paths for %s — skipping model load.", sym)
+                continue
+            cache_key = _cache_key(sym)
+            _model_registry.load_bundle_paths(
+                symbol=sym,
+                bundle_paths=bundle_paths,
+                cache_key=cache_key,
+                locked_runtime_overrides={},
+                expected_month=bundle_paths.model_month or None,
+                catboost_cls=_catboost_cls(),
+            )
+        except BundleIntegrityError as exc:
+            logger.error("Bundle integrity error for %s — skipping model load: %s", sym, exc)
             continue
-        cache_key = _cache_key(sym)
-        _model_registry.load_bundle_paths(
-            symbol=sym,
-            bundle_paths=bundle_paths,
-            cache_key=cache_key,
-            locked_runtime_overrides={},
-            expected_month=bundle_paths.model_month or None,
-            catboost_cls=_catboost_cls(),
-        )
 
 def _load_seed_files(seed_dir: Path | None = None) -> None:
     """Load pre-computed threshold seed parquets into audit_logs."""
