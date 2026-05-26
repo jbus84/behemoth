@@ -1,0 +1,23 @@
+symbol: USDCHF
+candidate_csv: data/analysis/tick_opportunity_mining/USDCHF_double_touch_candidates.csv
+pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_double_touch_fullcap/USDCHF_double_touch_monthly_predictions.parquet
+
+family_keep: double_touch
+horizon_keep: "5,6"
+locked_quantile: 0.9
+
+state_train_months: 2
+min_train_months: 1
+min_state_avg_rows: 20
+min_positive_months_train: 1
+require_lb95_trade_gt0: true
+bootstrap_paths: 1000
+seed: 42
+
+capacity_floor_monthly: 200
+capacity_floor_annual: 500
+
+out_state_schedule_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_double_touch_reduced_state_schedule.csv
+out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_double_touch_reduced_monthly.csv
+out_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_double_touch_reduced_summary.csv
+report_out: docs/analysis/usdchf_double_touch_reduced_core_rolling_report.md
