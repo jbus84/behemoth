@@ -226,6 +226,12 @@ def test_recompute_first_touch_uses_ask_side_for_buy_touch_and_sell_exit() -> No
     assert sell["expected_gross_pips"][0] == pytest.approx(-3.0, abs=1e-9)
 
 
+def test_family_required_directional_is_accepted() -> None:
+    from scripts.verify_tick_exact_shortlist import _normalise_family_required
+
+    assert _normalise_family_required("directional") == "directional"
+
+
 def test_recompute_first_touch_matches_oco_precompute_from_touch_contract() -> None:
     rows = 140
     close_bid = 1.1000 + np.arange(rows) * 0.00025
