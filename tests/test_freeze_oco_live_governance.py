@@ -102,3 +102,18 @@ def test_live_freeze_emits_schema_v3_with_family_and_bundle_relative_paths(tmp_p
         if isinstance(entry, dict) and "path" in entry:
             assert not entry["path"].startswith("/"), key
             assert ".." not in entry["path"].split("/"), key
+
+
+def test_freeze_oco_live_governance_accepts_family_argument() -> None:
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    result = subprocess.run(
+        [sys.executable, "scripts/freeze_oco_live_governance.py", "--help"],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[1],
+    )
+    assert result.returncode == 0
+    assert "--family" in result.stdout

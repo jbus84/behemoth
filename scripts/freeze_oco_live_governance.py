@@ -445,7 +445,7 @@ def run(
             window_days=int(window_days),
             git_snapshot=git_snapshot,
         )
-        mp = out_dir / lock_filename(str(s), "oco_first_touch")
+        mp = out_dir / lock_filename(str(s), family)
         mp.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
         st = pd.DataFrame(manifest["state_universe"]["rows"])
