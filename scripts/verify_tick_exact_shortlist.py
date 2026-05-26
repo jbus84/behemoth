@@ -23,6 +23,11 @@ except Exception:
     yaml = None  # type: ignore[assignment]
 
 try:
+    from scripts.mining_family import FAMILY_REGISTRY
+except ModuleNotFoundError:
+    from mining_family import FAMILY_REGISTRY  # type: ignore
+
+try:
     from scripts.run_tick_opportunity_mining import read_explicit_bar_parquet
 except ModuleNotFoundError:
     from run_tick_opportunity_mining import read_explicit_bar_parquet  # type: ignore
@@ -47,6 +52,15 @@ DEFAULTS: dict[str, Any] = {
     "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_state.csv",
     "report_out": "docs/analysis/eurusd_oco_tick_exact_shortlist_report.md",
 }
+
+
+def _normalise_family_required(raw: str | None) -> str | None:
+    if raw is None or not str(raw).strip():
+        return None
+    family = str(raw).strip().lower()
+    if family not in FAMILY_REGISTRY:
+        raise ValueError(f"unknown family-required {raw!r}; expected one of {sorted(FAMILY_REGISTRY)}")
+    return family
 
 
 def _derive_symbol_defaults(symbol: str) -> dict[str, str]:
@@ -418,7 +432,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     abs_tol = float(cfg.get("abs_tol_pips", DEFAULTS["abs_tol_pips"]))
     q = float(cfg.get("locked_quantile", DEFAULTS["locked_quantile"]))
     selection_mode = str(cfg.get("selection_mode", DEFAULTS["selection_mode"]))
-    family_required = str(cfg.get("family_required", DEFAULTS["family_required"])).strip()
+    family_required = _normalise_family_required(cfg.get("family_required", DEFAULTS["family_required"]))
     oco_hold_mode = str(cfg.get("oco_hold_mode", DEFAULTS["oco_hold_mode"])).strip().lower()
     oco_include_no_touch = bool(cfg.get("oco_include_no_touch", DEFAULTS["oco_include_no_touch"]))
     if oco_hold_mode not in {"from_touch", "from_start"}:

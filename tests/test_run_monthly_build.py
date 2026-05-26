@@ -105,6 +105,43 @@ def test_main_builds_candidate_month_bundle(monkeypatch) -> None:
             "--models-dir",
             "models/oco_dukascopy_candidate",
         ],
+        [
+            "uv",
+            "run",
+            "python",
+            "scripts/sync_candidate_model_artifacts.py",
+            "--family",
+            "directional",
+            "--model-month",
+            "2026-02",
+            "--source-models-dir",
+            "models/oco",
+            "--target-models-dir",
+            "models/oco_dukascopy_candidate",
+            "--symbols",
+            "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD",
+        ],
+        [
+            "uv",
+            "run",
+            "python",
+            "scripts/freeze_monthly_bundle.py",
+            "--family",
+            "directional",
+            "--allow-dirty",
+            "--symbols",
+            "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD",
+            "--out-dir",
+            "configs/research/governance/oco_candidate_builds",
+            "--months",
+            "2026-02",
+            "--config-dir",
+            "configs/research/experiments_dukascopy_candidate",
+            "--analysis-dir",
+            "data/analysis/tick_opportunity_mining_dukascopy_candidate",
+            "--models-dir",
+            "models/oco_dukascopy_candidate",
+        ],
     ]
 
 
@@ -265,10 +302,18 @@ def test_run_monthly_build_passes_family_to_freeze(monkeypatch) -> None:
         if any("freeze_monthly_bundle.py" in part for part in c)
     ]
     assert freeze_invocations, "expected at least one freeze invocation"
+    families = set()
     for cmd in freeze_invocations:
         assert "--family" in cmd, f"freeze invocation missing --family: {cmd}"
         family_index = cmd.index("--family")
-        assert cmd[family_index + 1] == "oco_first_touch", cmd
+        families.add(cmd[family_index + 1])
+    assert families == {"oco_first_touch", "directional"}
+
+
+def test_monthly_build_freezes_oco_and_directional() -> None:
+    import scripts.run_monthly_build as build
+
+    assert build.FAMILIES_TO_FREEZE == ("oco_first_touch", "directional")
 
 
 def test_sync_candidate_model_artifacts_can_use_bundle_or_candidate_lock_source(

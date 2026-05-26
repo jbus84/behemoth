@@ -15,7 +15,7 @@ from pathlib import Path
 
 DEFAULT_SYMBOLS = "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD"
 MONTHLY_BUILD_ROOT = Path("configs/research/governance/oco_candidate_builds")
-FAMILIES_TO_FREEZE: tuple[str, ...] = ("oco_first_touch",)  # extended in sub-projects D/E
+FAMILIES_TO_FREEZE: tuple[str, ...] = ("oco_first_touch", "directional")
 
 
 def _repo_root() -> Path:
