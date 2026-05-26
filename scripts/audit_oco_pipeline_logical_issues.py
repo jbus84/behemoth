@@ -141,20 +141,23 @@ def _make_issue(
 
 
 def _load_selected_events(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame, float, float]:
-    p = pd.read_parquet(
-        cfg.pred_path,
-        columns=[
-            "test_month",
-            "close_ts",
-            "candidate_uid",
-            "pred_prob",
-            "target_gross_pips",
-            "threshold_mode",
-            "threshold_days",
-            "threshold_exec",
-            "selected_exec",
-        ],
-    ).copy()
+    required_columns = [
+        "test_month",
+        "close_ts",
+        "candidate_uid",
+        "pred_prob",
+        "target_gross_pips",
+        "threshold_mode",
+        "threshold_days",
+        "threshold_exec",
+        "selected_exec",
+    ]
+    try:
+        p = pd.read_parquet(cfg.pred_path, columns=required_columns).copy()
+    except Exception as exc:
+        raise ValueError(
+            f"prediction parquet missing required columns or unreadable: {cfg.pred_path}: {exc}"
+        ) from exc
     p["test_month"] = p["test_month"].astype(str)
     p["close_ts"] = _dt_utc_mixed(p["close_ts"])
     p["pred_prob"] = pd.to_numeric(p["pred_prob"], errors="coerce")
@@ -215,6 +218,45 @@ def _load_selected_events(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame
     )
     x["pnl_signal"] = x["pnl_trade"].where(x["filled"], 0.0)
     return x, d, float(dup), match_rate
+
+
+def _schema_failure_frames(
+    *,
+    symbol: str,
+    message: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    details = {"error": message}
+    checks = pd.DataFrame(
+        [
+            {
+                "symbol": symbol,
+                "check_id": "C00",
+                "status": "fail",
+                "severity_if_fail": "critical",
+                "component": "input_schema",
+                "metric_name": "input_schema_valid",
+                "metric_value": 0.0,
+                "threshold": "valid required schema",
+                "details_json": json.dumps(details, sort_keys=True),
+            }
+        ]
+    )
+    issues = pd.DataFrame(
+        [
+            _make_issue(
+                symbol=symbol,
+                check_id="C00",
+                severity="critical",
+                component="input_schema",
+                description="Logical audit input schema is invalid.",
+                impact_estimate="Governance logical audit cannot certify malformed evidence.",
+                proposed_fix="Regenerate the malformed artifact with the required schema.",
+                acceptance_test="Logical audit emits no C00 schema failures.",
+                details=details,
+            )
+        ]
+    )
+    return checks, issues
 
 
 def _check_overlap_divergence(
@@ -289,7 +331,10 @@ def audit_symbol(
     summary = _read_safe(cfg.summary_path)
     monthly = _read_safe(cfg.monthly_path)
     schedule = _read_safe(cfg.schedule_path)
-    selected, detail_raw, detail_dup_count, detail_match_rate = _load_selected_events(cfg)
+    try:
+        selected, detail_raw, detail_dup_count, detail_match_rate = _load_selected_events(cfg)
+    except ValueError as exc:
+        return _schema_failure_frames(symbol=cfg.symbol, message=str(exc))
     caps = _read_safe(cfg.stop_caps_path)
     caps = caps.sort_values("cap_pips").reset_index(drop=True)
 
@@ -460,18 +505,28 @@ def audit_symbol(
     )
 
     # C03: selected states should be gated (no non-gate fallback unless explicitly desired).
-    non_gate = schedule[schedule["gate_pass"] == False].copy()  # noqa: E712
-    non_gate_count = int(len(non_gate))
+    missing_schedule_cols = sorted({"gate_pass", "test_month"} - set(schedule.columns))
+    if missing_schedule_cols:
+        non_gate = pd.DataFrame()
+        non_gate_count = 0
+        months_with_non_gate: list[str] = []
+        c03_pass = False
+    else:
+        non_gate = schedule[schedule["gate_pass"] == False].copy()  # noqa: E712
+        non_gate_count = int(len(non_gate))
+        months_with_non_gate = sorted(non_gate["test_month"].astype(str).unique().tolist())
+        c03_pass = non_gate_count == 0
     add_check(
         "C03",
-        "pass" if non_gate_count == 0 else "fail",
+        "pass" if c03_pass else "fail",
         "high",
         "state_selection",
         "selected_non_gate_states",
         float(non_gate_count),
         "0",
         {
-            "months_with_non_gate": sorted(non_gate["test_month"].astype(str).unique().tolist()),
+            "missing_schedule_columns": missing_schedule_cols,
+            "months_with_non_gate": months_with_non_gate,
             "non_gate_rows": non_gate_count,
         },
         "Fallback selected one or more states that failed train-time gate checks.",

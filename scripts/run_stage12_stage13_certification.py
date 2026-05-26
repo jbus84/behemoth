@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import os
 import re
 import subprocess
@@ -137,6 +138,38 @@ def _resolve_model_json(models_dir: Path, symbol: str, model_month: str | None) 
     return _latest_model_json(models_dir, symbol)
 
 
+def _resolve_stage12_predictions_path(
+    *,
+    symbol: str,
+    predictions_dir: Path,
+    lock_dir: Path | None,
+) -> Path:
+    symbol = _normalize_symbol(symbol)
+    if lock_dir is not None:
+        lock_dir = Path(lock_dir)
+        lock_path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
+        if lock_path.exists():
+            try:
+                manifest = json.loads(lock_path.read_text(encoding="utf-8"))
+                artifacts = _as_mapping(manifest.get("artifacts"))
+                manifest_predictions = str(artifacts.get("predictions_path", "")).strip()
+            except Exception:
+                manifest_predictions = ""
+            if manifest_predictions:
+                candidate = Path(manifest_predictions)
+                if candidate.exists():
+                    return candidate
+                repo_candidate = REPO_ROOT / candidate
+                if repo_candidate.exists():
+                    return repo_candidate
+
+        locked_predictions = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
+        if locked_predictions.exists():
+            return locked_predictions
+
+    return Path(predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet"
+
+
 def _extract_model_month(path: Path, symbol: str) -> str | None:
     match = re.fullmatch(rf"{re.escape(symbol)}_model_(\d{{4}}-\d{{2}})\.json", path.name)
     if match:
@@ -170,11 +203,16 @@ def _stage12_default_runner(
     models_dir: Path,
     model_month: str | None,
     out_dir: Path,
+    lock_dir: Path | None = None,
     tolerance: float = 0.0,
 ) -> dict[str, Any]:
     symbol = _normalize_symbol(symbol)
     summary_path = _stage12_summary_path(out_dir, symbol)
-    predictions_path = predictions_dir / f"{symbol}_oco_monthly_predictions.parquet"
+    predictions_path = _resolve_stage12_predictions_path(
+        symbol=symbol,
+        predictions_dir=predictions_dir,
+        lock_dir=lock_dir,
+    )
     threshold_json = _resolve_model_json(models_dir, symbol, model_month)
 
     if not predictions_path.exists() or threshold_json is None:
@@ -513,6 +551,7 @@ def main(argv: list[str] | None = None) -> int:
             models_dir=Path(args.models_dir),
             model_month=resolved_model_month,
             out_dir=reconcile_dir,
+            lock_dir=lock_dir,
             tolerance=args.stage12_tolerance,
         )
 
@@ -570,6 +609,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Wrote final normalized summary to {final_summary_path.as_posix()}")
     if not stage13_checks.empty:
         print(f"Stage 13 checks rows: {len(stage13_checks)}")
+    if any(_normalize_outcome(row.get("certification_outcome")) != "PASS" for row in final_rows):
+        return 1
     return 0
 
 

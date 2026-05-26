@@ -200,6 +200,46 @@ def test_audit_symbol_flags_expected_failures(tmp_path: Path):
     assert "EURUSD_C06" in set(issues["issue_id"].astype(str))
 
 
+def test_audit_symbol_reports_missing_schedule_gate_pass(tmp_path: Path):
+    cfg = _build_fixture(tmp_path)
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "test_month": "2025-07",
+                "state_id": "state_a_0",
+            }
+        ]
+    ).to_csv(cfg.schedule_path, index=False)
+
+    checks, issues = audit_symbol(cfg)
+
+    c03 = checks[checks["check_id"] == "C03"].iloc[0]
+    assert c03["status"] == "fail"
+    assert "gate_pass" in str(c03["details_json"])
+    assert "EURUSD_C03" in set(issues["issue_id"].astype(str))
+
+
+def test_audit_symbol_reports_missing_prediction_columns(tmp_path: Path):
+    cfg = _build_fixture(tmp_path)
+    pd.DataFrame(
+        [
+            {
+                "close_ts": "2025-07-01T00:00:00Z",
+                "candidate_uid": _uid("state_a", 0),
+                "selected_exec": 1,
+            }
+        ]
+    ).to_parquet(cfg.pred_path, index=False)
+
+    checks, issues = audit_symbol(cfg)
+
+    c00 = checks[checks["check_id"] == "C00"].iloc[0]
+    assert c00["status"] == "fail"
+    assert "test_month" in str(c00["details_json"])
+    assert "EURUSD_C00" in set(issues["issue_id"].astype(str))
+
+
 def test_run_audit_writes_outputs(tmp_path: Path, monkeypatch):
     cfg = _build_fixture(tmp_path)
     monkeypatch.setattr(

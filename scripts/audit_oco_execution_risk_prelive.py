@@ -149,16 +149,19 @@ def _make_issue(
 
 
 def _load_selected_predictions(path: Path) -> pd.DataFrame:
-    p = pd.read_parquet(
-        path,
-        columns=[
-            "test_month",
-            "close_ts",
-            "candidate_uid",
-            "target_gross_pips",
-            "selected_exec",
-        ],
-    ).copy()
+    required_columns = [
+        "test_month",
+        "close_ts",
+        "candidate_uid",
+        "target_gross_pips",
+        "selected_exec",
+    ]
+    try:
+        p = pd.read_parquet(path, columns=required_columns).copy()
+    except Exception as exc:
+        raise ValueError(
+            f"prediction parquet missing required columns or unreadable: {path}: {exc}"
+        ) from exc
     p["selected_exec"] = _safe_num(p["selected_exec"]).fillna(0).astype(int)
     p = p[p["selected_exec"] == 1].copy()
     p["test_month"] = p["test_month"].astype(str)
@@ -167,6 +170,47 @@ def _load_selected_predictions(path: Path) -> pd.DataFrame:
     p["target_gross_pips"] = _safe_num(p["target_gross_pips"])
     p = p.dropna(subset=["test_month", "close_ts", "candidate_uid", "target_gross_pips"]).copy()
     return p
+
+
+def _schema_failure_frames(
+    *,
+    symbol: str,
+    component: str,
+    message: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    details = {"error": message}
+    evaluated_at_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    checks = pd.DataFrame(
+        [
+            {
+                "symbol": symbol,
+                "check_id": "E00",
+                "check_name": "input_schema_valid",
+                "status": "fail",
+                "severity_if_fail": "critical",
+                "component": component,
+                "metric_name": "input_schema_valid",
+                "metric_value": 0.0,
+                "threshold": "valid required schema",
+                "comparator": "==",
+                "details_json": json.dumps(details, sort_keys=True),
+                "evaluated_at_utc": evaluated_at_utc,
+            }
+        ]
+    )
+    issues = pd.DataFrame(
+        [
+            _make_issue(
+                symbol=symbol,
+                check_id="E00",
+                severity="critical",
+                component=component,
+                description="Execution-risk audit input schema is invalid.",
+                details=details,
+            )
+        ]
+    )
+    return checks, issues
 
 
 def _load_detail(path: Path) -> tuple[pd.DataFrame, int]:
@@ -203,7 +247,14 @@ def audit_symbol(
     checks: list[dict[str, Any]] = []
     issues: list[dict[str, Any]] = []
 
-    pred = _load_selected_predictions(cfg.pred_path)
+    try:
+        pred = _load_selected_predictions(cfg.pred_path)
+    except ValueError as exc:
+        return _schema_failure_frames(
+            symbol=cfg.symbol,
+            component="input_schema",
+            message=str(exc),
+        )
     detail, dup_count = _load_detail(cfg.detail_path)
     caps = pd.read_csv(cfg.caps_path).copy()
     monthly = pd.read_csv(cfg.monthly_path).copy()

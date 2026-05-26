@@ -237,11 +237,17 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, eva
     )
 
     _uv_run(
-        "select_oco_reduced_core_rolling.py",
-        "--config",
-        f"configs/research/experiments/{sym}_oco_reduced_core_rolling.yaml",
+        "governance/run_governance_all.py",
+        "--symbol-yaml",
+        f"configs/research/experiments/{sym}_governance.yaml",
+        "--candidate-dir",
+        "data/analysis/tick_opportunity_mining",
+        "--out-dir",
+        "data/analysis/governance",
+        "--tick-root",
+        str(TICK_ROOT),
         dry_run=dry_run,
-        label="Stage 2f: Reduced core rolling selection",
+        label="Stage 2f-4: Unified governance",
     )
 
 
@@ -261,34 +267,17 @@ def _reduced_core_has_states(symbol: str) -> bool:
 
 
 def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
-    """Run tick-exact verification and robustness if reduced core passed."""
+    """Run robustness if unified governance produced qualifying states."""
     sym = symbol.lower()
     SYM = symbol.upper()
+
+    print("\n  unified governance orchestrator handles reduced selection and tick-exact verification")
 
     if not _reduced_core_has_states(SYM) and not dry_run:
         print(
             f"\n  *** {SYM} has no qualifying reduced core states — skipping tick-exact and robustness ***"
         )
         return
-
-    # Tick-exact verification uses same config but distinct outputs
-    _uv_run(
-        "verify_oco_tick_exact_shortlist.py",
-        "--config",
-        f"configs/research/experiments/{sym}_oco_reduced_core_rolling.yaml",
-        "--shortlist-state-csv",
-        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_reduced_state_schedule.csv",
-        "--out-summary-csv",
-        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_tick_exact_summary.csv",
-        "--out-monthly-csv",
-        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_tick_exact_monthly.csv",
-        "--out-state-csv",
-        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_tick_exact_state.csv",
-        "--report-out",
-        f"docs/analysis/{sym}_oco_tick_exact_rolling_report.md",
-        dry_run=dry_run,
-        label="Stage 3a: Tick-exact verification",
-    )
 
     # Robustness analysis
     pred_path = f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{SYM}_oco_monthly_predictions.parquet"

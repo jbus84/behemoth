@@ -27,8 +27,8 @@ Converts Candidate State evidence into a leakage-safe rolling Shortlist and mont
 ## Implementation Scope
 
 - `Makefile` (registry)
+- `scripts/legacy/select_oco_reduced_core_rolling.py` (registry)
 - `scripts/onboard_symbol.py` (registry)
-- `scripts/select_oco_reduced_core_rolling.py` (registry)
 
 ## Tests
 
