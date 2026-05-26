@@ -87,7 +87,7 @@ def main() -> None:
             "uv",
             "run",
             "python",
-            "scripts/legacy/freeze_oco_historical_governance.py",
+            "scripts/freeze_monthly_bundle.py",
             "--allow-dirty",
             "--symbols",
             DEFAULT_SYMBOLS,
@@ -102,7 +102,7 @@ def main() -> None:
             "--models-dir",
             "models/oco_dukascopy_candidate",
         ],
-        "step 2/2: freeze_oco_historical_governance",
+        "step 2/2: freeze_monthly_bundle",
     )
     bundle_dir = _repo_root() / MONTHLY_BUILD_ROOT / model_month
     print("[monthly-build] step 3/3: materialize_bundle_models", flush=True)

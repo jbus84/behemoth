@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
-"""Freeze month-scoped historical OCO governance locks for backtest replay.
+"""Freeze a month bundle: produce per-symbol *_live_lock.json under
+configs/research/governance/oco_candidate_builds/<YYYY-MM>/ from the latest
+mining outputs.
 
-Emits schema_version: 3 bundles per ADR 0001 and ADR 0002.
+Active producer used by ``scripts/run_monthly_build.py``. Emits
+``schema_version: 3`` locks per ADR 0001 (deterministic bundles) and
+ADR 0002 (multi-family).
+
+Previously located at scripts/legacy/freeze_oco_historical_governance.py.
 """
 
 from __future__ import annotations
@@ -20,7 +26,7 @@ from typing import Any
 
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -35,7 +41,7 @@ _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[1]
 
 
 def _repo_relative_or_abs(path: Path, repo_root: Path) -> Path:

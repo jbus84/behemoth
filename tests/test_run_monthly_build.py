@@ -86,7 +86,7 @@ def test_main_builds_candidate_month_bundle(monkeypatch) -> None:
             "uv",
             "run",
             "python",
-            "scripts/legacy/freeze_oco_historical_governance.py",
+            "scripts/freeze_monthly_bundle.py",
             "--allow-dirty",
             "--symbols",
             "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD",
