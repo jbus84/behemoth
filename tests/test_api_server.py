@@ -20,11 +20,8 @@ from src.behemoth.api.server import app
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    """Create a test client with an isolated runtime DB and empty governance dir per test."""
-    empty_gov = tmp_path / "governance_empty"
-    empty_gov.mkdir()
-    monkeypatch.setenv("BEHEMOTH_GOVERNANCE_DIR", str(empty_gov))
+def client(tmp_path):
+    """Create a test client with an isolated runtime DB per test."""
     original_persist_db_path = server._config.persist_db_path
     server._config.persist_db_path = str(tmp_path / "behemoth_runtime.duckdb")
     try:
