@@ -97,7 +97,7 @@ def _run(bundle: Path, repo_root: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
         [
             sys.executable,
-            "scripts/migrate_lock_to_v2.py",
+            "scripts/migrate_lock_schema.py",
             str(bundle),
             "--repo-root",
             str(repo_root),
@@ -108,13 +108,14 @@ def _run(bundle: Path, repo_root: Path) -> subprocess.CompletedProcess:
     )
 
 
-def test_migration_produces_v2_lock(tmp_path: Path) -> None:
+def test_migration_produces_v3_lock(tmp_path: Path) -> None:
     bundle = _make_v1_bundle(tmp_path)
     result = _run(bundle, tmp_path)
     assert result.returncode == 0, result.stderr
 
     data = json.loads((bundle / "eurusd_oco_live_lock.json").read_text())
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3
+    assert data["bundle"]["family"] == "oco_first_touch_clean"
     assert "artifacts" in data
     for legacy_key in (
         "model_cbm_path",
@@ -173,4 +174,37 @@ def test_migration_is_idempotent(tmp_path: Path) -> None:
     second = _run(bundle, tmp_path)
     assert second.returncode == 0, second.stderr
     after = (bundle / "eurusd_oco_live_lock.json").read_text()
+    assert before == after
+
+
+def test_v2_migration_to_v3_is_idempotent(tmp_path: Path) -> None:
+    bundle = tmp_path / "configs/research/governance/oco_candidate_builds/2026-04"
+    bundle.mkdir(parents=True)
+    lock = bundle / "eurusd_oco_live_lock.json"
+    v2 = {
+        "schema_version": 2,
+        "symbol": "EURUSD",
+        "frozen_at_utc": "2026-05-01T16:08:12+00:00",
+        "git": {"branch": "main", "commit": "deadbeef", "dirty": False},
+        "bundle": {"month": "2026-04", "dir_relpath": str(bundle.relative_to(tmp_path))},
+        "artifacts": {},
+        "provenance": {},
+        "deployability": {"model_month": "2026-04"},
+        "locked_runtime": {},
+        "retrain_policy": {},
+        "state_universe": {},
+        "historical_backtest": {},
+    }
+    lock.write_text(json.dumps(v2, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    first = _run(bundle, tmp_path)
+    assert first.returncode == 0, first.stderr
+    data = json.loads(lock.read_text(encoding="utf-8"))
+    assert data["schema_version"] == 3
+    assert data["bundle"]["family"] == "oco_first_touch_clean"
+
+    before = lock.read_text(encoding="utf-8")
+    second = _run(bundle, tmp_path)
+    assert second.returncode == 0, second.stderr
+    after = lock.read_text(encoding="utf-8")
     assert before == after
