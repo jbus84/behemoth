@@ -13,13 +13,26 @@ from src.behemoth.core.historical_registry import HistoricalCandidateRegistry, H
 from src.behemoth.core.registry import CandidateRegistry, CandidateSpec
 
 
-def _candidate(symbol: str = "EURUSD", bar_ticks: int = 100) -> CandidateSpec:
+def test_candidate_spec_has_family_field() -> None:
+    spec = CandidateSpec(
+        symbol="EURUSD",
+        bar_ticks=100,
+        horizon=4,
+        barrier_pips=10.0,
+        candidate_uid="test__all__k1",
+        family="directional",
+    )
+    assert spec.family == "directional"
+
+
+def _candidate(symbol: str = "EURUSD", bar_ticks: int = 100, family: str = "oco_first_touch") -> CandidateSpec:
     return CandidateSpec(
         symbol=symbol,
         bar_ticks=bar_ticks,
         horizon=6,
         barrier_pips=2.0,
         candidate_uid=f"library|{symbol}|{bar_ticks}|h6|b2",
+        family=family,
     )
 
 

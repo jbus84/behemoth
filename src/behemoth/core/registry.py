@@ -41,9 +41,10 @@ class CandidateSpec:
     barrier_pips: float
     candidate_uid: str
     regime_desc: str = ""
+    family: str = ""
 
     @staticmethod
-    def from_row(row: dict) -> CandidateSpec:
+    def from_row(row: dict, family: str = "") -> CandidateSpec:
         """Build from a state_universe row in the live lock JSON.
 
         Rejects first_touch_clean candidates: that family's win rate was
@@ -65,6 +66,7 @@ class CandidateSpec:
             barrier_pips=float(row["barrier_pips"]),
             candidate_uid=state_id,
             regime_desc=row.get("regime_desc", ""),
+            family=family,
         )
 
 
