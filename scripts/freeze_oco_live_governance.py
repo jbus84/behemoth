@@ -7,8 +7,9 @@ Creates per-symbol immutable lock manifests containing:
 - data/artifact fingerprints,
 - retrain cadence policy.
 
-Emits schema_version: 2 bundles per ADR 0001:
+Emits schema_version: 3 bundles per ADR 0001 and ADR 0002:
 docs/adr/0001-deterministic-month-bundles.md
+docs/adr/0002-multi-family-bundle-contract.md
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.behemoth.core.bundle_paths import BUNDLE_LAYOUT, sha256_file  # noqa: E402
+from src.behemoth.core.bundle_paths import bundle_layout_for, sha256_file  # noqa: E402
 
 try:
     import yaml
@@ -294,6 +295,7 @@ def _build_manifest(
     symbol: str,
     paths: dict[str, Path],
     out_dir: Path,
+    family: str = "oco_first_touch_clean",
     cadence_days: int,
     anchor_day_utc: int,
     window_days: int,
@@ -331,7 +333,7 @@ def _build_manifest(
     repo_root = _repo_root().resolve()
     out_dir = out_dir.resolve()
 
-    for spec in BUNDLE_LAYOUT:
+    for spec in bundle_layout_for(family):
         source = file_map.get(spec.v2_key)
         if source is None or not source.exists():
             if spec.required:
@@ -362,13 +364,14 @@ def _build_manifest(
     }
 
     manifest: dict[str, Any] = {
-        "schema_version": 2,
+        "schema_version": 3,
         "frozen_at_utc": now.isoformat(),
         "symbol": s,
         "git": git_snapshot,
         "bundle": {
             "month": str(model_month),
             "dir_relpath": str(_repo_relative_or_abs(out_dir, repo_root)),
+            "family": family,
         },
         "artifacts": artifacts,
         "provenance": provenance,
@@ -416,6 +419,7 @@ def run(
     anchor_day_utc: int,
     window_days: int,
     allow_dirty: bool,
+    family: str = "oco_first_touch_clean",
 ) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     git_snapshot = _git_info()
@@ -431,6 +435,7 @@ def run(
             symbol=s,
             paths=paths,
             out_dir=out_dir,
+            family=family,
             cadence_days=int(cadence_days),
             anchor_day_utc=int(anchor_day_utc),
             window_days=int(window_days),
@@ -462,6 +467,7 @@ def main() -> None:
     p.add_argument("--out-dir", default="configs/research/governance/oco")
     p.add_argument("--config-dir", default="configs/research/experiments")
     p.add_argument("--analysis-dir", default="data/analysis/tick_opportunity_mining")
+    p.add_argument("--family", default="oco_first_touch_clean")
     p.add_argument("--policy-config", default="configs/research/governance/oco_live_policy.yaml")
     p.add_argument(
         "--registry-yaml",
@@ -517,6 +523,7 @@ def main() -> None:
         anchor_day_utc=anchor_day_utc,
         window_days=window_days,
         allow_dirty=bool(args.allow_dirty),
+        family=str(args.family).strip(),
     )
 
 
