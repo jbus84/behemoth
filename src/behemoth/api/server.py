@@ -1420,6 +1420,7 @@ class _CandidateDecision:
     risk_reserved_amount_ccy: float | None = None
     risk_headroom_after_ccy: float | None = None
     risk_reservation_id: str | None = None
+    family: str = ""
 
 
 @dataclass
@@ -2783,6 +2784,7 @@ def _build_predictions(
                 risk_metrics_snapshot=risk_metrics_snapshot,
                 trade_eval=trade_eval,
                 risk_rank_score=rank_score,
+                family=family,
             )
         )
 
@@ -2914,6 +2916,7 @@ def _build_predictions(
                     volume_units=float(requested_volume_units),
                     source="predict_allocator",
                     status="PENDING",
+                    family=d.family,
                 )
                 d.risk_reservation_id = reservation_id
                 d.risk_metrics_snapshot["risk_reservation_id"] = reservation_id
@@ -2947,6 +2950,7 @@ def _build_predictions(
                 threshold_exec=float(d.curr_threshold),
                 risk_rank_score=d.risk_rank_score,
                 reservation_id=d.risk_reservation_id,
+                family=d.family,
             )
 
         results.append(
@@ -2973,6 +2977,7 @@ def _build_predictions(
                 risk_headroom_after_ccy=d.risk_headroom_after_ccy,
                 risk_rank_score=d.risk_rank_score,
                 risk_reservation_id=d.risk_reservation_id,
+                family=d.family,
             )
         )
         trace_rows.append(
