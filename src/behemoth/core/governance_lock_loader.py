@@ -21,7 +21,8 @@ class CandidateContract:
     model_month: str
     cache_key: str
     candidates: list[CandidateSpec]
-    model_binding: dict[str, Any]
+    bundle_paths: BundlePaths
+    locked_runtime: dict[str, Any]
     cap_pips: float
     source: str
     lock_path: str | None = None
@@ -41,26 +42,17 @@ class GovernanceLockLoader:
         data = json.loads(path.read_text())
         sym = str(data.get("symbol", "")).upper().strip()
         bp = BundlePaths.from_lock(path)  # raises BundleIntegrityError on v1 — intentional, no fallback
-        locked = data.get("locked_runtime", {})
+        locked = data.get("locked_runtime", {}) or {}
         rows = data.get("state_universe", {}).get("rows", [])
         candidates = [CandidateSpec.from_row(r) for r in rows]
 
-        artifacts = data.get("artifacts", {})
-        cbm_entry = artifacts.get("model_cbm", {}) or {}
-        thr_entry = artifacts.get("model_threshold_json", {}) or {}
-        model_binding = {
-            "model_cbm_path": str(bp.model_cbm()),
-            "model_cbm_sha256": str(cbm_entry.get("sha256", "")).strip(),
-            "model_threshold_json_path": str(bp.model_threshold_json()),
-            "model_threshold_json_sha256": str(thr_entry.get("sha256", "")).strip(),
-            "model_month": bp.model_month or (month or "unknown"),
-        }
         return CandidateContract(
             symbol=sym,
-            model_month=model_binding["model_month"],
+            model_month=bp.model_month or (month or "unknown"),
             cache_key=f"{sym}|{month}" if month else sym,
             candidates=candidates,
-            model_binding=model_binding,
+            bundle_paths=bp,
+            locked_runtime=dict(locked),
             cap_pips=float(locked.get("production_cap_pips", 1.2)),
             source="live" if month is None else "historical",
             lock_path=str(path),

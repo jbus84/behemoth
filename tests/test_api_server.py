@@ -94,12 +94,18 @@ class TestHealthEndpoint:
             server._lifespan_ready = original
 
 
-class TestModelBindingThresholdOverrides:
-    def test_load_model_binding_prefers_locked_runtime_thresholds(self, tmp_path, monkeypatch):
+class TestBundlePathsThresholdOverrides:
+    def test_load_bundle_paths_prefers_locked_runtime_thresholds(self, tmp_path, monkeypatch):
+        import hashlib
+
+        from src.behemoth.core.bundle_paths import BundlePaths
         from src.behemoth.core.model_registry import ModelRegistry
 
-        model_path = tmp_path / "GBPUSD_model_2026-03.cbm"
-        threshold_path = tmp_path / "GBPUSD_model_2026-03.json"
+        bundle_dir = tmp_path
+        models_dir = bundle_dir / "models"
+        models_dir.mkdir()
+        model_path = models_dir / "GBPUSD_model_2026-03.cbm"
+        threshold_path = models_dir / "GBPUSD_model_2026-03.json"
         model_path.write_bytes(b"fake-cbm")
         threshold_path.write_text(
             json.dumps(
@@ -111,41 +117,62 @@ class TestModelBindingThresholdOverrides:
                     "rolling_threshold_days": 20,
                     "rolling_threshold_min_history": 1000,
                     "execution_quantile": 0.9,
+                    "feature_schema_version": "1.0",
                 }
             ),
             encoding="utf-8",
         )
+        pred = bundle_dir / "gbpusd_oco_locked_predictions.parquet"
+        states = bundle_dir / "gbpusd_oco_allowed_states.csv"
+        pred.write_bytes(b"p")
+        states.write_bytes(b"s")
+
+        def _sha(b: bytes) -> str:
+            return hashlib.sha256(b).hexdigest()
+
+        lock = {
+            "schema_version": 3,
+            "symbol": "GBPUSD",
+            "bundle": {
+                "month": "2026-03",
+                "dir_relpath": str(bundle_dir),
+                "family": "oco_first_touch_clean",
+            },
+            "artifacts": {
+                "predictions":          {"path": "gbpusd_oco_locked_predictions.parquet", "sha256": _sha(b"p")},
+                "allowed_states_csv":   {"path": "gbpusd_oco_allowed_states.csv",         "sha256": _sha(b"s")},
+                "model_cbm":            {"path": "models/GBPUSD_model_2026-03.cbm",       "sha256": _sha(b"fake-cbm")},
+                "model_threshold_json": {"path": "models/GBPUSD_model_2026-03.json",      "sha256": hashlib.sha256(threshold_path.read_bytes()).hexdigest()},
+            },
+            "deployability": {"live_deployable": True, "model_month": "2026-03"},
+        }
+        lock_path = bundle_dir / "gbpusd_oco_live_lock.json"
+        lock_path.write_text(json.dumps(lock))
+
+        bp = BundlePaths.from_lock(lock_path)
 
         class FakeCatBoost:
             def load_model(self, path: str) -> None:
                 self.loaded_path = path
 
         registry = ModelRegistry()
-        binding = {
-            "model_cbm_path": str(model_path),
-            "model_cbm_sha256": ModelRegistry._sha256(model_path),
-            "model_threshold_json_path": str(threshold_path),
-            "model_threshold_json_sha256": ModelRegistry._sha256(threshold_path),
-            "model_month": "2026-03",
-            "locked_runtime_overrides": {
+        ok, month = registry.load_bundle_paths(
+            symbol="GBPUSD",
+            bundle_paths=bp,
+            cache_key="GBPUSD",
+            locked_runtime_overrides={
                 "threshold_source": "rolling_days",
                 "rolling_threshold_days": 20,
                 "rolling_threshold_min_history": 300,
                 "execution_quantile": 0.9,
             },
-        }
-
-        ok, month = registry.load_model_binding(
-            symbol="GBPUSD",
-            binding=binding,
-            cache_key="GBPUSD",
             expected_month="2026-03",
             catboost_cls=FakeCatBoost,
         )
 
         assert ok is True
         assert month == "2026-03"
-        model, thr_cfg = registry.get_model_and_threshold("GBPUSD")
+        _, thr_cfg = registry.get_model_and_threshold("GBPUSD")
         assert thr_cfg["rolling_threshold_min_history"] == 300
 
 

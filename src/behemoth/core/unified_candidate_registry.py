@@ -6,10 +6,14 @@ logic is encapsulated here, reducing 15+ conditionals in server.py.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry, CandidateSpec
+
+if TYPE_CHECKING:
+    from src.behemoth.core.bundle_paths import BundlePaths
 
 
 class UnifiedCandidateRegistry:
@@ -68,17 +72,16 @@ class UnifiedCandidateRegistry:
                 return 0.0
             return self._live_registry.get_cap_pips(symbol)
 
-    def get_model_binding(self, symbol: str) -> dict | None:
-        """Resolve model binding for a symbol in the current governance mode."""
+    def get_bundle_paths(self, symbol: str) -> BundlePaths | None:  # type: ignore
+        """Resolve bundle paths for a symbol in the current governance mode."""
         if self._is_historical_mode:
             if self._historical_registry is None:
                 return None
             month = self._get_latest_month(symbol)
             if month is None:
                 return None
-            entry = self._historical_registry.get_entry(symbol, month)
-            return dict(entry.model_binding) if entry else None
+            return self._historical_registry.get_bundle_paths(symbol, month)
         else:
             if self._live_registry is None:
                 return None
-            return self._live_registry.get_model_binding(symbol)
+            return self._live_registry.get_bundle_paths(symbol)

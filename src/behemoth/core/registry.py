@@ -15,7 +15,10 @@ import hashlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.behemoth.core.bundle_paths import BundlePaths
 
 _DEFAULT_REGISTRY = Path(os.getenv("BEHEMOTH_REGISTRY_PATH", "configs/research/governance/oco_rule_universe_registry.yaml"))
 
@@ -72,7 +75,7 @@ class CandidateRegistry:
     _candidates_by_symbol: dict[str, list[CandidateSpec]] = field(default_factory=dict)
     _frozen_timestamps: dict[str, str] = field(default_factory=dict)
     _caps_by_symbol: dict[str, float] = field(default_factory=dict)
-    _model_bindings_by_symbol: dict[str, dict[str, Any]] = field(default_factory=dict)
+    _bundle_paths_by_symbol: dict[str, BundlePaths] = field(default_factory=dict)  # type: ignore
 
     @classmethod
     def load(
@@ -102,54 +105,14 @@ class CandidateRegistry:
                 if not sym:
                     continue
 
-                artifacts = data.get("artifacts", {})
-                BundlePaths.from_lock(p)  # raises BundleIntegrityError on v1 — intentional
+                # Load and validate bundle (raises BundleIntegrityError on v1 — intentional)
+                from src.behemoth.core.bundle_paths import BundlePaths  # noqa: E402
+                bp = BundlePaths.from_lock(p)
+
                 # Quarantine Policy: Skip if marked as not deployable
-                deploy = data.get("deployability", {}) or {}
-                deployable = bool(deploy.get("live_deployable", False))
-                model_month = str(deploy.get("model_month", "")).strip()
-                cbm_entry = artifacts.get("model_cbm", {}) or {}
-                thr_entry = artifacts.get("model_threshold_json", {}) or {}
-                cbm_path_txt = str(cbm_entry.get("path", "")).strip()
-                cbm_sha = str(cbm_entry.get("sha256", "")).strip()
-                thr_path_txt = str(thr_entry.get("path", "")).strip()
-                thr_sha = str(thr_entry.get("sha256", "")).strip()
-                if not deployable:
+                if not bp.live_deployable:
                     import logging
                     logging.getLogger("behemoth.api").warning("Quarantining %s: live_deployable=False in governance lock.", sym)
-                    continue
-                if (not cbm_path_txt) or (not cbm_sha) or (not thr_path_txt) or (not thr_sha):
-                    import logging
-                    logging.getLogger("behemoth.api").error(
-                        "Quarantining %s: missing required model artifact hash fields in governance lock.",
-                        sym,
-                    )
-                    continue
-                cbm_path = Path(cbm_path_txt)
-                thr_path = Path(thr_path_txt)
-                if resolved_models_dir is not None:
-                    cbm_path = resolved_models_dir / cbm_path.name
-                    thr_path = resolved_models_dir / thr_path.name
-                else:
-                    cbm_path = p.parent / cbm_path
-                    thr_path = p.parent / thr_path
-                if (not cbm_path.exists()) or (not thr_path.exists()):
-                    import logging
-                    logging.getLogger("behemoth.api").error(
-                        "Quarantining %s: locked model artifacts not found (%s, %s).",
-                        sym,
-                        cbm_path,
-                        thr_path,
-                    )
-                    continue
-                got_cbm_sha = _sha256(cbm_path)
-                got_thr_sha = _sha256(thr_path)
-                if (got_cbm_sha != cbm_sha) or (got_thr_sha != thr_sha):
-                    import logging
-                    logging.getLogger("behemoth.api").error(
-                        "Quarantining %s: model artifact hash mismatch with governance lock.",
-                        sym,
-                    )
                     continue
 
                 rows = data.get("state_universe", {}).get("rows", [])
@@ -160,28 +123,8 @@ class CandidateRegistry:
                 # Extract execution cap from locked_runtime
                 locked = data.get("locked_runtime", {})
                 reg._caps_by_symbol[sym] = float(locked.get("production_cap_pips", 1.2))
-                locked_runtime_overrides: dict[str, Any] = {}
-                if "threshold_mode" in locked:
-                    locked_runtime_overrides["threshold_source"] = str(
-                        locked.get("threshold_mode", "")
-                    ).strip()
-                for key in (
-                    "rolling_threshold_days",
-                    "rolling_threshold_min_history",
-                    "execution_quantile",
-                    "oco_hold_mode",
-                    "oco_include_no_touch",
-                ):
-                    if key in locked:
-                        locked_runtime_overrides[key] = locked.get(key)
-                reg._model_bindings_by_symbol[sym] = {
-                    "model_cbm_path": str(cbm_path),
-                    "model_cbm_sha256": cbm_sha,
-                    "model_threshold_json_path": str(thr_path),
-                    "model_threshold_json_sha256": thr_sha,
-                    "model_month": model_month,
-                    "locked_runtime_overrides": locked_runtime_overrides,
-                }
+                # Store BundlePaths directly
+                reg._bundle_paths_by_symbol[sym] = bp
             except Exception as e:
                 import logging
                 logging.getLogger("behemoth.api").error("Failed to parse %s: %s", p.name, e)
@@ -201,9 +144,9 @@ class CandidateRegistry:
         """Return the locked production cap for a symbol."""
         return self._caps_by_symbol.get(symbol.upper(), 1.2)
 
-    def get_model_binding(self, symbol: str) -> dict[str, Any] | None:
-        """Return frozen model artifact binding for a symbol."""
-        return self._model_bindings_by_symbol.get(symbol.upper())
+    def get_bundle_paths(self, symbol: str) -> BundlePaths | None:  # type: ignore
+        """Return frozen bundle paths for a symbol."""
+        return self._bundle_paths_by_symbol.get(symbol.upper())
 
     def all_candidates(self) -> list[CandidateSpec]:
         """Return all candidates across all symbols."""

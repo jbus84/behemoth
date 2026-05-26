@@ -6,10 +6,13 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING
 
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry, CandidateSpec
+
+if TYPE_CHECKING:
+    from src.behemoth.core.bundle_paths import BundlePaths
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
@@ -47,7 +50,7 @@ class RuntimeCandidateContract:
     model_month: str
     cache_key: str
     candidates: list[CandidateSpec]
-    model_binding: dict[str, Any]
+    bundle_paths: BundlePaths  # type: ignore
     cap_pips: float
     source: str
     lock_path: str | None = None
@@ -144,7 +147,7 @@ class CandidateCatalog:
             model_month=resolved_month,
             cache_key=self.cache_key(symbol, resolved_month),
             candidates=list(entry.candidates),
-            model_binding=dict(entry.model_binding),
+            bundle_paths=entry.bundle_paths,
             cap_pips=float(entry.cap_pips),
             source="historical",
             lock_path=str(entry.lock_path),
@@ -153,16 +156,16 @@ class CandidateCatalog:
     def _resolve_live_contract(self, symbol: str) -> RuntimeCandidateContract:
         if self._live_registry is None:
             raise LookupError("Candidate registry not loaded")
-        model_binding = self._live_registry.get_model_binding(symbol)
-        if not model_binding:
-            raise LookupError(f"No model binding registered for {symbol}")
-        model_month = _normalize_model_month(str(model_binding.get("model_month", "")).strip()) or "unknown"
+        bundle_paths = self._live_registry.get_bundle_paths(symbol)
+        if not bundle_paths:
+            raise LookupError(f"No bundle paths registered for {symbol}")
+        model_month = bundle_paths.model_month or "unknown"
         return RuntimeCandidateContract(
             symbol=symbol,
             model_month=model_month,
             cache_key=self.cache_key(symbol),
             candidates=self._live_registry.get_candidates(symbol),
-            model_binding=dict(model_binding),
+            bundle_paths=bundle_paths,
             cap_pips=float(self._live_registry.get_cap_pips(symbol)),
             source="live",
             lock_path=None,

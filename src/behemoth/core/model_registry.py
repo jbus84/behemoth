@@ -5,11 +5,11 @@ and threshold config. Supports both live (locked) and historical (lazy) modes.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-from pathlib import Path
 from typing import Any
+
+from src.behemoth.core.bundle_paths import BundlePaths
 
 logger = logging.getLogger(__name__)
 
@@ -85,21 +85,23 @@ class ModelRegistry:
         """Return dict of cache_key -> model_month for status reporting."""
         return dict(self._model_months)
 
-    def load_model_binding(
+    def load_bundle_paths(
         self,
         *,
         symbol: str,
-        binding: dict[str, Any],
+        bundle_paths: BundlePaths,
         cache_key: str,
+        locked_runtime_overrides: dict[str, Any] | None = None,
         expected_month: str | None = None,
         catboost_cls: type | None = None,
     ) -> tuple[bool, str]:
-        """Load and validate a governance-locked model binding.
+        """Load and validate a governance-locked bundle paths.
 
         Args:
             symbol: Trading symbol (e.g., "GBPUSD")
-            binding: Governance model binding dict with paths and hashes
+            bundle_paths: BundlePaths instance with model artifact accessors
             cache_key: Cache key (symbol or symbol|month)
+            locked_runtime_overrides: Optional overrides from locked_runtime
             expected_month: Optional expected month; if mismatch, fail
             catboost_cls: CatBoost class to instantiate; if None, returns False
 
@@ -110,11 +112,9 @@ class ModelRegistry:
         if catboost_cls is None:
             return False, "catboost_unavailable"
 
-        model_path = Path(str(binding.get("model_cbm_path", "")))
-        thr_path = Path(str(binding.get("model_threshold_json_path", "")))
-        exp_model_sha = str(binding.get("model_cbm_sha256", "")).strip()
-        exp_thr_sha = str(binding.get("model_threshold_json_sha256", "")).strip()
-        lock_month = str(binding.get("model_month", "")).strip()
+        model_path = bundle_paths.model_cbm()
+        thr_path = bundle_paths.model_threshold_json()
+        lock_month = bundle_paths.model_month
 
         if (not model_path.exists()) or (not thr_path.exists()):
             logger.error(
@@ -125,12 +125,7 @@ class ModelRegistry:
             )
             return False, "artifact_missing"
 
-        got_model_sha = self._sha256(model_path)
-        got_thr_sha = self._sha256(thr_path)
-        if (got_model_sha != exp_model_sha) or (got_thr_sha != exp_thr_sha):
-            logger.error("Locked artifact hash mismatch for %s — refusing model load.", symbol)
-            return False, "artifact_hash_mismatch"
-
+        # BundlePaths.model_cbm() and model_threshold_json() verify sha256 on call
         month = model_path.stem.split("_")[-1]
         if lock_month and (month != lock_month):
             logger.error(
@@ -172,8 +167,7 @@ class ModelRegistry:
                 )
                 return False, "feature_schema_version_mismatch"
 
-        locked_runtime_overrides = binding.get("locked_runtime_overrides", {})
-        if isinstance(locked_runtime_overrides, dict) and locked_runtime_overrides:
+        if locked_runtime_overrides and isinstance(locked_runtime_overrides, dict):
             thr_cfg.update(
                 {
                     str(k): v
@@ -193,15 +187,6 @@ class ModelRegistry:
         self.set_model_and_threshold(cache_key, model, thr_cfg, month)
         logger.info("Loaded lock-bound model for %s (month %s): %s", symbol, month, model_path.name)
         return True, month
-
-    @staticmethod
-    def _sha256(path: Path) -> str:
-        """Compute SHA256 hash of file."""
-        h = hashlib.sha256()
-        with path.open("rb") as f:
-            for chunk in iter(lambda: f.read(1024 * 1024), b""):
-                h.update(chunk)
-        return h.hexdigest()
 
     @staticmethod
     def make_cache_key(symbol: str, model_month: str | None = None) -> str:

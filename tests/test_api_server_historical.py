@@ -1,20 +1,34 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
 
 from src.behemoth.api import server
+from src.behemoth.core.bundle_paths import BundlePaths
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry, HistoricalLockEntry
 from src.behemoth.core.registry import CandidateSpec
 
 
 def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
+    lock_path = Path(
+        f"configs/research/governance/oco_history/{month}/{symbol.lower()}_oco_live_lock.json"
+    )
+    bp = BundlePaths(
+        lock_path=lock_path,
+        bundle_dir=lock_path.parent,
+        symbol=symbol,
+        model_month=month,
+        family="oco_first_touch_clean",
+        _artifacts={},
+        _deployability={"live_deployable": True, "model_month": month},
+    )
     return HistoricalLockEntry(
         symbol=symbol,
         month=month,
-        lock_path=f"configs/research/governance/oco_history/{month}/{symbol.lower()}_oco_live_lock.json",
+        lock_path=str(lock_path),
         candidates=[
             CandidateSpec(
                 symbol=symbol,
@@ -25,13 +39,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
             )
         ],
         cap_pips=1.2,
-        model_binding={
-            "model_cbm_path": f"models/oco/{symbol}_model_{month}.cbm",
-            "model_cbm_sha256": "cbm_sha",
-            "model_threshold_json_path": f"models/oco/{symbol}_model_{month}.json",
-            "model_threshold_json_sha256": "thr_sha",
-            "model_month": month,
-        },
+        bundle_paths=bp,
     )
 
 
@@ -254,12 +262,24 @@ def test_resolve_runtime_contract_rejects_invalid_force_month_format() -> None:
 
 
 def _mk_contract(symbol: str = "EURUSD", month: str = "2025-07") -> server._ResolvedRuntimeContract:
+    lock_path = Path(
+        f"configs/research/governance/oco_history/{month}/{symbol.lower()}_oco_live_lock.json"
+    )
+    bp = BundlePaths(
+        lock_path=lock_path,
+        bundle_dir=lock_path.parent,
+        symbol=symbol,
+        model_month=month,
+        family="oco_first_touch_clean",
+        _artifacts={},
+        _deployability={"live_deployable": True, "model_month": month},
+    )
     return server._ResolvedRuntimeContract(
         symbol=symbol,
         model_month=month,
         cache_key=f"{symbol}|{month}",
         candidates=[],
-        model_binding={},
+        bundle_paths=bp,
         cap_pips=1.2,
         source="historical",
     )

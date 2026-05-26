@@ -36,12 +36,12 @@ from pydantic import BaseModel, Field, model_validator
 from src.behemoth.api.cache_manager import CacheManager
 from src.behemoth.api.dashboard import router as dashboard_router
 from src.behemoth.api.predict_orchestrator import PredictionOrchestrator
+from src.behemoth.core.bundle_paths import BundlePaths
 from src.behemoth.core.candidate_catalog import CandidateCatalog, CatalogContext
 from src.behemoth.core.features import (
     FeatureConfig,
     compute_feature_matrix_from_bars,
 )
-from src.behemoth.core.regime_quantile_contract import RegimeQuantileContract
 from src.behemoth.core.governance_validator import (
     GovernanceValidator,
     failed_checks,
@@ -50,11 +50,11 @@ from src.behemoth.core.governance_validator import (
 from src.behemoth.core.historical_prediction_stage import HistoricalPredictionStage
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.model_registry import ModelRegistry
+from src.behemoth.core.regime_quantile_contract import RegimeQuantileContract
 from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     AccountRiskSnapshotRequest,
     ActiveTrade,
-    BarrierAction,
     IncomingTick,
     IncomingTickBar,
     ModelFeatures,
@@ -65,14 +65,14 @@ from src.behemoth.core.schemas import (
     TradeUpdateRequest,
 )
 from src.behemoth.risk.account import (
+    AccountRiskDecision,
     AccountRiskProfile,
+    evaluate_account_risk_decision,
     evaluate_account_risk_limits,
     evaluate_trade_risk_guard,
     load_account_risk_profile,
 )
-from src.behemoth.risk.account import AccountRiskDecision, evaluate_account_risk_decision
 from src.behemoth.runtime.barrier_manager import BarrierManager
-from src.behemoth.runtime.order_submission import prepare_predict_actions
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
 
@@ -1048,16 +1048,17 @@ def _load_models() -> None:
         return
 
     for sym in _config.symbols:
-        binding = _registry.get_model_binding(sym)
-        if not binding:
-            logger.error("No governance model binding for %s — skipping model load.", sym)
+        bundle_paths = _registry.get_bundle_paths(sym)
+        if not bundle_paths:
+            logger.error("No governance bundle paths for %s — skipping model load.", sym)
             continue
         cache_key = _cache_key(sym)
-        _model_registry.load_model_binding(
+        _model_registry.load_bundle_paths(
             symbol=sym,
-            binding=binding,
+            bundle_paths=bundle_paths,
             cache_key=cache_key,
-            expected_month=str(binding.get("model_month", "")).strip() or None,
+            locked_runtime_overrides={},
+            expected_month=bundle_paths.model_month or None,
             catboost_cls=_catboost_cls(),
         )
 
@@ -1403,7 +1404,7 @@ class _ResolvedRuntimeContract:
     model_month: str
     cache_key: str
     candidates: list[Any]
-    model_binding: dict[str, Any]
+    bundle_paths: BundlePaths
     cap_pips: float
     source: str
     lock_path: str | None = None
@@ -1602,7 +1603,7 @@ def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeC
         model_month=contract.model_month,
         cache_key=contract.cache_key,
         candidates=list(contract.candidates),
-        model_binding=dict(contract.model_binding),
+        bundle_paths=contract.bundle_paths,
         cap_pips=float(contract.cap_pips),
         source=contract.source,
         lock_path=contract.lock_path,
@@ -1614,9 +1615,9 @@ def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any
     if model is not None and isinstance(thr_cfg, dict):
         return model, thr_cfg
 
-    ok, reason = _model_registry.load_model_binding(
+    ok, reason = _model_registry.load_bundle_paths(
         symbol=contract.symbol,
-        binding=contract.model_binding,
+        bundle_paths=contract.bundle_paths,
         cache_key=contract.cache_key,
         expected_month=(contract.model_month if contract.model_month != "unknown" else None),
         catboost_cls=_catboost_cls(),
@@ -1643,7 +1644,7 @@ def _load_historical_prediction_universe(contract: _ResolvedRuntimeContract) -> 
         cache_key=contract.cache_key,
         symbol=contract.symbol,
         model_month=contract.model_month,
-        model_binding=contract.model_binding,
+        bundle_paths=contract.bundle_paths,
     )
 
 
@@ -1657,7 +1658,7 @@ def _load_historical_prediction_candidate_index(
         cache_key=contract.cache_key,
         symbol=contract.symbol,
         model_month=contract.model_month,
-        model_binding=contract.model_binding,
+        bundle_paths=contract.bundle_paths,
     )
 
 
@@ -1671,7 +1672,7 @@ def _load_historical_prediction_candidate_ordinal_index(
         cache_key=contract.cache_key,
         symbol=contract.symbol,
         model_month=contract.model_month,
-        model_binding=contract.model_binding,
+        bundle_paths=contract.bundle_paths,
     )
 
 
@@ -1685,7 +1686,7 @@ def _load_historical_prediction_payload_rows(
         cache_key=contract.cache_key,
         symbol=contract.symbol,
         model_month=contract.model_month,
-        model_binding=contract.model_binding,
+        bundle_paths=contract.bundle_paths,
     )
 
 
@@ -2360,9 +2361,15 @@ def _orchestrator_build_predictions_fn(
     contract = _resolve_runtime_contract(sym, close_ts)
     model, thr_cfg = _ensure_model_and_threshold(contract)
     requested_volume_units = _resolve_requested_volume_units(req)
-    historical_prediction_universe_gated = bool(
-        _is_historical_mode() and str(contract.model_binding.get("predictions_path", "")).strip()
-    )
+    # Check if historical predictions are available via bundle_paths
+    has_predictions = False
+    if _is_historical_mode():
+        try:
+            _ = contract.bundle_paths.predictions()
+            has_predictions = True
+        except Exception:
+            has_predictions = False
+    historical_prediction_universe_gated = bool(has_predictions)
     results, _candidate_trace_rows = _build_predictions(
         sym=sym,
         candidates=candidates,
