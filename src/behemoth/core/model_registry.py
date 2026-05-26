@@ -30,28 +30,31 @@ class ModelRegistry:
         self._thresholds: dict[str, dict] = {}
         self._model_months: dict[str, str] = {}
 
-    def has_model(self, symbol: str) -> bool:
+    def has_model(self, symbol: str, family: str | None = None) -> bool:
         """Check if any model is loaded for symbol (live or any month)."""
         sym = str(symbol).upper().strip()
-        if sym in self._models:
+        cache_key = self.make_cache_key(sym, family=family)
+        if cache_key in self._models:
             return True
-        pref = f"{sym}|"
+        pref = f"{cache_key}|"
         return any(k.startswith(pref) for k in self._models)
 
-    def has_threshold(self, symbol: str) -> bool:
+    def has_threshold(self, symbol: str, family: str | None = None) -> bool:
         """Check if any threshold config is loaded for symbol (live or any month)."""
         sym = str(symbol).upper().strip()
-        if sym in self._thresholds:
+        cache_key = self.make_cache_key(sym, family=family)
+        if cache_key in self._thresholds:
             return True
-        pref = f"{sym}|"
+        pref = f"{cache_key}|"
         return any(k.startswith(pref) for k in self._thresholds)
 
-    def get_latest_month(self, symbol: str) -> str | None:
+    def get_latest_month(self, symbol: str, family: str | None = None) -> str | None:
         """Get latest loaded month for symbol, or None if no models loaded."""
         sym = str(symbol).upper().strip()
-        if sym in self._model_months:
-            return self._model_months.get(sym)
-        pref = f"{sym}|"
+        cache_key = self.make_cache_key(sym, family=family)
+        if cache_key in self._model_months:
+            return self._model_months.get(cache_key)
+        pref = f"{cache_key}|"
         months = [m for k, m in self._model_months.items() if k.startswith(pref)]
         if not months:
             return None
@@ -189,9 +192,13 @@ class ModelRegistry:
         return True, month
 
     @staticmethod
-    def make_cache_key(symbol: str, model_month: str | None = None) -> str:
-        """Generate cache key: symbol or symbol|month."""
+    def make_cache_key(symbol: str, model_month: str | None = None, family: str | None = None) -> str:
+        """Generate cache key: symbol, symbol|month, symbol|month|family, or symbol|family."""
         sym = str(symbol).upper().strip()
+        parts = [sym]
         if model_month:
-            return f"{sym}|{str(model_month).strip()}"
-        return sym
+            parts.append(str(model_month).strip())
+        fam = str(family or "").strip()
+        if fam:
+            parts.append(fam)
+        return "|".join(parts)

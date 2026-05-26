@@ -179,6 +179,16 @@ class TestBundlePathsThresholdOverrides:
         assert thr_cfg["rolling_threshold_min_history"] == 300
 
 
+class TestModelRegistryFamilyCacheKey:
+    def test_family_cache_key(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        assert ModelRegistry.make_cache_key("EURUSD", "2026-04", "directional") == "EURUSD|2026-04|directional"
+        assert ModelRegistry.make_cache_key("EURUSD", None, "directional") == "EURUSD|directional"
+        assert ModelRegistry.make_cache_key("EURUSD", "2026-04") == "EURUSD|2026-04"
+        assert ModelRegistry.make_cache_key("EURUSD") == "EURUSD"
+
+
 class TestMetricsEndpoint:
     def test_metrics_returns_prometheus_format(self, client):
         r = client.get("/metrics")
