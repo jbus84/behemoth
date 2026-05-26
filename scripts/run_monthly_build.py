@@ -66,24 +66,26 @@ def main_with_args(argv: list[str] | None = None) -> None:
     model_month = _derive_model_month(args.model_month)
     print(f"[monthly-build] building bundle for {model_month}", flush=True)
 
-    _run_step(
-        [
-            "uv",
-            "run",
-            "python",
-            "scripts/sync_candidate_model_artifacts.py",
-            "--model-month",
-            model_month,
-            "--source-models-dir",
-            "models/oco",
-            "--target-models-dir",
-            "models/oco_dukascopy_candidate",
-            "--symbols",
-            DEFAULT_SYMBOLS,
-        ],
-        "step 1/2: sync_candidate_model_artifacts",
-    )
     for family in FAMILIES_TO_FREEZE:
+        _run_step(
+            [
+                "uv",
+                "run",
+                "python",
+                "scripts/sync_candidate_model_artifacts.py",
+                "--family",
+                family,
+                "--model-month",
+                model_month,
+                "--source-models-dir",
+                "models/oco",
+                "--target-models-dir",
+                "models/oco_dukascopy_candidate",
+                "--symbols",
+                DEFAULT_SYMBOLS,
+            ],
+            f"step 1/3: sync_candidate_model_artifacts ({family})",
+        )
         _run_step(
             [
                 "uv",
@@ -106,7 +108,7 @@ def main_with_args(argv: list[str] | None = None) -> None:
                 "--models-dir",
                 "models/oco_dukascopy_candidate",
             ],
-            f"step 2/2: freeze_monthly_bundle ({family})",
+            f"step 2/3: freeze_monthly_bundle ({family})",
         )
     bundle_dir = _repo_root() / MONTHLY_BUILD_ROOT / model_month
     print("[monthly-build] step 3/3: materialize_bundle_models", flush=True)

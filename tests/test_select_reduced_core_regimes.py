@@ -124,3 +124,59 @@ def test_nonempty_predictions_that_do_not_join_still_raise(tmp_path):
 
     with pytest.raises(RuntimeError, match="no predictions left"):
         run(_cfg(tmp_path, cand, pred))
+
+
+def test_directional_family_predictions_can_feed_reduced_core(tmp_path):
+    cand = tmp_path / "cand.csv"
+    pred = tmp_path / "pred.parquet"
+    state_id = "directional__all__h5"
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 1000,
+                "horizon": 5,
+                "family": "directional",
+                "state_id": state_id,
+                "regime_desc": "all",
+            }
+        ]
+    ).to_csv(cand, index=False)
+    rows = []
+    for month in ["2025-01", "2025-02", "2025-03"]:
+        for i in range(3):
+            rows.append(
+                {
+                    "candidate_uid": f"directional|EURUSD|1000|h5|{state_id}",
+                    "pred_prob": 0.95,
+                    "target_gross_pips": 1.0 + i,
+                    "test_month": month,
+                    "selected_exec": 1,
+                }
+            )
+    pd.DataFrame(rows).to_parquet(pred, index=False)
+
+    cfg = _cfg(tmp_path, cand, pred)
+    cfg.update(
+        {
+            "family_keep": "directional",
+            "barrier_keep": "",
+            "horizon_keep": "5",
+            "state_train_months": 1,
+            "min_train_months": 1,
+            "min_states": 1,
+            "min_state_avg_rows": 1,
+            "min_positive_months_train": 1,
+            "require_lb95_trade_gt0": False,
+            "require_lb95_month_gt0": False,
+            "capacity_floor_monthly": 1,
+            "capacity_floor_annual": 1,
+        }
+    )
+
+    schedule, monthly, summary = run(cfg)
+
+    assert not schedule.empty
+    assert set(schedule["family"].astype(str)) == {"directional"}
+    assert "ok" in set(monthly["status"].astype(str))
+    assert int(summary.iloc[0]["rows_total"]) > 0

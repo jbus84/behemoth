@@ -63,27 +63,44 @@ def _remove_target_artifacts(*paths: Path) -> None:
 def _remove_symbol_targets(target_models_dir: Path, symbol: str) -> None:
     if not symbol:
         return
-    for path in target_models_dir.glob(f"{symbol}_model_*"):
-        if path.is_file():
-            path.unlink()
+    for pattern in (f"{symbol}_*_model_*", f"{symbol}_model_*"):
+        for path in target_models_dir.glob(pattern):
+            if path.is_file():
+                path.unlink()
 
 
-def _discover_source_symbols(source_models_dir: Path) -> list[str]:
+def _model_stem(symbol: str, family: str, month: str) -> str:
+    return f"{str(symbol).upper().strip()}_{str(family).strip()}_model_{str(month).strip()}"
+
+
+def _discover_source_symbols(source_models_dir: Path, family: str) -> list[str]:
     symbols: set[str] = set()
-    for path in source_models_dir.glob("*_model_*.cbm"):
+    suffix = f"_{str(family).strip()}_model_"
+    for path in source_models_dir.glob(f"*{suffix}*.cbm"):
         name = path.name
-        if "_model_" not in name:
+        if suffix not in name:
             continue
-        symbol = name.split("_model_", 1)[0].upper().strip()
+        symbol = name.split(suffix, 1)[0].upper().strip()
         if symbol:
             symbols.add(symbol)
+    if str(family).strip() == "oco_first_touch":
+        for path in source_models_dir.glob("*_model_*.cbm"):
+            name = path.name
+            if suffix in name or "_model_" not in name:
+                continue
+            symbol = name.split("_model_", 1)[0].upper().strip()
+            if symbol:
+                symbols.add(symbol)
     return sorted(symbols)
 
 
-def _latest_source_artifacts(source_models_dir: Path, symbol: str) -> tuple[str, Path, Path] | None:
+def _latest_source_artifacts(
+    source_models_dir: Path, symbol: str, family: str
+) -> tuple[str, Path, Path] | None:
     s = str(symbol).upper().strip()
+    fam = str(family).strip()
     pairs: list[tuple[str, Path, Path]] = []
-    for cbm_path in sorted(source_models_dir.glob(f"{s}_model_*.cbm")):
+    for cbm_path in sorted(source_models_dir.glob(f"{s}_{fam}_model_*.cbm")):
         month = cbm_path.stem.split("_")[-1]
         if not _MONTH_RE.match(month):
             continue
@@ -91,6 +108,15 @@ def _latest_source_artifacts(source_models_dir: Path, symbol: str) -> tuple[str,
         if not thr_path.exists():
             continue
         pairs.append((month, cbm_path, thr_path))
+    if fam == "oco_first_touch":
+        for cbm_path in sorted(source_models_dir.glob(f"{s}_model_*.cbm")):
+            month = cbm_path.stem.split("_")[-1]
+            if not _MONTH_RE.match(month):
+                continue
+            thr_path = cbm_path.with_suffix(".json")
+            if not thr_path.exists():
+                continue
+            pairs.append((month, cbm_path, thr_path))
     if not pairs:
         return None
     return max(pairs, key=lambda item: item[0])
@@ -100,13 +126,21 @@ def _source_artifacts_for_month(
     source_models_dir: Path,
     symbol: str,
     model_month: str,
+    family: str,
 ) -> tuple[str, Path, Path] | None:
-    s = str(symbol).upper().strip()
     month = str(model_month).strip()
     if not _MONTH_RE.match(month):
         return None
-    cbm_path = source_models_dir / f"{s}_model_{month}.cbm"
-    thr_path = source_models_dir / f"{s}_model_{month}.json"
+    stem = _model_stem(symbol, family, month)
+    cbm_path = source_models_dir / f"{stem}.cbm"
+    thr_path = source_models_dir / f"{stem}.json"
+    if (
+        str(family).strip() == "oco_first_touch"
+        and (not cbm_path.exists() or not thr_path.exists())
+    ):
+        s = str(symbol).upper().strip()
+        cbm_path = source_models_dir / f"{s}_model_{month}.cbm"
+        thr_path = source_models_dir / f"{s}_model_{month}.json"
     if not cbm_path.exists() or not thr_path.exists():
         return None
     return month, cbm_path, thr_path
@@ -119,6 +153,7 @@ def run(
     target_models_dir: Path,
     symbols: list[str],
     model_month: str | None = None,
+    family: str = "oco_first_touch",
 ) -> int:
     results: list[SyncResult] = []
     requested_symbols = [symbol.upper() for symbol in symbols]
@@ -247,12 +282,12 @@ def run(
                     )
                 )
     else:
-        symbols_to_sync = requested_symbols or _discover_source_symbols(source_models_dir)
+        symbols_to_sync = requested_symbols or _discover_source_symbols(source_models_dir, family)
         for symbol in symbols_to_sync:
             resolved = (
-                _source_artifacts_for_month(source_models_dir, symbol, model_month)
+                _source_artifacts_for_month(source_models_dir, symbol, model_month, family)
                 if model_month
-                else _latest_source_artifacts(source_models_dir, symbol)
+                else _latest_source_artifacts(source_models_dir, symbol, family)
             )
             if resolved is None:
                 _remove_symbol_targets(target_models_dir, symbol)
@@ -296,6 +331,7 @@ def main() -> None:
     parser.add_argument("--source-models-dir", default="models/oco")
     parser.add_argument("--target-models-dir", default="models/oco_dukascopy_candidate")
     parser.add_argument("--symbols", default="")
+    parser.add_argument("--family", default="oco_first_touch")
     args = parser.parse_args()
 
     symbols = [symbol.strip().upper() for symbol in str(args.symbols).split(",") if symbol.strip()]
@@ -306,6 +342,7 @@ def main() -> None:
             target_models_dir=Path(args.target_models_dir),
             symbols=symbols,
             model_month=str(args.model_month).strip() or None,
+            family=str(args.family).strip(),
         )
     )
 

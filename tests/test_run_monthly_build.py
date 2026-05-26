@@ -73,6 +73,8 @@ def test_main_builds_candidate_month_bundle(monkeypatch) -> None:
             "run",
             "python",
             "scripts/sync_candidate_model_artifacts.py",
+            "--family",
+            "oco_first_touch",
             "--model-month",
             "2026-02",
             "--source-models-dir",

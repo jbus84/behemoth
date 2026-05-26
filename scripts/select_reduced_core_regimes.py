@@ -129,6 +129,11 @@ def _parse_candidate_uid(uid: str) -> tuple[str, str, int, int, str]:
     return str(lib), str(symbol).upper(), int(bt), horizon, str(state_id)
 
 
+def _library_for_family(family: str) -> str:
+    fam = str(family).strip()
+    return "oco" if fam in {"oco_first_touch", "oco_asymmetric", "double_touch"} else fam
+
+
 def _parse_barrier_row(row: pd.Series) -> float:
     if "barrier_pips" in row and pd.notna(row.get("barrier_pips", np.nan)):
         try:
@@ -344,7 +349,7 @@ def _write_no_trade_outputs(
 def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     symbol = str(cfg["symbol"]).upper().strip()
     family_keep = str(cfg["family_keep"]).strip()
-    barrier_keep = set(_parse_floats(str(cfg["barrier_keep"])))
+    barrier_keep = set(_parse_floats(str(cfg.get("barrier_keep", ""))))
     horizon_keep = set(_parse_ints(str(cfg["horizon_keep"])))
     q = float(cfg["locked_quantile"])
     selection_mode = str(cfg.get("selection_mode", DEFAULTS["selection_mode"]))
@@ -458,21 +463,23 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     p["bar_ticks"] = parsed.map(lambda x: x[2])
     p["horizon"] = parsed.map(lambda x: x[3])
     p["state_id"] = parsed.map(lambda x: x[4])
-    p = p[(p["library"] == "oco") & (p["symbol"] == symbol)].copy()
+    p = p[(p["library"] == _library_for_family(family_keep)) & (p["symbol"] == symbol)].copy()
     p["test_month"] = p["test_month"].astype(str)
 
     c["symbol"] = c["symbol"].astype(str).str.upper()
     c["bar_ticks"] = pd.to_numeric(c["bar_ticks"], errors="coerce").astype("Int64")
     c["horizon"] = pd.to_numeric(c["horizon"], errors="coerce").astype("Int64")
     if "barrier_pips" not in c.columns:
-        c["barrier_pips"] = c.apply(_parse_barrier_row, axis=1)
+        c["barrier_pips"] = 0.0 if not barrier_keep else c.apply(_parse_barrier_row, axis=1)
     c["barrier_pips"] = pd.to_numeric(c["barrier_pips"], errors="coerce")
-    c = c[
+    keep_mask = (
         (c["symbol"] == symbol)
         & (c["family"].astype(str) == family_keep)
-        & (c["barrier_pips"].isin(list(barrier_keep)))
         & (c["horizon"].isin(list(horizon_keep)))
-    ].copy()
+    )
+    if barrier_keep:
+        keep_mask = keep_mask & c["barrier_pips"].isin(list(barrier_keep))
+    c = c[keep_mask].copy()
     if c.empty:
         if raw_candidates_empty:
             return _write_no_trade_outputs(

@@ -428,10 +428,15 @@ def _export_train_predictions(
     df.to_parquet(out_path, index=False)
 
 
+def _model_artifact_stem(symbol: str, family: str, month: str) -> str:
+    return f"{str(symbol).upper().strip()}_{str(family).strip()}_model_{str(month).strip()}"
+
+
 def _wfo_monthly(
     d: pd.DataFrame,
     *,
     library: str,
+    family: str = "oco_first_touch",
     symbol: str = "",
     months: list[tuple[pd.Timestamp, pd.Timestamp]],
     score_start_ts: pd.Timestamp | None,
@@ -525,14 +530,15 @@ def _wfo_monthly(
         if model_export_dir is not None and symbol:
             model_export_dir.mkdir(parents=True, exist_ok=True)
             month_tag = test_start.strftime("%Y-%m")
-            cbm_path = model_export_dir / f"{symbol}_model_{month_tag}.cbm"
+            model_stem = _model_artifact_stem(symbol, family, month_tag)
+            cbm_path = model_export_dir / f"{model_stem}.cbm"
             model.save_model(str(cbm_path))
 
             # Export Importances CSV
             imp_df = pd.DataFrame({"feature": feats, "importance": fi}).sort_values(
                 "importance", ascending=False
             )
-            imp_path = model_export_dir / f"{symbol}_feature_importance_{month_tag}.csv"
+            imp_path = model_export_dir / f"{symbol}_{family}_feature_importance_{month_tag}.csv"
             imp_df.to_csv(imp_path, index=False)
 
             # Compute execution threshold for live API.
@@ -590,7 +596,9 @@ def _wfo_monthly(
             print(f"exported: {cbm_path} + {thr_path} + {imp_path}")
 
             # Export training predictions for live seeding
-            train_pred_path = model_export_dir / f"{symbol}_train_predictions_{month_tag}.parquet"
+            train_pred_path = (
+                model_export_dir / f"{symbol}_{family}_train_predictions_{month_tag}.parquet"
+            )
             _export_train_predictions(
                 train_ts=tr["close_ts"],
                 train_p=p_tr,
@@ -888,41 +896,60 @@ def main() -> None:
         ev_path = out_dir / f"{symbol}_{lib}_events_eval{eval_year}.parquet"
         ev.to_parquet(ev_path, index=False)
         print(f"wrote: {ev_path}")
-        m, t, p, imp = _wfo_monthly(
-            ev,
-            library=lib,
-            symbol=symbol,
-            months=months,
-            score_start_ts=score_start_ts,
-            rolling_train_months=rolling_train_months,
-            min_month_train_rows=int(cfg["min_month_train_rows"]),
-            min_month_test_rows=int(cfg["min_month_test_rows"]),
-            min_candidate_rows_in_train_window=int(cfg["min_candidate_rows_in_train_window"]),
-            threshold_quantiles=_parse_float_list(str(cfg["threshold_quantiles"])),
-            threshold_mode=threshold_mode,
-            rolling_threshold_days=int(
-                cfg.get("rolling_threshold_days", DEFAULTS["rolling_threshold_days"])
-            ),
-            rolling_threshold_min_history=int(
-                cfg.get("rolling_threshold_min_history", DEFAULTS["rolling_threshold_min_history"])
-            ),
-            execution_quantile=float(cfg.get("execution_quantile", DEFAULTS["execution_quantile"])),
-            seed=int(cfg["seed"]),
-            model_export_dir=Path(str(cfg.get("model_export_dir", "")))
-            if cfg.get("model_export_dir")
-            else None,
+        families = (
+            sorted(ev["family"].dropna().astype(str).unique().tolist())
+            if "family" in ev.columns and not ev.empty
+            else [lib]
         )
-        _write_library_outputs(
-            out_dir=out_dir, symbol=symbol, lib=lib, m=m, t=t, p=p, imp=imp
-        )
-        if not m.empty:
-            all_metrics.append(m)
-        if not t.empty:
-            all_thresholds.append(t)
-        if not p.empty:
-            all_preds.append(p)
-        if not imp.empty:
-            all_importance.append(imp)
+        for family in families:
+            ev_family = (
+                ev[ev["family"].astype(str) == family].copy()
+                if "family" in ev.columns and not ev.empty
+                else ev.copy()
+            )
+            m, t, p, imp = _wfo_monthly(
+                ev_family,
+                library=lib,
+                family=family,
+                symbol=symbol,
+                months=months,
+                score_start_ts=score_start_ts,
+                rolling_train_months=rolling_train_months,
+                min_month_train_rows=int(cfg["min_month_train_rows"]),
+                min_month_test_rows=int(cfg["min_month_test_rows"]),
+                min_candidate_rows_in_train_window=int(
+                    cfg["min_candidate_rows_in_train_window"]
+                ),
+                threshold_quantiles=_parse_float_list(str(cfg["threshold_quantiles"])),
+                threshold_mode=threshold_mode,
+                rolling_threshold_days=int(
+                    cfg.get("rolling_threshold_days", DEFAULTS["rolling_threshold_days"])
+                ),
+                rolling_threshold_min_history=int(
+                    cfg.get(
+                        "rolling_threshold_min_history",
+                        DEFAULTS["rolling_threshold_min_history"],
+                    )
+                ),
+                execution_quantile=float(
+                    cfg.get("execution_quantile", DEFAULTS["execution_quantile"])
+                ),
+                seed=int(cfg["seed"]),
+                model_export_dir=Path(str(cfg.get("model_export_dir", "")))
+                if cfg.get("model_export_dir")
+                else None,
+            )
+            _write_library_outputs(
+                out_dir=out_dir, symbol=symbol, lib=family, m=m, t=t, p=p, imp=imp
+            )
+            if not m.empty:
+                all_metrics.append(m)
+            if not t.empty:
+                all_thresholds.append(t)
+            if not p.empty:
+                all_preds.append(p)
+            if not imp.empty:
+                all_importance.append(imp)
 
     metrics = pd.concat(all_metrics, ignore_index=True) if all_metrics else pd.DataFrame()
     thresholds = pd.concat(all_thresholds, ignore_index=True) if all_thresholds else pd.DataFrame()

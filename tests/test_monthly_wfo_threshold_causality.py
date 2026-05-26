@@ -177,6 +177,14 @@ def test_attach_stable_event_ids_assigns_deterministic_keys() -> None:
     assert c1["scored_row_id"].tolist() == ["2025-07|c1|0", "2025-07|c1|1"]
 
 
+def test_family_model_artifact_stem_includes_family() -> None:
+    from scripts.run_tick_opportunity_monthly_wfo import _model_artifact_stem
+
+    assert _model_artifact_stem("EURUSD", "directional", "2026-02") == (
+        "EURUSD_directional_model_2026-02"
+    )
+
+
 def test_export_train_predictions_parquet(tmp_path: Path) -> None:
     """Training predictions export should contain (day, pred_prob) rows
     matching the training data used by the rolling threshold."""
