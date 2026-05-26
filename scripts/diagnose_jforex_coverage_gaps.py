@@ -25,6 +25,8 @@ DEFAULT_LOCK_DIR = Path("configs/research/governance/oco_history_dukascopy_candi
 DEFAULT_STATE_DB_DIR = Path("data/analysis/backtest_reconcile/runtime")
 DEFAULT_EVAL_START = "2025-07-07T00:00:00Z"
 DEFAULT_EVAL_END = "2025-07-09T00:00:00Z"
+_MINING_FAMILY = "oco"
+_LOCKED_PREDICTIONS_SUFFIX = f"_{_MINING_FAMILY}_locked_predictions.parquet"
 CANDIDATE_EVAL_STARTS = [
     "2025-07-07T00:00:00Z",
     "2025-07-07T08:00:00Z",
@@ -72,7 +74,7 @@ def post_warmup_coverage(
 def _load_governance_selected_close_ts(
     lock_dir: Path, symbol: str, eval_start: str, eval_end: str
 ) -> list[datetime]:
-    path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
+    path = lock_dir / f"{symbol.lower()}{_LOCKED_PREDICTIONS_SUFFIX}"
     con = duckdb.connect()
     rows = con.execute(
         "SELECT close_ts AT TIME ZONE 'UTC' FROM read_parquet(?) "
