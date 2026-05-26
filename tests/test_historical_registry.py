@@ -16,22 +16,35 @@ def _write_lock(
     model_month: str | None = None,
     include_hashes: bool = True,
 ) -> Path:
+    import hashlib
+
     month_dir = root / month
     month_dir.mkdir(parents=True, exist_ok=True)
     lock_path = month_dir / f"{symbol.lower()}_oco_live_lock.json"
 
+    # Create model files in bundle-relative models/ directory
+    models_dir = month_dir / "models"
+    models_dir.mkdir(exist_ok=True)
+    cbm_file = models_dir / f"{symbol}_model_{model_month or month}.cbm"
+    json_file = models_dir / f"{symbol}_model_{model_month or month}.json"
+    cbm_file.write_bytes(b"fake-cbm-" + symbol.encode())
+    json_file.write_text('{"threshold": 0.5}')
+
+    # Compute sha256s
+    cbm_sha = hashlib.sha256(cbm_file.read_bytes()).hexdigest() if include_hashes else ""
+    json_sha = hashlib.sha256(json_file.read_bytes()).hexdigest() if include_hashes else ""
+
     artifacts = {
-        "model_cbm_path": f"models/oco/{symbol}_model_{model_month or month}.cbm",
-        "model_threshold_json_path": f"models/oco/{symbol}_model_{model_month or month}.json",
-        "model_month": model_month or month,
+        "model_cbm": {"path": f"models/{symbol}_model_{model_month or month}.cbm", "sha256": cbm_sha},
+        "model_threshold_json": {"path": f"models/{symbol}_model_{model_month or month}.json", "sha256": json_sha},
     }
-    if include_hashes:
-        artifacts["model_cbm_sha256"] = "cbm_sha"
-        artifacts["model_threshold_json_sha256"] = "thr_sha"
 
     payload = {
+        "schema_version": 2,
         "symbol": symbol,
+        "bundle": {"month": month, "dir_relpath": "."},
         "artifacts": artifacts,
+        "deployability": {"live_deployable": True, "model_month": model_month or month},
         "locked_runtime": {"production_cap_pips": 1.1},
         "state_universe": {
             "rows": [

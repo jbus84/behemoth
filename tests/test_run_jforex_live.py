@@ -325,14 +325,21 @@ def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted
         encoding="utf-8",
     )
     lock_payload = {
+        "schema_version": 2,
         "symbol": "EURUSD",
         "artifacts": {
+            "model_cbm": {
+                "path": "models/EURUSD_model_2026-03.cbm",
+                "sha256": _sha(cbm_path),
+            },
+            "model_threshold_json": {
+                "path": "models/EURUSD_model_2026-03.json",
+                "sha256": _sha(thr_path),
+            },
+        },
+        "deployability": {
             "live_deployable": True,
             "model_month": "2026-03",
-            "model_cbm_path": "models/oco/EURUSD_model_2026-03.cbm",
-            "model_cbm_sha256": _sha(cbm_path),
-            "model_threshold_json_path": "models/oco/EURUSD_model_2026-03.json",
-            "model_threshold_json_sha256": _sha(thr_path),
         },
         "locked_runtime": {
             "threshold_mode": "rolling_days",

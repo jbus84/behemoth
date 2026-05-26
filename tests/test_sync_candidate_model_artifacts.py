@@ -13,13 +13,21 @@ def _sha(path: Path) -> str:
 
 def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -> None:
     payload = {
+        "schema_version": 2,
         "symbol": symbol,
         "artifacts": {
+            "model_cbm": {
+                "path": f"models/{symbol}_model_{month}.cbm",
+                "sha256": _sha(cbm),
+            },
+            "model_threshold_json": {
+                "path": f"models/{symbol}_model_{month}.json",
+                "sha256": _sha(thr),
+            },
+        },
+        "deployability": {
             "model_month": month,
-            "model_cbm_path": f"models/oco/{symbol}_model_{month}.cbm",
-            "model_cbm_sha256": _sha(cbm),
-            "model_threshold_json_path": f"models/oco/{symbol}_model_{month}.json",
-            "model_threshold_json_sha256": _sha(thr),
+            "live_deployable": True,
         },
     }
     (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
@@ -269,11 +277,19 @@ def test_run_removes_stale_target_files_when_expected_hash_missing(
     (lock_dir / "eurusd_oco_live_lock.json").write_text(
         json.dumps(
             {
+                "schema_version": 2,
                 "symbol": "EURUSD",
                 "artifacts": {
+                    "model_cbm": {
+                        "path": f"models/{cbm.name}",
+                    },
+                    "model_threshold_json": {
+                        "path": f"models/{thr.name}",
+                    },
+                },
+                "deployability": {
                     "model_month": "2026-02",
-                    "model_cbm_path": f"models/oco/{cbm.name}",
-                    "model_threshold_json_path": f"models/oco/{thr.name}",
+                    "live_deployable": True,
                 },
             }
         ),
