@@ -16,6 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.behemoth.core.bundle_paths import BundlePaths
+
 logger = logging.getLogger(__name__)
 
 _HISTORICAL_PREDICTION_TOLERANCE_SEC = 30.0
@@ -73,14 +75,14 @@ class HistoricalPredictionStage:
         cache_key: str,
         symbol: str,
         model_month: str,
-        model_binding: dict[str, Any],
+        bundle_paths: BundlePaths,
     ) -> dict[datetime, set[str]]:
         """Load or retrieve cached universe of prediction candidates by timestamp."""
         cached = self._universes.get(cache_key)
         if cached is not None:
             return cached
 
-        pred_path = self._prediction_path(cache_key, model_binding)
+        pred_path = self._prediction_path(cache_key, bundle_paths)
         if pred_path is None:
             self._universes[cache_key] = {}
             return {}
@@ -132,14 +134,14 @@ class HistoricalPredictionStage:
         cache_key: str,
         symbol: str,
         model_month: str,
-        model_binding: dict[str, Any],
+        bundle_paths: BundlePaths,
     ) -> dict[str, list[datetime]]:
         """Load or retrieve cached per-candidate timestamps for tolerant replay gating."""
         cached = self._candidate_index.get(cache_key)
         if cached is not None:
             return cached
 
-        pred_path = self._prediction_path(cache_key, model_binding)
+        pred_path = self._prediction_path(cache_key, bundle_paths)
         if pred_path is None:
             self._candidate_index[cache_key] = {}
             return {}
@@ -192,14 +194,14 @@ class HistoricalPredictionStage:
         cache_key: str,
         symbol: str,
         model_month: str,
-        model_binding: dict[str, Any],
+        bundle_paths: BundlePaths,
     ) -> dict[str, list[int]]:
         """Load or retrieve cached per-candidate tick ordinals for tick-perfect replay."""
         cached = self._candidate_ordinal_index.get(cache_key)
         if cached is not None:
             return cached
 
-        pred_path = self._prediction_path(cache_key, model_binding)
+        pred_path = self._prediction_path(cache_key, bundle_paths)
         if pred_path is None:
             self._candidate_ordinal_index[cache_key] = {}
             return {}
@@ -249,14 +251,14 @@ class HistoricalPredictionStage:
         cache_key: str,
         symbol: str,
         model_month: str,
-        model_binding: dict[str, Any],
+        bundle_paths: BundlePaths,
     ) -> dict[str, list[dict[str, Any]]]:
         """Load or retrieve cached payload rows for attribute injection."""
         cached = self._payload_rows.get(cache_key)
         if cached is not None:
             return cached
 
-        pred_path = self._prediction_path(cache_key, model_binding)
+        pred_path = self._prediction_path(cache_key, bundle_paths)
         if pred_path is None:
             self._payload_rows[cache_key] = {}
             return {}
@@ -361,13 +363,21 @@ class HistoricalPredictionStage:
         if cache_key in self._payload_cursor:
             self._payload_cursor[cache_key][candidate_uid] = 0
 
-    def _prediction_path(self, cache_key: str, model_binding: dict[str, Any]) -> Path | None:
+    def _prediction_path(self, cache_key: str, bundle_paths: BundlePaths) -> Path | None:
         override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-        pred_path = (
-            Path(override_path)
-            if override_path
-            else Path(str(model_binding.get("predictions_path", "")).strip())
-        )
+        if override_path:
+            pred_path = Path(override_path)
+        else:
+            try:
+                pred_path = bundle_paths.predictions()
+            except Exception:
+                # BundlePaths.predictions() may raise if artifact is missing or hash mismatch
+                detail = "bundle_paths.predictions() failed to resolve"
+                self._record_status(cache_key, Path(""), "missing_artifact", detail)
+                if self._strict_missing:
+                    raise MissingHistoricalPredictionArtifact(detail)
+                return None
+
         if pred_path.exists():
             return pred_path
 
