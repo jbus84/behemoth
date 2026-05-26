@@ -207,3 +207,87 @@ def test_v2_migration_to_v3_is_idempotent(tmp_path: Path) -> None:
     assert second.returncode == 0, second.stderr
     after = lock.read_text(encoding="utf-8")
     assert before == after
+
+
+def test_rename_to_family_naming_renames_lock_files(tmp_path: Path) -> None:
+    """Old-style `<symbol>_oco_live_lock.json` files rename to family-namespaced form."""
+    bundle_dir = tmp_path / "2026-04"
+    bundle_dir.mkdir()
+
+    # Build a minimal v3 lock at the OLD filename, with the OLD family value.
+    old_lock = bundle_dir / "eurusd_oco_live_lock.json"
+    lock_body = {
+        "schema_version": 3,
+        "symbol": "EURUSD",
+        "bundle": {
+            "month": "2026-04",
+            "dir_relpath": str(bundle_dir),
+            "family": "oco_first_touch",
+        },
+        "artifacts": {},
+        "deployability": {"live_deployable": True, "model_month": "2026-04"},
+    }
+    old_lock.write_text(json.dumps(lock_body))
+
+    # Invoke the migration in --rename-to-family-naming mode.
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/migrate_lock_schema.py",
+            str(bundle_dir),
+            "--rename-to-family-naming",
+            "--canonical-oco-family",
+            "oco_first_touch",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[1],
+    )
+
+    assert result.returncode == 0, result.stderr
+
+    # Old filename gone.
+    assert not old_lock.exists()
+
+    # New filename present.
+    new_lock = bundle_dir / "eurusd_oco_first_touch_live_lock.json"
+    assert new_lock.exists()
+
+    new_body = json.loads(new_lock.read_text())
+    assert new_body["bundle"]["family"] == "oco_first_touch"
+    # Schema and other fields preserved.
+    assert new_body["schema_version"] == 3
+    assert new_body["symbol"] == "EURUSD"
+
+
+def test_rename_to_family_naming_is_idempotent(tmp_path: Path) -> None:
+    """Re-running the migration on an already-renamed bundle is a no-op."""
+    bundle_dir = tmp_path / "2026-04"
+    bundle_dir.mkdir()
+    new_lock = bundle_dir / "eurusd_oco_first_touch_live_lock.json"
+    new_lock.write_text(json.dumps({
+        "schema_version": 3,
+        "symbol": "EURUSD",
+        "bundle": {"month": "2026-04", "dir_relpath": str(bundle_dir), "family": "oco_first_touch"},
+        "artifacts": {},
+        "deployability": {"live_deployable": True, "model_month": "2026-04"},
+    }))
+    snapshot = new_lock.read_bytes()
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/migrate_lock_schema.py",
+            str(bundle_dir),
+            "--rename-to-family-naming",
+            "--canonical-oco-family",
+            "oco_first_touch",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[1],
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert new_lock.exists()
+    assert new_lock.read_bytes() == snapshot, "idempotent run modified file content"

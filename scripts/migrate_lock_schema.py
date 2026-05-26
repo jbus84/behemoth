@@ -173,13 +173,83 @@ def _rewrite_state_universe(state_universe: dict[str, Any]) -> dict[str, Any]:
     return {**state_universe, "rows": new_rows, "count": len(new_rows)}
 
 
+def _rename_to_family_naming(bundle_dir: Path, canonical_family: str) -> int:
+    renamed = 0
+    skipped = 0
+    for lock_path in sorted(bundle_dir.glob("*_live_lock.json")):
+        name = lock_path.name
+        # Skip files already in the family-namespaced form. Heuristic: anything
+        # that already has `_<known_family>_live_lock.json` is left alone.
+        from src.behemoth.core.bundle_paths import BUNDLE_LAYOUTS  # local import to avoid cycle
+
+        already_family_named = any(
+            name.endswith(f"_{family}_live_lock.json") for family in BUNDLE_LAYOUTS
+        )
+        if already_family_named:
+            skipped += 1
+            continue
+
+        # Old form: <symbol>_oco_live_lock.json
+        if not name.endswith("_oco_live_lock.json"):
+            print(f"[migrate] unknown lock filename shape, skipping: {lock_path}", file=sys.stderr)
+            continue
+
+        symbol_prefix = name[: -len("_oco_live_lock.json")]
+
+        # Rewrite bundle.family to the canonical family.
+        body = json.loads(lock_path.read_text(encoding="utf-8"))
+        bundle = body.setdefault("bundle", {})
+        bundle["family"] = canonical_family
+
+        # Also rewrite state_universe content if it uses old family names
+        state_universe = body.get("state_universe", {})
+        if state_universe:
+            rows = list(state_universe.get("rows", []))
+            if rows:
+                new_rows = []
+                for row in rows:
+                    new_row = dict(row)
+                    if new_row.get("family") == "oco_first_touch_clean":
+                        new_row["family"] = canonical_family
+                    state_id = str(new_row.get("state_id", ""))
+                    if "oco_first_touch_clean" in state_id:
+                        new_row["state_id"] = state_id.replace("oco_first_touch_clean", canonical_family)
+                    new_rows.append(new_row)
+                body["state_universe"] = {**state_universe, "rows": new_rows, "count": len(new_rows)}
+
+        new_name = f"{symbol_prefix}_{canonical_family}_live_lock.json"
+        new_path = lock_path.with_name(new_name)
+        new_path.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        lock_path.unlink()
+        renamed += 1
+        print(f"[migrate] {name} -> {new_name}")
+
+    print(f"[migrate] renamed={renamed} skipped={skipped} dir={bundle_dir}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundle_dir", type=Path)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--family", default="oco_first_touch")
+    parser.add_argument(
+        "--rename-to-family-naming",
+        action="store_true",
+        help="Rename old-style <symbol>_oco_live_lock.json files to <symbol>_<family>_live_lock.json.",
+    )
+    parser.add_argument(
+        "--canonical-oco-family",
+        default="oco_first_touch",
+        help=(
+            "Canonical family name to use when rewriting the bundle.family field "
+            "of old-style locks. Defaults to the project canonical value."
+        ),
+    )
     args = parser.parse_args()
     bundle_dir: Path = args.bundle_dir.resolve()
+    if args.rename_to_family_naming:
+        return _rename_to_family_naming(bundle_dir, args.canonical_oco_family)
     repo_root: Path = args.repo_root.resolve()
     family = str(args.family).strip()
     locks = sorted(bundle_dir.glob("*_oco_live_lock.json"))
