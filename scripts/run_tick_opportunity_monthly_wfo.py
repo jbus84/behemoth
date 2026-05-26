@@ -449,7 +449,8 @@ def _build_events_for_library(
         if fit_df.empty or eval_df.empty:
             continue
         q_fit = _quantiles(fit_df)
-        if families and any(f in SYMBOL_LOCAL_WFO_FAMILIES for f in (families or [])):
+        _LEGACY_WFO_FAMILIES = {"directional", "oco_first_touch"}
+        if families and any(f not in _LEGACY_WFO_FAMILIES for f in families):
             ev = _build_registry_family_events(
                 split_name="eval",
                 df=eval_df,

@@ -133,10 +133,10 @@ def test_build_events_filters_requested_family_before_candidate_cap(tmp_path):
 def test_build_events_for_unsupported_family_fails_loud_with_family_name(tmp_path):
     import scripts.run_tick_opportunity_monthly_wfo as wfo
 
-    with pytest.raises(NotImplementedError, match="oco_asymmetric"):
+    with pytest.raises(NotImplementedError, match="dollar_residual"):
         wfo._build_events_for_library(
-            library="oco_asymmetric",
-            families=["oco_asymmetric"],
+            library="dollar_residual",
+            families=["dollar_residual"],
             symbol="EURUSD",
             dataset_dir=tmp_path,
             candidate_dir=tmp_path,
@@ -281,7 +281,7 @@ def test_check_microstructure_columns_warns_on_partial_absence(capsys):
 def test_symbol_local_family_set_excludes_cross_symbol_families() -> None:
     import scripts.run_tick_opportunity_monthly_wfo as wfo
 
-    assert wfo.SYMBOL_LOCAL_WFO_FAMILIES == {
+    assert {
         "oco_first_touch",
         "oco_asymmetric",
         "directional",
@@ -290,7 +290,7 @@ def test_symbol_local_family_set_excludes_cross_symbol_families() -> None:
         "double_touch",
         "pullback",
         "no_touch",
-    }
+    } == wfo.SYMBOL_LOCAL_WFO_FAMILIES
     assert "dollar_residual" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
     assert "dispersion_rank" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
     assert "lead_lag" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
@@ -299,6 +299,7 @@ def test_symbol_local_family_set_excludes_cross_symbol_families() -> None:
 def test_registry_event_builder_uses_family_protocol_for_pullback() -> None:
     import numpy as np
     import pandas as pd
+
     import scripts.run_tick_opportunity_monthly_wfo as wfo
     from scripts.mining_family import FAMILY_REGISTRY
 
