@@ -33,17 +33,39 @@ class BundleArtifactSpec(NamedTuple):
 _LOG = logging.getLogger("behemoth.governance")
 
 
+def _oco_style_layout(family: str) -> tuple[BundleArtifactSpec, ...]:
+    """Build the eight-artifact spec tuple for a family that follows the OCO-style
+    layout (per-symbol predictions, per-symbol allowed states, per-symbol-per-month
+    model + threshold, optional configs + summaries)."""
+    return (
+        BundleArtifactSpec("predictions",          f"{{symbol_lower}}_{family}_locked_predictions.parquet", True),
+        BundleArtifactSpec("allowed_states_csv",   f"{{symbol_lower}}_{family}_allowed_states.csv",         True),
+        BundleArtifactSpec("model_cbm",            f"models/{{symbol_upper}}_{family}_model_{{month}}.cbm", True),
+        BundleArtifactSpec("model_threshold_json", f"models/{{symbol_upper}}_{family}_model_{{month}}.json", True),
+        BundleArtifactSpec("wfo_config",           f"configs/{{symbol_lower}}_{family}_wfo.yaml",           False),
+        BundleArtifactSpec("reduced_config",       f"configs/{{symbol_lower}}_{family}_reduced.yaml",       False),
+        BundleArtifactSpec("reduced_summary",      f"{{symbol_lower}}_{family}_reduced_summary.csv",        False),
+        BundleArtifactSpec("tick_exact_summary",   f"{{symbol_lower}}_{family}_tick_exact_summary.csv",     False),
+    )
+
+
+_MINING_FAMILY_NAMES: tuple[str, ...] = (
+    "oco_first_touch",
+    "oco_asymmetric",
+    "directional",
+    "directional_inverse",
+    "directional_run",
+    "double_touch",
+    "pullback",
+    "no_touch",
+    "dollar_residual",
+    "dispersion_rank",
+    "lead_lag",
+)
+
+
 BUNDLE_LAYOUTS: dict[str, tuple[BundleArtifactSpec, ...]] = {
-    "oco_first_touch_clean": (
-        BundleArtifactSpec("predictions", "{symbol_lower}_oco_locked_predictions.parquet", True),
-        BundleArtifactSpec("allowed_states_csv", "{symbol_lower}_oco_allowed_states.csv", True),
-        BundleArtifactSpec("model_cbm", "models/{symbol_upper}_model_{month}.cbm", True),
-        BundleArtifactSpec("model_threshold_json", "models/{symbol_upper}_model_{month}.json", True),
-        BundleArtifactSpec("wfo_config", "configs/{symbol_lower}_wfo.yaml", False),
-        BundleArtifactSpec("reduced_config", "configs/{symbol_lower}_reduced.yaml", False),
-        BundleArtifactSpec("reduced_summary", "{symbol_lower}_oco_reduced_summary.csv", False),
-        BundleArtifactSpec("tick_exact_summary", "{symbol_lower}_oco_tick_exact_summary.csv", False),
-    ),
+    family: _oco_style_layout(family) for family in _MINING_FAMILY_NAMES
 }
 
 
