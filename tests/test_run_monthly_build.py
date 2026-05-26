@@ -302,10 +302,12 @@ def test_run_monthly_build_passes_family_to_freeze(monkeypatch) -> None:
         if any("freeze_monthly_bundle.py" in part for part in c)
     ]
     assert freeze_invocations, "expected at least one freeze invocation"
+    families = set()
     for cmd in freeze_invocations:
         assert "--family" in cmd, f"freeze invocation missing --family: {cmd}"
         family_index = cmd.index("--family")
-        assert cmd[family_index + 1] == "oco_first_touch", cmd
+        families.add(cmd[family_index + 1])
+    assert families == {"oco_first_touch", "directional"}
 
 
 def test_monthly_build_freezes_oco_and_directional() -> None:
