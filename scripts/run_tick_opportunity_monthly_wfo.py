@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -105,7 +106,142 @@ _FAMILY_CANDIDATE_LIBRARY: dict[str, str] = {
     "dispersion_rank": "dispersion_rank",
     "lead_lag": "lead_lag",
 }
-_SUPPORTED_WFO_REPLAY_FAMILIES = {"directional", "oco_first_touch"}
+_SUPPORTED_WFO_REPLAY_FAMILIES: set[str] = SYMBOL_LOCAL_WFO_FAMILIES
+
+
+def _params_from_candidate_row(r: pd.Series) -> dict[str, Any]:
+    family = str(r["family"]).strip().lower()
+    state_id = str(r["state_id"]).strip()
+    symbol = str(r["symbol"]).strip().upper()
+    horizon = int(r["horizon"])
+    parts = state_id.split("__")
+    if len(parts) < 3:
+        raise ValueError(f"cannot parse params from state_id={state_id!r} for family={family}")
+    suffix = parts[2]
+    params: dict[str, Any] = {"symbol": symbol, "horizon": horizon}
+    if family in {"directional", "directional_inverse"}:
+        m = re.search(r"h(\d+)", suffix)
+        if m:
+            params["horizon"] = int(m.group(1))
+    elif family == "directional_run":
+        m = re.search(r"n([^_]+)_(.+)", suffix)
+        if m:
+            params["run_bucket"] = m.group(1)
+            params["bet"] = m.group(2)
+    elif family == "oco_first_touch":
+        m = re.search(r"k(\d+)", suffix)
+        if m:
+            params["barrier_pips"] = int(m.group(1))
+    elif family == "oco_asymmetric":
+        m = re.search(r"d([0-9.]+)_rr([0-9.]+)", suffix)
+        if m:
+            params["down_pips"] = float(m.group(1))
+            params["rr"] = float(m.group(2))
+    elif family == "double_touch":
+        m = re.search(r"([^_]+)_a([0-9.]+)_b([0-9.]+)_wA(\d+)_wB(\d+)_h(\d+)", suffix)
+        if m:
+            params["sweep_dir"] = m.group(1)
+            params["a_pips"] = float(m.group(2))
+            params["b_pips"] = float(m.group(3))
+            params["window_A"] = int(m.group(4))
+            params["window_B"] = int(m.group(5))
+            params["horizon"] = int(m.group(6))
+    elif family == "pullback":
+        m = re.search(r"([^_]+)_M([0-9.]+)_R([0-9.]+)_wI(\d+)_wP(\d+)_wR(\d+)_h(\d+)", suffix)
+        if m:
+            params["impulse_dir"] = m.group(1)
+            params["m_pips"] = float(m.group(2))
+            params["r_frac"] = float(m.group(3))
+            params["window_I"] = int(m.group(4))
+            params["window_P"] = int(m.group(5))
+            params["window_R"] = int(m.group(6))
+            params["horizon"] = int(m.group(7))
+        else:
+            m = re.search(r"h(\d+)", suffix)
+            if m:
+                params["horizon"] = int(m.group(1))
+    elif family == "no_touch":
+        m = re.search(r"K([0-9.]+)_h(\d+)", suffix)
+        if m:
+            params["barrier_pips"] = float(m.group(1))
+            params["horizon"] = int(m.group(2))
+    return params
+
+
+def _build_registry_family_events(
+    *,
+    split_name: str,
+    df: pd.DataFrame,
+    q_fit: dict[str, float],
+    cands: pd.DataFrame,
+    max_events_per_candidate: int,
+) -> pd.DataFrame:
+    if df.empty or cands.empty:
+        return pd.DataFrame()
+    features = _feature_cols(df)
+    regimes = {"all": np.full(len(df), True, dtype=bool)}
+    if q_fit:
+        try:
+            from scripts.run_tick_opportunity_mining import _regime_masks
+        except ModuleNotFoundError:
+            from run_tick_opportunity_mining import _regime_masks  # type: ignore
+        for name, mask in _regime_masks(df, q_fit):
+            regimes[str(name)] = np.asarray(mask, dtype=bool)
+
+    ts = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
+    rows: list[pd.DataFrame] = []
+    for _, r in cands.iterrows():
+        family_name = str(r["family"]).strip().lower()
+        if family_name not in SYMBOL_LOCAL_WFO_FAMILIES:
+            raise NotImplementedError(f"{family_name} is not a symbol-local WFO family")
+        family = FAMILY_REGISTRY[family_name]
+        regime_txt = str(r["regime_desc"])
+        regime = regime_txt.split(";")[0].strip()
+        mask = regimes.get(regime, regimes["all"])
+        params = _params_from_candidate_row(r)
+        entries = family.entry_indices(df, mask, params)
+        if len(entries) == 0:
+            continue
+        entries = entries[: int(max_events_per_candidate)]
+        gross = np.asarray(family.measure_gross(df, entries, params), dtype=float)
+        valid = np.isfinite(gross)
+        entries = entries[valid]
+        gross = gross[valid]
+        if len(entries) == 0:
+            continue
+        chunk = df.iloc[entries][features].copy()
+        chunk["close_ts"] = ts.iloc[entries].to_numpy()
+        chunk["split"] = str(split_name)
+        chunk["library"] = family_name
+        chunk["symbol"] = str(r["symbol"])
+        chunk["bar_ticks"] = int(r["bar_ticks"])
+        chunk["horizon"] = int(r["horizon"])
+        chunk["family"] = family_name
+        chunk["state_id"] = str(r["state_id"])
+        chunk["regime_desc"] = regime_txt
+        chunk["quality_tier"] = str(r.get("quality_tier", ""))
+        chunk["quality_score"] = int(r.get("quality_score", 0))
+        chunk["annualized_test_fills"] = float(r.get("annualized_test_fills", 0.0))
+        chunk["mean_gross_pips_test"] = float(r.get("mean_gross_pips_test", 0.0))
+        if "barrier_pips" in params:
+            chunk["barrier_pips"] = float(params["barrier_pips"])
+        chunk["target_gross_pips"] = gross
+        chunk["target_gross_pos"] = (gross > 0.0).astype(int)
+        chunk["target_abs_gross_pips"] = np.abs(gross)
+        chunk["candidate_uid"] = (
+            chunk["library"]
+            + "|"
+            + chunk["symbol"]
+            + "|"
+            + chunk["bar_ticks"].astype(str)
+            + "|h"
+            + chunk["horizon"].astype(str)
+            + "|"
+            + chunk["state_id"]
+        )
+        rows.append(chunk)
+    return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -313,7 +449,15 @@ def _build_events_for_library(
         if fit_df.empty or eval_df.empty:
             continue
         q_fit = _quantiles(fit_df)
-        if lib == "directional":
+        if families and any(f in SYMBOL_LOCAL_WFO_FAMILIES for f in (families or [])):
+            ev = _build_registry_family_events(
+                split_name="eval",
+                df=eval_df,
+                q_fit=q_fit,
+                cands=sub,
+                max_events_per_candidate=int(max_events_per_candidate),
+            )
+        elif lib == "directional":
             ev = _build_directional_events(
                 split_name="eval",
                 df=eval_df,

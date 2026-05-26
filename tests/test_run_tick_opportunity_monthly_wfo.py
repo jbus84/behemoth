@@ -296,6 +296,85 @@ def test_symbol_local_family_set_excludes_cross_symbol_families() -> None:
     assert "lead_lag" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
 
 
+def test_registry_event_builder_uses_family_protocol_for_pullback() -> None:
+    import numpy as np
+    import pandas as pd
+    import scripts.run_tick_opportunity_monthly_wfo as wfo
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    orig_entry = FAMILY_REGISTRY["pullback"].entry_indices
+    orig_gross = FAMILY_REGISTRY["pullback"].measure_gross
+
+    def _fake_entry(frame, mask, params):
+        return np.array([0, 1])
+
+    def _fake_gross(frame, entries, params):
+        return np.array([1.5, -0.5])
+
+    FAMILY_REGISTRY["pullback"].entry_indices = _fake_entry
+    FAMILY_REGISTRY["pullback"].measure_gross = _fake_gross
+
+    try:
+        df = pd.DataFrame(
+            {
+                "close_ts": pd.to_datetime(
+                    ["2025-01-01T00:00:00Z", "2025-01-01T00:01:00Z", "2025-01-01T00:02:00Z"],
+                    utc=True,
+                ),
+                "year": [2025, 2025, 2025],
+                "ret1_pips": [1.0, -2.0, 3.0],
+                "y_fwd_pips_h1": [2.0, -1.0, 0.0],
+                "_dir_side_h1": [1, -1, 1],
+                "cost_est_pips": [0.1, 0.1, 0.1],
+                "range_pips": [1.0, 1.0, 1.0],
+                "ret_z": [0.0, 0.0, 0.0],
+                "ret_abs_z": [0.0, 0.0, 0.0],
+                "vel_cost_units_h1": [1.0, 1.0, 1.0],
+                "vel_abs_cost_units_h1": [1.0, 1.0, 1.0],
+                "spread_z": [0.0, 0.0, 0.0],
+                "tick_rate_z": [0.0, 0.0, 0.0],
+                "hour_utc": [0, 0, 0],
+                "hl_first": [0, 0, 0],
+                "hl_first_mean_24": [0.0, 0.0, 0.0],
+                "hl_pos_frac_mean_24": [0.5, 0.5, 0.5],
+                "tick_burst_score": [0.0, 0.0, 0.0],
+                "quote_revision_rate_z": [0.0, 0.0, 0.0],
+                "directional_persistence_8": [0.0, 0.0, 0.0],
+                "signed_flow_24": [0.0, 0.0, 0.0],
+                "vol_cluster_score": [0.0, 0.0, 0.0],
+            }
+        )
+        cands = pd.DataFrame(
+            {
+                "symbol": ["EURUSD"],
+                "bar_ticks": [100],
+                "horizon": [1],
+                "family": ["pullback"],
+                "state_id": ["pullback__all__up_M2.0_R0.5_wI3_wP5_wR3_h1"],
+                "regime_desc": ["all"],
+                "quality_tier": ["A"],
+                "quality_score": [3],
+                "annualized_test_fills": [100.0],
+                "mean_gross_pips_test": [0.5],
+            }
+        )
+
+        events = wfo._build_registry_family_events(
+            split_name="eval",
+            df=df,
+            q_fit={},
+            cands=cands,
+            max_events_per_candidate=10,
+        )
+
+        assert not events.empty
+        assert set(events["family"]) == {"pullback"}
+        assert events["library"].unique().tolist() == ["pullback"]
+    finally:
+        FAMILY_REGISTRY["pullback"].entry_indices = orig_entry
+        FAMILY_REGISTRY["pullback"].measure_gross = orig_gross
+
+
 def test_wfo_monthly_invokes_guard_on_stale_data():
     from scripts.run_tick_opportunity_monthly_wfo import _wfo_monthly
 
