@@ -12,7 +12,6 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from src.behemoth.core.bundle_paths import BundlePaths, iter_locks
 from src.behemoth.core.registry import CandidateSpec

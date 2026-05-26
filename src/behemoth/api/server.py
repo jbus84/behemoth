@@ -24,7 +24,7 @@ import tempfile
 from bisect import bisect_left
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -1408,8 +1408,6 @@ class _ResolvedRuntimeContract:
     cap_pips: float
     source: str
     lock_path: str | None = None
-    # model_binding kept for API response boundary only (Task 5)
-    model_binding: dict[str, Any] = field(default_factory=dict)
 
 
 def _normalize_model_month(raw: str | None) -> str | None:
@@ -1609,7 +1607,6 @@ def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeC
         cap_pips=float(contract.cap_pips),
         source=contract.source,
         lock_path=contract.lock_path,
-        model_binding=dict(contract.model_binding),
     )
 
 
@@ -1618,16 +1615,10 @@ def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any
     if model is not None and isinstance(thr_cfg, dict):
         return model, thr_cfg
 
-    # Extract locked_runtime_overrides from contract's locked_runtime
-    locked_runtime_overrides: dict[str, Any] = {}
-    if contract.model_binding and "locked_runtime_overrides" in contract.model_binding:
-        locked_runtime_overrides = contract.model_binding.get("locked_runtime_overrides", {})
-
     ok, reason = _model_registry.load_bundle_paths(
         symbol=contract.symbol,
         bundle_paths=contract.bundle_paths,
         cache_key=contract.cache_key,
-        locked_runtime_overrides=locked_runtime_overrides,
         expected_month=(contract.model_month if contract.model_month != "unknown" else None),
         catboost_cls=_catboost_cls(),
     )

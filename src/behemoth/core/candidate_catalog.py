@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry, CandidateSpec

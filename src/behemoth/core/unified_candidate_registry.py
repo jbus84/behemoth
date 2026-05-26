@@ -6,7 +6,8 @@ logic is encapsulated here, reducing 15+ conditionals in server.py.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry, CandidateSpec
