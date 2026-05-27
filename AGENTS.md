@@ -33,6 +33,8 @@ Process discovery:
 - Regenerate and validate registry-only capsules/graphs with `make process-graph-contract`.
 - To project an exploratory Graphify export through the registry scopes, run `make process-graph-contract GRAPHIFY_JSON=graphify-out/graph.json`.
 - Do not treat repo-wide `graphify-out/` as authoritative; it is exploratory input only and must be scoped through the stage registry first.
+- Historical agent plan/spec/audit notes are not authoritative repo context. Use git history for archaeological lookup; for current LLM/process context, use `configs/process/stages.yaml`, `docs/generated/process/`, and regenerated scoped process graph artifacts.
+- Do not use `CHANGELOG.md` as the current command or process source of truth; it records historical names and compatibility notes.
 
 Execution runtime direction:
 
