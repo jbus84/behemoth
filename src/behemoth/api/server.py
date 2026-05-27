@@ -535,6 +535,27 @@ def _deployment_state_for_symbol(symbol: str) -> str:
     return "error"
 
 
+def _model_family_details_for_symbol(symbol: str) -> list[StatusSymbolFamily]:
+    """Return per-family model load state for a symbol."""
+    sym = str(symbol).upper().strip()
+    loaded = _model_registry.models_loaded()
+    out: list[StatusSymbolFamily] = []
+    for cache_key, month in loaded.items():
+        parts = cache_key.split("|")
+        if parts[0] != sym:
+            continue
+        # Live keys: SYMBOL|FAMILY
+        # Historical keys: SYMBOL|MONTH|FAMILY
+        if len(parts) >= 2:
+            family = parts[-1]
+            out.append(StatusSymbolFamily(
+                family=family,
+                model_loaded=True,
+                model_month=month,
+            ))
+    return sorted(out, key=lambda f: f.family)
+
+
 def _run_historical_preflight(history_dir: Path) -> None:
     global _historical_preflight_failed_checks, _historical_preflight_summary
     validator = GovernanceValidator()
@@ -2072,6 +2093,12 @@ class HealthResponse(BaseModel):
     historical_preflight_summary: str | None = None
 
 
+class StatusSymbolFamily(BaseModel):
+    family: str
+    model_loaded: bool
+    model_month: str | None = None
+
+
 class StatusSymbol(BaseModel):
     symbol: str
     bar_ticks: list[int]
@@ -2083,6 +2110,7 @@ class StatusSymbol(BaseModel):
     deployment_state: str
     restart_verdict: str | None = None
     restart_reasons: list[str] = Field(default_factory=list)
+    families: list[StatusSymbolFamily] = Field(default_factory=list)
 
 
 class FeedStatusSymbol(BaseModel):
@@ -3775,6 +3803,7 @@ async def status() -> list[StatusSymbol]:
             deployment_state=deployment_state,
             restart_verdict=restart_verdict,
             restart_reasons=list(restart_reasons),
+            families=_model_family_details_for_symbol(sym),
         ))
     return out
 

@@ -902,6 +902,55 @@ class TestStatusEndpoint:
 
         assert server._active_bar_ticks_for_symbol("AUDUSD") == []
 
+    def test_status_reports_per_family_model_state(self, client, monkeypatch):
+        monkeypatch.setattr(server, "_effective_governance_dir", lambda: "configs/research/governance/oco")
+        monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
+        monkeypatch.setattr(
+            server,
+            "_config",
+            type("Cfg", (), {"symbols": ["EURUSD"], "governance_mode": "live"})(),
+        )
+        monkeypatch.setattr(server, "_active_bar_ticks_for_symbol", lambda sym: [1000])
+        monkeypatch.setattr(
+            server,
+            "_state",
+            type(
+                "StateStub",
+                (),
+                {"bar_count": staticmethod(lambda sym, bt: 11)},
+            )(),
+        )
+        monkeypatch.setattr(server, "_has_loaded_model_for_symbol", lambda sym: True)
+        monkeypatch.setattr(server, "_latest_loaded_month_for_symbol", lambda sym: "2026-03")
+
+        class ModelRegistryStub:
+            @staticmethod
+            def models_loaded():
+                return {
+                    "EURUSD|oco_first_touch": "2026-03",
+                    "EURUSD|directional_reversal": "2026-03",
+                }
+
+            @staticmethod
+            def has_threshold(symbol, family=None):
+                return True
+
+        monkeypatch.setattr(server, "_model_registry", ModelRegistryStub())
+
+        r = client.get("/status")
+
+        assert r.status_code == 200
+        body = r.json()
+        eurusd = next(row for row in body if row["symbol"] == "EURUSD")
+        assert eurusd["model_loaded"] is True
+        assert eurusd["model_month"] == "2026-03"
+        families = eurusd["families"]
+        assert len(families) == 2
+        assert {f["family"] for f in families} == {"oco_first_touch", "directional_reversal"}
+        for f in families:
+            assert f["model_loaded"] is True
+            assert f["model_month"] == "2026-03"
+
     def test_runtime_feed_status_returns_symbols(self, client):
         r = client.get("/runtime/feed/status")
         assert r.status_code == 200
