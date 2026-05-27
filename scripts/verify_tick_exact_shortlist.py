@@ -636,14 +636,19 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     preds["horizon"] = uid_cols["horizon"]
     preds["state_id"] = uid_cols["state_id"]
     lib_col = "library" if "library" in preds.columns else "uid_library"
-    if family_required and family_required in _DIRECTIONAL_FAMILIES:
-        expected_lib = family_required
+    if family_required == "oco_first_touch":
+        target_lib = "oco"
+    elif family_required in {"directional", "directional_inverse", "directional_run", "double_touch", "pullback"}:
+        target_lib = "directional"
     elif family_required == "oco_asymmetric":
-        expected_lib = "oco_asymmetric"
+        target_lib = "oco_asymmetric"
+    elif family_required is None:
+        target_lib = "oco"
     else:
-        expected_lib = "oco"
+        target_lib = family_required
     preds = preds[
-        (preds[lib_col].astype(str) == expected_lib) & (preds["symbol"].astype(str) == symbol)
+        (preds[lib_col].astype(str) == target_lib) & (preds["symbol"].astype(str) == symbol)
+
     ].copy()
     preds["close_ts"] = pd.to_datetime(preds["close_ts"], utc=True, errors="coerce")
     preds["pred_prob"] = pd.to_numeric(preds["pred_prob"], errors="coerce")
