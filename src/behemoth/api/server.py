@@ -2169,6 +2169,7 @@ class AccountRiskReservationReleaseRequest(BaseModel):
     broker_pos_id: str | None = None
     reservation_id: str | None = None
     reason: str | None = None
+    family: str | None = None
 
 
 class AccountRiskReservationsStatusResponse(BaseModel):
@@ -2311,9 +2312,13 @@ async def get_account_status(symbol: str | None = None) -> AccountRiskStatusResp
 
 
 @app.get("/risk/account_risk/reservations/status", response_model=AccountRiskReservationsStatusResponse)
-async def get_account_risk_reservations_status(symbol: str | None = None) -> AccountRiskReservationsStatusResponse:
+async def get_account_risk_reservations_status(
+    symbol: str | None = None,
+    family: str | None = None,
+) -> AccountRiskReservationsStatusResponse:
     """Return active account-risk reservation totals and rows."""
     sym = str(symbol or "").strip().upper() or None
+    fam = str(family or "").strip() or None
     if (not _config.account_risk_enabled) or (_account_risk_profile is None) or (_state is None):
         return AccountRiskReservationsStatusResponse(enabled=False, symbol=sym)
     include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
@@ -2322,8 +2327,9 @@ async def get_account_risk_reservations_status(symbol: str | None = None) -> Acc
         symbol=sym,
         include_pending=include_pending,
         include_open=include_open,
+        family=fam,
     )
-    rows = _state.list_active_account_risk_reservations(symbol=sym)
+    rows = _state.list_active_account_risk_reservations(symbol=sym, family=fam)
     return AccountRiskReservationsStatusResponse(
         enabled=True,
         symbol=sym,
@@ -2341,9 +2347,10 @@ async def get_account_risk_reservations_status(symbol: str | None = None) -> Acc
 )
 async def get_account_reservations_status(
     symbol: str | None = None,
+    family: str | None = None,
 ) -> AccountRiskReservationsStatusResponse:
     """Return active broker-neutral reservation totals and rows."""
-    return await get_account_risk_reservations_status(symbol)
+    return await get_account_risk_reservations_status(symbol, family)
 
 
 @app.post("/risk/account_risk/reservations/release")
@@ -2361,6 +2368,7 @@ async def release_account_risk_reservations_v2(req: AccountRiskReservationReleas
         candidate_uid=req.candidate_uid,
         broker_pos_id=req.broker_pos_id,
         symbol=req.symbol,
+        family=req.family,
         reason=req.reason or "manual_release",
     )
     return {"ok": True, "released_count": int(released)}
@@ -2383,6 +2391,7 @@ async def release_account_risk_reservations(
         candidate_uid=req.candidate_uid,
         broker_pos_id=req.broker_pos_id,
         symbol=req.symbol,
+        family=req.family,
         reason=req.reason or "manual_release",
     )
     return {"ok": True, "released_count": int(released)}

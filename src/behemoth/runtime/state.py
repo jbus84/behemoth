@@ -1297,6 +1297,7 @@ class StateManager:
         broker_pos_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
         reason: str = "released",
     ) -> int:
         """Release active reservation rows and return affected row count."""
@@ -1314,6 +1315,9 @@ class StateManager:
         if symbol:
             where.append("symbol = ?")
             params.append(symbol.upper())
+        if family:
+            where.append("family = ?")
+            params.append(family)
         if len(where) == 1:
             return 0
         where_sql = " AND ".join(where)
@@ -1338,6 +1342,7 @@ class StateManager:
         broker_pos_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
         reason: str = "released",
     ) -> int:
         """Broker-neutral alias for releasing active reservations."""
@@ -1346,6 +1351,7 @@ class StateManager:
             broker_pos_id=broker_pos_id,
             candidate_uid=candidate_uid,
             symbol=symbol,
+            family=family,
             reason=reason,
         )
 

@@ -195,6 +195,7 @@ class ReservationStore:
         broker_pos_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
         reason: str = "released",
     ) -> int:
         params: list = []
@@ -211,6 +212,9 @@ class ReservationStore:
         if symbol:
             where.append("symbol = ?")
             params.append(symbol.upper())
+        if family:
+            where.append("family = ?")
+            params.append(family)
         if len(where) == 1:
             return 0
         where_sql = " AND ".join(where)

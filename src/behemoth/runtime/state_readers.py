@@ -264,12 +264,13 @@ class ReservationWriter(Protocol):
         broker_pos_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
         reason: str = "released",
     ) -> int:
         """Release (transition to RELEASED) active reservations matching criteria.
 
         Args:
-            reservation_id, broker_pos_id, candidate_uid, symbol: Match criteria
+            reservation_id, broker_pos_id, candidate_uid, symbol, family: Match criteria
             reason: Reason for release
 
         Returns:
