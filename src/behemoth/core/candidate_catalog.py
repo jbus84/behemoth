@@ -122,8 +122,7 @@ class CandidateCatalog:
                         candidates.extend(self._historical_registry.get_candidates(sym, month, family=fam))
         elif self._live_registry is not None:
             candidates = self._live_registry.get_candidates(sym)
-        ticks = sorted({int(c.bar_ticks) for c in candidates})
-        return ticks or ([100] if self._historical_mode else [])
+        return sorted({int(c.bar_ticks) for c in candidates})
 
     def resolve_contract(
         self, symbol: str, close_ts: datetime, family: str | None = None
@@ -168,7 +167,7 @@ class CandidateCatalog:
             raise LookupError(f"No candidates registered for {symbol}")
         # Use the first family's bundle_paths as the "primary" contract metadata.
         # Per-family dispatch happens downstream in server.py.
-        first_family = all_candidates[0].family or "unknown"
+        first_family = all_candidates[0].family
         bundle_paths = self._live_registry.get_bundle_paths(symbol, first_family)
         if not bundle_paths:
             raise LookupError(f"No bundle paths registered for {symbol}")

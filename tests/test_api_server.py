@@ -3144,10 +3144,26 @@ class TestTradeEndpoints:
                     "entry_price": 1.1000,
                     "entry_ts": "2025-01-01T00:00:00Z",
                     "horizon": 12,
+                    "family": "oco_first_touch",
                 },
             )
             assert r.status_code == 200
             assert r.json()["internal_trade_id"] == 123
+
+    def test_open_trade_rejects_missing_family(self, client):
+        r = client.post(
+            "/trades/open",
+            json={
+                "symbol": "EURUSD",
+                "candidate_uid": "test_cand",
+                "broker_pos_id": "456",
+                "side": "BUY",
+                "entry_price": 1.1000,
+                "entry_ts": "2025-01-01T00:00:00Z",
+                "horizon": 12,
+            },
+        )
+        assert r.status_code == 422
 
     def test_open_trade_passes_family(self, client):
         import unittest.mock as mock
@@ -3207,6 +3223,7 @@ class TestTradeEndpoints:
                     "symbol": "EURUSD",
                     "broker_pos_id": "456",
                     "status": "CLOSED",
+                    "family": "oco_first_touch",
                     "exit_price": 1.1050,
                     "exit_ts": "2025-01-01T02:00:00Z",
                     "pnl_pips": 50.0,
@@ -3214,6 +3231,17 @@ class TestTradeEndpoints:
             )
             assert r.status_code == 200
             assert r.json()["status"] == "ok"
+
+    def test_update_trade_rejects_missing_family(self, client):
+        r = client.post(
+            "/trades/update",
+            json={
+                "symbol": "EURUSD",
+                "broker_pos_id": "456",
+                "status": "CLOSED",
+            },
+        )
+        assert r.status_code == 422
 
     def test_get_active_trades_success(self, client):
         import unittest.mock as mock
@@ -3242,6 +3270,7 @@ class TestTradeEndpoints:
                         "entry_price": 1.0,
                         "entry_ts": "2025-01-01T00:00:00Z",
                         "horizon": 12,
+                        "family": "oco_first_touch",
                     },
                 ).status_code
                 == 503
@@ -3252,7 +3281,7 @@ class TestTradeEndpoints:
             )
             assert (
                 client.post(
-                    "/trades/update", json={"symbol": "E", "broker_pos_id": "1", "status": "CLOSED"}
+                    "/trades/update", json={"symbol": "E", "broker_pos_id": "1", "status": "CLOSED", "family": "oco_first_touch"}
                 ).status_code
                 == 503
             )
@@ -3276,6 +3305,7 @@ class TestTradeEndpoints:
                     "entry_price": 1.1000,
                     "entry_ts": "2025-01-01T00:00:00Z",
                     "horizon": 12,
+                    "family": "oco_first_touch",
                     "reservation_id": "res-xyz-999",
                 },
             )
@@ -3295,6 +3325,7 @@ class TestTradeEndpoints:
                     "symbol": "EURUSD",
                     "broker_pos_id": "456",
                     "status": "CLOSED",
+                    "family": "oco_first_touch",
                     "exit_price": 1.1050,
                     "exit_ts": "2025-01-01T02:00:00Z",
                     "pnl_pips": 50.0,
@@ -4370,11 +4401,50 @@ class TestSeedAuditHistory:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = "oco_first_touch"
 
-        dummy_model = mock.MagicMock()
-        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
-            [np.full(len(X), 0.15), np.full(len(X), 0.85)]
-        )
+        directional_cand = mock.MagicMock()
+        directional_cand.bar_ticks = 100
+        directional_cand.horizon = 24
+        directional_cand.barrier_pips = 15.0
+        directional_cand.candidate_uid = "cand2"
+        directional_cand.family = "directional"
+
+        family_contracts = {
+            "oco_first_touch": SimpleNamespace(
+                candidates=[dummy_cand],
+                model_month="2025-01",
+                cap_pips=1.2,
+                family="oco_first_touch",
+            ),
+            "directional": SimpleNamespace(
+                candidates=[directional_cand],
+                model_month="2025-02",
+                cap_pips=1.3,
+                family="directional",
+            ),
+        }
+
+        def resolve_family(_sym, family, _close_ts):
+            return family_contracts[family]
+
+        def model_with_prob(prob: float):
+            model = mock.MagicMock()
+            model.predict_proba.side_effect = lambda X: np.column_stack(
+                [np.full(len(X), 1.0 - prob), np.full(len(X), prob)]
+            )
+            return model
+
+        family_models = {
+            "oco_first_touch": model_with_prob(0.85),
+            "directional": model_with_prob(0.65),
+        }
+
+        def ensure_model(contract):
+            return (
+                family_models[contract.family],
+                {"threshold_exec": 0.5, "threshold_source": "test"},
+            )
 
         original_dir = server._config.dukascopy_ticks_dir
         server._config.dukascopy_ticks_dir = str(tmp_path)
@@ -4384,16 +4454,21 @@ class TestSeedAuditHistory:
                     server,
                     "_resolve_runtime_contract",
                     return_value=SimpleNamespace(
-                        candidates=[dummy_cand],
+                        candidates=[dummy_cand, directional_cand],
                         model_month="2025-01",
                         cap_pips=1.2,
                     ),
                 ),
                 mock.patch.object(
                     server,
+                    "_resolve_runtime_contract_for_family",
+                    side_effect=resolve_family,
+                ) as resolve_for_family,
+                mock.patch.object(
+                    server,
                     "_ensure_model_and_threshold",
-                    return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
-                ),
+                    side_effect=ensure_model,
+                ) as ensure_model_and_threshold,
             ):
                 r = client.post(
                     "/state/seed_audit_history", json={"symbols": [sym], "days_back": 30}
@@ -4403,6 +4478,12 @@ class TestSeedAuditHistory:
             assert body["ok"] is True
             assert body["total_events"] > 0
             assert body["phase2_events"][sym] > 0
+            assert {
+                call.args[1] for call in resolve_for_family.call_args_list
+            } == {"oco_first_touch", "directional"}
+            assert {
+                call.args[0].family for call in ensure_model_and_threshold.call_args_list
+            } == {"oco_first_touch", "directional"}
         finally:
             server._config.dukascopy_ticks_dir = original_dir
 

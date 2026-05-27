@@ -44,7 +44,7 @@ class GovernanceLockLoader:
         bp = BundlePaths.from_lock(path)  # raises BundleIntegrityError on v1 — intentional, no fallback
         locked = data.get("locked_runtime", {}) or {}
         rows = data.get("state_universe", {}).get("rows", [])
-        candidates = [CandidateSpec.from_row(r) for r in rows]
+        candidates = [CandidateSpec.from_row(r, family=bp.family) for r in rows]
 
         return CandidateContract(
             symbol=sym,

@@ -108,6 +108,16 @@ def test_candidate_catalog_resolves_live_contract() -> None:
         assert catalog.active_bar_ticks("EURUSD") == [200]
 
 
+def test_candidate_registry_requires_exact_family_bindings() -> None:
+    registry = CandidateRegistry()
+
+    with pytest.raises(KeyError, match="No cap_pips binding for EURUSD family directional"):
+        registry.get_cap_pips("EURUSD", "directional")
+
+    with pytest.raises(KeyError, match="No bundle paths binding for EURUSD family directional"):
+        registry.get_bundle_paths("EURUSD", "directional")
+
+
 def test_candidate_catalog_rejects_missing_month() -> None:
     with TemporaryDirectory() as tmp_dir:
         bundle_paths = _create_bundle_paths_for_test(Path(tmp_dir), "EURUSD", "2026-03")
