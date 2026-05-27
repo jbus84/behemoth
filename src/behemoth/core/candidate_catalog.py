@@ -184,21 +184,6 @@ class CandidateCatalog:
             lock_path=None,
         )
 
-    def resolve_missing_historical_month(self, symbol: str, requested_month: str) -> str | None:
-        """Find fallback month according to governance_missing_month_policy."""
-        if self._historical_registry is None:
-            return None
-        months = self._historical_registry.months_for_symbol(symbol)
-        if not months:
-            return None
-        if self._missing_month_policy in {"latest", "latest_available"}:
-            return months[-1]
-        if self._missing_month_policy in {"nearest_previous", "previous", "floor"}:
-            prior = [m for m in months if m <= requested_month]
-            return prior[-1] if prior else None
-        return None
-
-
 def _normalize_symbol(raw: str) -> str:
     return str(raw).upper().strip()
 

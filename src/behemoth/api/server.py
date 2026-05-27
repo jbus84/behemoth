@@ -1616,21 +1616,6 @@ def _get_feed_tracker(symbol: str) -> dict[str, Any]:
     return row
 
 
-def _resolve_missing_historical_month(symbol: str, requested_month: str) -> str | None:
-    if _historical_registry is None:
-        return None
-    months = _historical_registry.months_for_symbol(symbol)
-    if not months:
-        return None
-    policy = str(_config.governance_missing_month_policy).strip().lower()
-    if policy in {"latest", "latest_available"}:
-        return months[-1]
-    if policy in {"nearest_previous", "previous", "floor"}:
-        prior = [m for m in months if m <= requested_month]
-        return prior[-1] if prior else None
-    return None
-
-
 def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeContract:
     symbol = str(sym).upper().strip()
     if _config.force_model_month and _is_historical_mode():
