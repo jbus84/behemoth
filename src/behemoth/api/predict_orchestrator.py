@@ -293,16 +293,19 @@ class PredictionOrchestrator:
         if month_str:
             from src.behemoth.core.candidate_catalog import _normalize_model_month
             requested_month = _normalize_model_month(month_str)
+            if requested_month is None:
+                raise KeyError(
+                    f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={month_str!r}; expected YYYY-MM"
+                )
         else:
             requested_month = close_ts.strftime("%Y-%m")
         families = self._historical_registry.families_for_symbol_month(sym, requested_month)
         if not families:
-            # Fallback: try other months in the registry
-            for m in self._historical_registry.months_for_symbol(sym):
-                families = self._historical_registry.families_for_symbol_month(sym, m)
-                if families:
-                    requested_month = m
-                    break
+            # Respect governance_missing_month_policy for month fallback
+            fallback_month = self._catalog._resolve_missing_historical_month(sym, requested_month)
+            if fallback_month is not None:
+                requested_month = fallback_month
+                families = self._historical_registry.families_for_symbol_month(sym, requested_month)
         if not families:
             raise KeyError(f"No historical families for {sym} month {requested_month}")
 
