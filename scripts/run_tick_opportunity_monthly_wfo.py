@@ -117,11 +117,12 @@ def _params_from_candidate_row(r: pd.Series) -> dict[str, Any]:
     state_id = str(r["state_id"]).strip()
     symbol = str(r["symbol"]).strip().upper()
     horizon = int(r["horizon"])
+    bar_ticks = int(r["bar_ticks"])
     parts = state_id.split("__")
     if len(parts) < 3:
         raise ValueError(f"cannot parse params from state_id={state_id!r} for family={family}")
     suffix = parts[2]
-    params: dict[str, Any] = {"symbol": symbol, "horizon": horizon}
+    params: dict[str, Any] = {"symbol": symbol, "horizon": horizon, "bar_ticks": bar_ticks}
     if family in {"directional", "directional_inverse"}:
         m = re.search(r"h(\d+)", suffix)
         if m:
@@ -168,6 +169,21 @@ def _params_from_candidate_row(r: pd.Series) -> dict[str, Any]:
         if m:
             params["barrier_pips"] = float(m.group(1))
             params["horizon"] = int(m.group(2))
+    elif family == "dollar_residual":
+        m = re.search(r"w(\d+)_z([0-9.]+)", suffix)
+        if m:
+            params["residual_window"] = int(m.group(1))
+            params["threshold_z"] = float(m.group(2))
+    elif family == "dispersion_rank":
+        m = re.search(r"k(\d+)", suffix)
+        if m:
+            params["rank_k"] = int(m.group(1))
+    elif family == "lead_lag":
+        m = re.search(r"p([A-Z]+)_k(\d+)_z([0-9.]+)", suffix)
+        if m:
+            params["peer"] = m.group(1)
+            params["lag_k"] = int(m.group(2))
+            params["trigger_z"] = float(m.group(3))
     return params
 
 
@@ -178,6 +194,9 @@ def _build_registry_family_events(
     q_fit: dict[str, float],
     cands: pd.DataFrame,
     max_events_per_candidate: int,
+    bar_ticks: int,
+    dataset_dir: Path,
+    horizons: list[int],
 ) -> pd.DataFrame:
     if df.empty or cands.empty:
         return pd.DataFrame()
@@ -202,6 +221,9 @@ def _build_registry_family_events(
         regime = regime_txt.split(";")[0].strip()
         mask = regimes.get(regime, regimes["all"])
         params = _params_from_candidate_row(r)
+        params["bar_ticks"] = bar_ticks
+        params["dataset_dir"] = str(dataset_dir)
+        params["horizons"] = horizons
         entries = family.entry_indices(df, mask, params)
         if len(entries) == 0:
             continue
@@ -468,6 +490,9 @@ def _build_events_for_library(
                 q_fit=q_fit,
                 cands=sub,
                 max_events_per_candidate=int(max_events_per_candidate),
+                bar_ticks=int(bt),
+                dataset_dir=dataset_dir,
+                horizons=horizons,
             )
         elif lib == "directional":
             ev = _build_directional_events(
