@@ -23,6 +23,7 @@ _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 class HistoricalLockEntry:
     symbol: str
     month: str
+    family: str
     lock_path: str
     candidates: list[CandidateSpec]
     cap_pips: float
@@ -33,7 +34,7 @@ class HistoricalLockEntry:
 class HistoricalCandidateRegistry:
     """Month-aware candidate/model registry for historical replay."""
 
-    _entries: dict[tuple[str, str], HistoricalLockEntry] = field(default_factory=dict)
+    _entries: dict[tuple[str, str, str], HistoricalLockEntry] = field(default_factory=dict)
 
     @classmethod
     def load(cls, history_dir: Path | str) -> HistoricalCandidateRegistry:
@@ -43,11 +44,10 @@ class HistoricalCandidateRegistry:
 
         reg = cls()
         for month_dir in sorted(path for path in p_dir.iterdir() if path.is_dir()):
-            # Filtered to OCO until HistoricalCandidateRegistry supports multi-family lookup.
-            for p in iter_locks(month_dir, family="oco_first_touch"):
+            for p in iter_locks(month_dir, family=None):
                 entry = cls._load_one(p)
                 if entry is not None:
-                    reg._entries[(entry.symbol, entry.month)] = entry
+                    reg._entries[(entry.symbol, entry.month, entry.family)] = entry
         return reg
 
     @classmethod
@@ -77,7 +77,7 @@ class HistoricalCandidateRegistry:
                 if isinstance(rows, list):
                     for row in rows:
                         if isinstance(row, dict):
-                            candidates.append(CandidateSpec.from_row(row))
+                            candidates.append(CandidateSpec.from_row(row, family=bp.family))
                 if not candidates:
                     return None
 
@@ -87,6 +87,7 @@ class HistoricalCandidateRegistry:
                 return HistoricalLockEntry(
                     symbol=symbol,
                     month=model_month,
+                    family=bp.family,
                     lock_path=str(p),
                     candidates=candidates,
                     cap_pips=cap_pips,
@@ -101,26 +102,39 @@ class HistoricalCandidateRegistry:
 
     def months_for_symbol(self, symbol: str) -> list[str]:
         s = str(symbol).upper().strip()
-        return sorted(list({m for (sym, m) in self._entries if sym == s}))
+        return sorted(list({m for (sym, m, _f) in self._entries if sym == s}))
 
-    def get_entry(self, symbol: str, month: str) -> HistoricalLockEntry | None:
-        key = (str(symbol).upper().strip(), str(month).strip())
-        return self._entries.get(key)
+    def families_for_symbol_month(self, symbol: str, month: str) -> list[str]:
+        s = str(symbol).upper().strip()
+        m = str(month).strip()
+        return sorted(list({f for (sym, mo, f) in self._entries if sym == s and mo == m}))
 
-    def get_candidates(self, symbol: str, month: str) -> list[CandidateSpec]:
-        e = self.get_entry(symbol, month)
+    def get_entry(self, symbol: str, month: str, family: str | None = None) -> HistoricalLockEntry | None:
+        s = str(symbol).upper().strip()
+        m = str(month).strip()
+        if family is not None:
+            key = (s, m, str(family).strip())
+            return self._entries.get(key)
+        # Backward-compat: return single-family entry when only one exists
+        matches = [e for (sym, mo, _f), e in self._entries.items() if sym == s and mo == m]
+        if len(matches) == 1:
+            return matches[0]
+        return None
+
+    def get_candidates(self, symbol: str, month: str, family: str | None = None) -> list[CandidateSpec]:
+        e = self.get_entry(symbol, month, family=family)
         return e.candidates if e is not None else []
 
-    def get_bundle_paths(self, symbol: str, month: str) -> BundlePaths | None:
-        e = self.get_entry(symbol, month)
+    def get_bundle_paths(self, symbol: str, month: str, family: str | None = None) -> BundlePaths | None:
+        e = self.get_entry(symbol, month, family=family)
         return e.bundle_paths if e is not None else None
 
-    def get_cap_pips(self, symbol: str, month: str) -> float:
-        e = self.get_entry(symbol, month)
+    def get_cap_pips(self, symbol: str, month: str, family: str | None = None) -> float:
+        e = self.get_entry(symbol, month, family=family)
         return float(e.cap_pips) if e is not None else 1.2
 
-    def get_lock_path(self, symbol: str, month: str) -> str | None:
-        e = self.get_entry(symbol, month)
+    def get_lock_path(self, symbol: str, month: str, family: str | None = None) -> str | None:
+        e = self.get_entry(symbol, month, family=family)
         return str(e.lock_path) if e is not None else None
 
     def all_candidates(self) -> list[CandidateSpec]:

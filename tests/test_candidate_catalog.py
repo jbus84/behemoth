@@ -113,9 +113,10 @@ def test_candidate_catalog_resolves_historical_fallback_month() -> None:
         bundle_paths = _create_bundle_paths_for_test(Path(tmp_dir), "EURUSD", "2026-03")
 
         historical = HistoricalCandidateRegistry()
-        historical._entries[("EURUSD", "2026-03")] = HistoricalLockEntry(
+        historical._entries[("EURUSD", "2026-03", "oco_first_touch")] = HistoricalLockEntry(
             symbol="EURUSD",
             month="2026-03",
+            family="oco_first_touch",
             lock_path="locks/2026-03/EURUSD_oco_first_touch_live_lock.json",
             candidates=[_candidate()],
             cap_pips=1.2,

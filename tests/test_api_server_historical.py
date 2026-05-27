@@ -29,6 +29,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
     return HistoricalLockEntry(
         symbol=symbol,
         month=month,
+        family="oco_first_touch",
         lock_path=str(lock_path),
         candidates=[
             CandidateSpec(
@@ -37,6 +38,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
                 horizon=4,
                 barrier_pips=10.0,
                 candidate_uid="oco_first_touch__all__k2",
+                family="oco_first_touch",
             )
         ],
         cap_pips=1.2,
@@ -53,7 +55,7 @@ def test_resolve_runtime_contract_historical_uses_close_ts_month() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-08")] = _mk_entry("EURUSD", "2025-08")
+        hist._entries[("EURUSD", "2025-08", "oco_first_touch")] = _mk_entry("EURUSD", "2025-08")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
@@ -114,7 +116,7 @@ def test_resolve_runtime_contract_historical_falls_back_to_previous_month() -> N
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-07")] = _mk_entry("EURUSD", "2025-07")
+        hist._entries[("EURUSD", "2025-07", "oco_first_touch")] = _mk_entry("EURUSD", "2025-07")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
@@ -144,7 +146,7 @@ def test_resolve_runtime_contract_historical_missing_month_errors() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-07")] = _mk_entry("EURUSD", "2025-07")
+        hist._entries[("EURUSD", "2025-07", "oco_first_touch")] = _mk_entry("EURUSD", "2025-07")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
@@ -175,7 +177,7 @@ def test_resolve_runtime_contract_historical_force_month_override() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-07")] = _mk_entry("EURUSD", "2025-07")
+        hist._entries[("EURUSD", "2025-07", "oco_first_touch")] = _mk_entry("EURUSD", "2025-07")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
@@ -205,8 +207,8 @@ def test_resolve_runtime_contract_historical_switches_at_month_boundary() -> Non
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-08")] = _mk_entry("EURUSD", "2025-08")
-        hist._entries[("EURUSD", "2025-09")] = _mk_entry("EURUSD", "2025-09")
+        hist._entries[("EURUSD", "2025-08", "oco_first_touch")] = _mk_entry("EURUSD", "2025-08")
+        hist._entries[("EURUSD", "2025-09", "oco_first_touch")] = _mk_entry("EURUSD", "2025-09")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
@@ -240,7 +242,7 @@ def test_resolve_runtime_contract_rejects_invalid_force_month_format() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-08")] = _mk_entry("EURUSD", "2025-08")
+        hist._entries[("EURUSD", "2025-08", "oco_first_touch")] = _mk_entry("EURUSD", "2025-08")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
