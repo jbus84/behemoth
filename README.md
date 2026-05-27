@@ -117,7 +117,7 @@ Registry source:
 | 6 | Tick-Exact Verification | `make retrain-all` | Runs within onboard when reduced core has states |
 | 7 | Logical & Statistical Audit | `make retrain-all` | Also available standalone: `make stage7` |
 | 8 | Robustness & Stress | `make retrain-all` | Runs within onboard when reduced core has states |
-| 9 | Live Governance | `make stage9` | Alias for `make freeze-oco` |
+| 9 | Live Governance | `make stage9` | Alias for `make freeze-live-governance` |
 | 10 | Known Risks & Backlog | -- | Documentation only; see `docs/strategy_bible/` |
 | 11 | Execution Monte Carlo | `make retrain-all` | Runs within onboard pipeline |
 | 12 | API Parity | `make monthly-recert` | Runs as step 1 (jforex-dukascopy-matrix) |
@@ -158,7 +158,7 @@ make rebuild-all MONTHS=201801-202602
 
 **Step 2: Freeze governance (stage 9)**
 ```bash
-make freeze-oco
+make freeze-live-governance
 ```
 
 **Step 3: Build candidate bundle**

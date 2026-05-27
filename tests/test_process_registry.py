@@ -88,7 +88,7 @@ def test_checked_in_stage_registry_contains_stage12_to_stage14_contracts() -> No
         "stage14",
     }
     assert registry.require_stage("stage01").canonical_commands == ("make rebuild-all",)
-    assert registry.require_stage("stage09").canonical_commands == ("make freeze-oco",)
+    assert registry.require_stage("stage09").canonical_commands == ("make freeze-live-governance",)
     assert registry.require_stage("stage14").gates["jforex_outcome_parity_pass"].severity == "monitor"
     assert (
         registry.require_stage("stage14").gates["local_jforex_surrogate_pass"].verdict_effect

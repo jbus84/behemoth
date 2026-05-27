@@ -63,7 +63,8 @@ endef
         stage10 stage11 stage12 stage13 stage14 \
         onboard-symbol retrain-all rebuild-all audit-all \
         clean-data clean-mining-outputs \
-        freeze-oco freeze-oco-history freeze-oco-dukascopy-candidate validate-oco-history validate-bundles \
+        freeze-live-governance freeze-historical-governance freeze-dukascopy-candidate-governance \
+        validate-historical-governance validate-bundles \
         stage12-api-parity stage12-stage13-cert-artifacts local-jforex-parity local-jforex-parity-matrix \
         local-jforex-parity-ordinal local-jforex-parity-spotlight local-jforex-cert \
         jforex-dukascopy-matrix stage13-dukascopy-cert stage14-jforex-cert \
@@ -168,7 +169,7 @@ stage8:
 	@echo "Stage 8 (robustness) runs as part of onboard-symbol when reduced core has states."
 	@echo "Standalone not supported - run via make retrain-all or make rebuild-all."
 
-stage9: freeze-oco
+stage9: freeze-live-governance
 
 stage10:
 	@echo "Stage 10 is documentation/risk tracking. See docs/strategy_bible/stage_10_known_risks_and_backlog.md"
@@ -241,10 +242,10 @@ audit-all:
 	uv run python scripts/audit_oco_leakage_label_integrity.py
 	uv run python scripts/audit_oco_execution_risk_prelive.py
 
-freeze-oco:
+freeze-live-governance:
 	@if [ -n "$$(git status --porcelain)" ]; then \
-		echo "error: freeze-oco requires a clean git worktree before running."; \
-		echo "hint: commit/stash current changes, then rerun make freeze-oco"; \
+		echo "error: freeze-live-governance requires a clean git worktree before running."; \
+		echo "hint: commit/stash current changes, then rerun make freeze-live-governance"; \
 		exit 1; \
 	fi
 	@echo "\n--- Verifying API Parity ---"
@@ -269,12 +270,12 @@ freeze-oco:
 	$(MAKE) docs-contract-ci
 	@echo "\n✅ Successfully audited and frozen all locks."
 
-freeze-oco-history:
+freeze-historical-governance:
 	uv run python scripts/freeze_monthly_bundle.py --symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
-	$(MAKE) validate-oco-history
+	$(MAKE) validate-historical-governance
 	@echo "\n✅ Historical month-scoped locks generated."
 
-freeze-oco-dukascopy-candidate:
+freeze-dukascopy-candidate-governance:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/freeze_oco_live_governance.py \
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g') \
 		--out-dir configs/research/governance/oco_dukascopy_candidate \
@@ -282,7 +283,7 @@ freeze-oco-dukascopy-candidate:
 		--analysis-dir data/analysis/tick_opportunity_mining_dukascopy_candidate
 	@echo "\n✅ Dukascopy-candidate governance locks frozen."
 
-validate-oco-history:
+validate-historical-governance:
 	uv run python scripts/validate_oco_historical_governance.py \
 		--history-dir configs/research/governance/oco_history \
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
@@ -740,7 +741,7 @@ help:
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage6" "Print guidance: tick-exact verification (part of onboard-symbol)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage7" "Alias for audit-all"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage8" "Print guidance: robustness (part of onboard-symbol)"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage9" "Alias for freeze-oco"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage9" "Alias for freeze-live-governance"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage10" "Print guidance: documentation/risk tracking"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage11" "Print guidance: execution Monte Carlo (part of onboard-symbol)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage12" "Alias for stage12-api-parity"
@@ -752,10 +753,10 @@ help:
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "clean-mining-outputs" "Wipe Stage 2-5 outputs under data/analysis/tick_opportunity_mining/ (Stage 0-1 tick_velocity kept)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "clean-data" "Wipe entire data/ folder (raw Dukascopy ticks at ~/Desktop/dukascopy_ticks kept)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "audit-all" "Run core OCO pipeline audits"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco" "Verify API parity, refreeze governance locks, run audits"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-history" "Freeze month-scoped historical governance locks for replay/backtests"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-dukascopy-candidate" "Freeze mutable candidate governance locks to oco_dukascopy_candidate/"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "validate-oco-history" "Validate historical lock integrity and index coverage"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-live-governance" "Verify API parity, refreeze live governance locks, run audits"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-historical-governance" "Freeze month-scoped historical governance locks for replay/backtests"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-dukascopy-candidate-governance" "Freeze mutable candidate governance locks to oco_dukascopy_candidate/"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "validate-historical-governance" "Validate historical lock integrity and index coverage"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage12-stage13-cert-artifacts" "Run the unified Stage 12 -> Stage 13 certification artifact flow"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage12-api-parity" "Alias for stage12-stage13-cert-artifacts"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity" "Run the local parquet-driven JForex surrogate against the shared Java strategy core"
