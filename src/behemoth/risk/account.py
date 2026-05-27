@@ -274,17 +274,22 @@ def evaluate_account_risk_limits(
 def evaluate_trade_guard(
     profile: AccountRiskProfile,
     *,
-    account_eval: dict[str, Any],
+    account_eval: Any,
     pred_prob: float,
     threshold_exec: float,
     barrier_pips: float,
     cost_est_pips: float,
 ) -> dict[str, Any]:
-    if not bool(account_eval.get("allow_trading", True)):
+    def _get_account_eval(key: str, default: Any = None) -> Any:
+        if isinstance(account_eval, dict):
+            return account_eval.get(key, default)
+        return getattr(account_eval, key, default)
+
+    if not bool(_get_account_eval("allow_trading", True)):
         return {
             "allow_trade": False,
-            "block_reason": str(account_eval.get("block_reason") or "ACCOUNT_RISK_BLOCKED"),
-            "hard_block_reason": str(account_eval.get("block_reason") or "ACCOUNT_RISK_BLOCKED"),
+            "block_reason": str(_get_account_eval("block_reason") or "ACCOUNT_RISK_BLOCKED"),
+            "hard_block_reason": str(_get_account_eval("block_reason") or "ACCOUNT_RISK_BLOCKED"),
             "would_block_under_trade_cost_gate": False,
             "trade_cost_gate_block_reason": None,
             "trade_cost_gate_mode": profile.cost_gate.trade_cost_gate_mode,
@@ -330,7 +335,7 @@ def evaluate_trade_guard(
 def evaluate_trade_risk_guard(
     profile: AccountRiskProfile,
     *,
-    account_eval: dict[str, Any],
+    account_eval: Any,
     pred_prob: float,
     threshold_exec: float,
     barrier_pips: float,
