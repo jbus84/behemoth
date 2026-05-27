@@ -2757,6 +2757,194 @@ class TestPredictEndpoint:
             assert admitted[0]["risk_reservation_id"] is not None
 
 
+class TestBuildDecisionsHistorical:
+    def test_build_decisions_uses_locked_payload_values(self) -> None:
+        """_build_decisions should use pred_prob, threshold_exec, and selected_exec from locked payload."""
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        cand = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="state_a", family="oco_first_touch"
+        )
+        features = ModelFeatures(
+            cost_est_pips=0.1,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=10.0,
+        )
+
+        model_mock = mock.MagicMock()
+        overrides = {
+            "oco_first_touch|EURUSD|100|h6|state_a": {
+                "pred_prob": 0.71,
+                "threshold_exec": 0.60,
+                "selected_exec": 1,
+            }
+        }
+
+        with (
+            mock.patch.object(server, "_pip_value_per_unit_usd", return_value={
+                "conversion_status": "ok",
+                "pip_value_per_unit_usd": 0.1,
+            }),
+            mock.patch.object(server._config, "account_risk_fx_rate_max_age_sec", 300),
+            mock.patch.object(server._config, "account_risk_enforce_blocks", False),
+            mock.patch.object(server, "_candidate_regime_name", return_value="all"),
+            mock.patch.object(server, "_regime_is_active", return_value=True),
+            mock.patch.object(server, "_account_risk_profile", None),
+        ):
+            decisions = server._build_decisions(
+                sym="EURUSD",
+                candidates=[cand],
+                model=model_mock,
+                base_features_by_ticks={100: features},
+                regime_quantiles_by_ticks={},
+                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                thr_cfg={"threshold_exec": 0.5, "threshold_source": "test"},
+                account_risk_eval=SimpleNamespace(
+                    enabled=True,
+                    profile_id="test",
+                    allow_trading=True,
+                    block_reason=None,
+                    snapshot_available=True,
+                    daily_loss_headroom=100.0,
+                    max_loss_headroom=100.0,
+                    daily_loss_used=0.0,
+                    max_loss_used=0.0,
+                    trading_day_id="2025-07-07",
+                ),
+                account_risk_enabled_effective=False,
+                account_risk_enabled_override=False,
+                requested_volume_units=10000.0,
+                model_month="2025-07",
+                cap_pips=1.2,
+                skip_regime_gate=True,
+                historical_prediction_overrides=overrides,
+            )
+
+        assert len(decisions) == 1
+        d = decisions[0]
+        assert d.pred_prob == pytest.approx(0.71)
+        assert d.curr_threshold == pytest.approx(0.60)
+        assert d.curr_source == "historical_locked_predictions"
+        assert d.preselected_exec == 1
+        assert d.selected_exec == 1
+        assert d.risk_metrics_snapshot["historical_locked_payload"] is True
+        model_mock.predict_proba.assert_not_called()
+
+    def test_build_decisions_falls_back_to_model_when_no_override(self) -> None:
+        """_build_decisions should call model inference when no locked payload is present."""
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        cand = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="state_b", family="oco_first_touch"
+        )
+        features = ModelFeatures(
+            cost_est_pips=0.1,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=10.0,
+        )
+
+        model_mock = mock.MagicMock()
+        model_mock.predict_proba.return_value = np.array([[0.1, 0.85]])
+
+        with (
+            mock.patch.object(server, "_pip_value_per_unit_usd", return_value={
+                "conversion_status": "ok",
+                "pip_value_per_unit_usd": 0.1,
+            }),
+            mock.patch.object(server._config, "account_risk_fx_rate_max_age_sec", 300),
+            mock.patch.object(server._config, "account_risk_enforce_blocks", False),
+            mock.patch.object(server, "_candidate_regime_name", return_value="all"),
+            mock.patch.object(server, "_regime_is_active", return_value=True),
+            mock.patch.object(server, "_account_risk_profile", None),
+        ):
+            orig_state = server._state
+            server._state = mock.MagicMock()
+            server._state.get_rolling_threshold.return_value = 0.45
+            try:
+                decisions = server._build_decisions(
+                    sym="EURUSD",
+                    candidates=[cand],
+                    model=model_mock,
+                    base_features_by_ticks={100: features},
+                    regime_quantiles_by_ticks={},
+                    close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                    thr_cfg={
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                    account_risk_eval=SimpleNamespace(
+                        enabled=True,
+                        profile_id="test",
+                        allow_trading=True,
+                        block_reason=None,
+                        snapshot_available=True,
+                        daily_loss_headroom=100.0,
+                        max_loss_headroom=100.0,
+                        daily_loss_used=0.0,
+                        max_loss_used=0.0,
+                        trading_day_id="2025-07-07",
+                    ),
+                    account_risk_enabled_effective=False,
+                    account_risk_enabled_override=False,
+                    requested_volume_units=10000.0,
+                    model_month="2025-07",
+                    cap_pips=1.2,
+                    skip_regime_gate=True,
+                    historical_prediction_overrides=None,
+                )
+            finally:
+                server._state = orig_state
+
+        assert len(decisions) == 1
+        d = decisions[0]
+        assert d.pred_prob == pytest.approx(0.85)
+        assert d.curr_source == "test:rolling_dynamic"
+        assert d.preselected_exec == 1
+        assert d.selected_exec == 1
+        model_mock.predict_proba.assert_called_once()
+
+
 class TestCrossFamilyAllocator:
     def test_global_allocator_admits_higher_ranked_later_family(self, client):
         import unittest.mock as mock
