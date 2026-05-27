@@ -64,6 +64,7 @@ def test_observability_lifecycle():
             "entry_price": 1.0855,
             "entry_ts": datetime.now(tz=timezone.utc).isoformat(),
             "horizon": 10,
+            "family": "oco_first_touch",
         }
         resp = client.post("/trades/open", json=trade_req)
         assert resp.status_code == 200
@@ -77,6 +78,7 @@ def test_observability_lifecycle():
             "exit_price": 1.0865,
             "exit_ts": datetime.now(tz=timezone.utc).isoformat(),
             "pnl_pips": 10.0,
+            "family": "oco_first_touch",
         }
         resp = client.post("/trades/update", json=update_req)
         assert resp.status_code == 200
