@@ -1348,6 +1348,17 @@ def _candidate_regime_name(cand: Any) -> str:
     return "all"
 
 
+def _require_family(cand: Any) -> str:
+    """Return candidate family or raise ValueError if missing/empty."""
+    family = str(getattr(cand, "family", "") or "").strip()
+    if not family:
+        raise ValueError(
+            f"Candidate {getattr(cand, 'candidate_uid', '?')} missing family; "
+            "governance data may be stale or incomplete."
+        )
+    return family
+
+
 def _regime_cmp(value: float, threshold: float, *, op: str) -> bool:
     if not (math.isfinite(float(value)) and math.isfinite(float(threshold))):
         return True
@@ -1788,9 +1799,7 @@ def _resolve_historical_prediction_payload_overrides(
     close_ts_utc = _as_utc_ts(close_ts)
     out: dict[str, dict[str, Any]] = {}
     for cand in candidates:
-        family = str(getattr(cand, "family", "") or "").strip()
-        if not family:
-            family = "oco_first_touch"
+        family = _require_family(cand)
         canonical_uid = (
             f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         )
@@ -1837,9 +1846,7 @@ def _apply_historical_prediction_universe_gate(
         tolerance = int(_config.historical_prediction_ordinal_tolerance)
         filtered: list[Any] = []
         for cand in candidates:
-            family = str(getattr(cand, "family", "") or "").strip()
-            if not family:
-                family = "oco_first_touch"
+            family = _require_family(cand)
             canonical_uid = (
                 f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
             )
@@ -1868,9 +1875,7 @@ def _apply_historical_prediction_universe_gate(
         tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
         filtered: list[Any] = []
         for cand in candidates:
-            family = str(getattr(cand, "family", "") or "").strip()
-            if not family:
-                family = "oco_first_touch"
+            family = _require_family(cand)
             canonical_uid = (
                 f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
             )
@@ -1910,9 +1915,7 @@ def _apply_historical_prediction_universe_gate(
         return []
     filtered: list[Any] = []
     for cand in candidates:
-        family = str(getattr(cand, "family", "") or "").strip()
-        if not family:
-            family = "oco_first_touch"
+        family = _require_family(cand)
         canonical_uid = (
             f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         )
@@ -2469,9 +2472,7 @@ def _orchestrator_build_predictions_fn(
     # Group candidates by family
     by_family: dict[str, list[Any]] = {}
     for cand in candidates:
-        fam = str(getattr(cand, "family", "") or "").strip()
-        if not fam:
-            fam = "oco_first_touch"
+        fam = _require_family(cand)
         by_family.setdefault(fam, []).append(cand)
 
     for family, family_cands in by_family.items():
@@ -2642,9 +2643,7 @@ def _build_decisions(
                 "barrier_pips": float(cand.barrier_pips),
             }
         )
-        family = str(getattr(cand, "family", "") or "").strip()
-        if not family:
-            family = "oco_first_touch"
+        family = _require_family(cand)
         canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         locked_payload = (
             (historical_prediction_overrides or {}).get(canonical_uid)
@@ -3141,10 +3140,6 @@ async def predict_warmup(req: WarmupRequest) -> dict:
     if not contract.candidates:
         raise HTTPException(status_code=422, detail=f"No candidates for {sym}")
 
-    model, thr_cfg = _ensure_model_and_threshold(contract)
-    if model is None:
-        raise HTTPException(status_code=422, detail=f"No model loaded for {sym}")
-
     warmup_needed = _state.warmup_bars
     bars_by_ticks: dict[int, pd.DataFrame] = {}
     for cand in contract.candidates:
@@ -3173,94 +3168,105 @@ async def predict_warmup(req: WarmupRequest) -> dict:
                 bars_df[col] = ts_series
         bars_by_ticks[bar_ticks] = bars_df
 
+    # Group candidates by family and dispatch per-family model/threshold
+    by_family: dict[str, list[Any]] = {}
+    for cand in contract.candidates:
+        fam = _require_family(cand)
+        by_family.setdefault(fam, []).append(cand)
+
     feature_columns = list(ModelFeatures.model_fields)
-    static_thr = float(thr_cfg.get("threshold_exec", 0.5))
     stats: dict[str, dict[str, float | int]] = {}
     events_batch: list[tuple] = []
 
-    for cand in contract.candidates:
-        bar_ticks = int(cand.bar_ticks)
-        bars_df = bars_by_ticks[bar_ticks]
-        features_df = compute_feature_matrix_from_bars(
-            bars_df,
-            symbol=sym,
-            bar_ticks=bar_ticks,
-            horizon=cand.horizon,
-            barrier_pips=cand.barrier_pips,
-            cfg=FeatureConfig(
-                vol_window=_config.vol_window,
-                cost_window=_config.cost_window,
-            ),
-        )
-        if features_df is None or features_df.empty:
-            logger.warning(
-                "predict_warmup: empty feature matrix for %s bar_ticks=%s horizon=%s barrier=%.4f",
-                sym,
-                cand.bar_ticks,
-                cand.horizon,
-                cand.barrier_pips,
-            )
-            continue
-
-        valid_mask = features_df.notna().all(axis=1)
-        valid_features = features_df.loc[valid_mask]
-        if valid_features.empty:
-            logger.warning(
-                "predict_warmup: no valid warmup rows for %s bar_ticks=%s horizon=%s barrier=%.4f",
-                sym,
-                cand.bar_ticks,
-                cand.horizon,
-                cand.barrier_pips,
-            )
-            continue
-
-        family = str(getattr(cand, "family", "") or "").strip()
-        if not family:
-            family = "oco_first_touch"
-
-        X = valid_features[feature_columns].values
-        with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
-            pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
-        canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
-        unique_values = int(np.unique(np.round(pred_probs, 12)).size)
-        n_valid = int(len(pred_probs))
-        stats[canonical_uid] = {
-            "n": n_valid,
-            "unique_values": unique_values,
-            "p10": float(np.quantile(pred_probs, 0.10)),
-            "p50": float(np.quantile(pred_probs, 0.50)),
-            "p90": float(np.quantile(pred_probs, 0.90)),
-            "p100": float(np.max(pred_probs)),
-        }
-        if n_valid >= 30 and unique_values < 10:
+    for family, family_cands in by_family.items():
+        family_contract = _resolve_runtime_contract_for_family(sym, family, close_ts_now)
+        model, thr_cfg = _ensure_model_and_threshold(family_contract)
+        if model is None:
             raise HTTPException(
-                status_code=500,
-                detail=(
-                    f"predict_warmup: degenerate distribution for {canonical_uid} "
-                    f"(n={n_valid}, unique_values={unique_values})"
+                status_code=422,
+                detail=f"No model loaded for {sym} family {family}",
+            )
+        static_thr = float(thr_cfg.get("threshold_exec", 0.5))
+
+        for cand in family_cands:
+            bar_ticks = int(cand.bar_ticks)
+            bars_df = bars_by_ticks[bar_ticks]
+            features_df = compute_feature_matrix_from_bars(
+                bars_df,
+                symbol=sym,
+                bar_ticks=bar_ticks,
+                horizon=cand.horizon,
+                barrier_pips=cand.barrier_pips,
+                cfg=FeatureConfig(
+                    vol_window=_config.vol_window,
+                    cost_window=_config.cost_window,
                 ),
             )
+            if features_df is None or features_df.empty:
+                logger.warning(
+                    "predict_warmup: empty feature matrix for %s bar_ticks=%s horizon=%s barrier=%.4f",
+                    sym,
+                    cand.bar_ticks,
+                    cand.horizon,
+                    cand.barrier_pips,
+                )
+                continue
 
-        valid_bars = bars_df.loc[valid_features.index].reset_index(drop=True)
-        valid_features = valid_features.reset_index(drop=True)
-        for i in range(len(valid_features)):
-            row_feat = valid_features.iloc[i]
-            feat_obj = ModelFeatures(**row_feat.to_dict())
-            close_ts_bar = valid_bars.iloc[i]["close_ts"]
-            if hasattr(close_ts_bar, "to_pydatetime"):
-                close_ts_bar = close_ts_bar.to_pydatetime()
-            if hasattr(close_ts_bar, "tzinfo") and close_ts_bar.tzinfo is None:
-                close_ts_bar = close_ts_bar.replace(tzinfo=timezone.utc)
-            events_batch.append((
-                close_ts_bar,
-                sym,
-                canonical_uid,
-                float(pred_probs[i]),
-                static_thr,
-                feat_obj.model_dump_json(),
-                contract.model_month,
-                run_id,
-            ))
+            valid_mask = features_df.notna().all(axis=1)
+            valid_features = features_df.loc[valid_mask]
+            if valid_features.empty:
+                logger.warning(
+                    "predict_warmup: no valid warmup rows for %s bar_ticks=%s horizon=%s barrier=%.4f",
+                    sym,
+                    cand.bar_ticks,
+                    cand.horizon,
+                    cand.barrier_pips,
+                )
+                continue
+
+            X = valid_features[feature_columns].values
+            with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
+                pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
+            canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+            unique_values = int(np.unique(np.round(pred_probs, 12)).size)
+            n_valid = int(len(pred_probs))
+            stats[canonical_uid] = {
+                "n": n_valid,
+                "unique_values": unique_values,
+                "p10": float(np.quantile(pred_probs, 0.10)),
+                "p50": float(np.quantile(pred_probs, 0.50)),
+                "p90": float(np.quantile(pred_probs, 0.90)),
+                "p100": float(np.max(pred_probs)),
+            }
+            if n_valid >= 30 and unique_values < 10:
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        f"predict_warmup: degenerate distribution for {canonical_uid} "
+                        f"(n={n_valid}, unique_values={unique_values})"
+                    ),
+                )
+
+            valid_bars = bars_df.loc[valid_features.index].reset_index(drop=True)
+            valid_features = valid_features.reset_index(drop=True)
+            for i in range(len(valid_features)):
+                row_feat = valid_features.iloc[i]
+                feat_obj = ModelFeatures(**row_feat.to_dict())
+                close_ts_bar = valid_bars.iloc[i]["close_ts"]
+                if hasattr(close_ts_bar, "to_pydatetime"):
+                    close_ts_bar = close_ts_bar.to_pydatetime()
+                if hasattr(close_ts_bar, "tzinfo") and close_ts_bar.tzinfo is None:
+                    close_ts_bar = close_ts_bar.replace(tzinfo=timezone.utc)
+                events_batch.append((
+                    close_ts_bar,
+                    sym,
+                    canonical_uid,
+                    float(pred_probs[i]),
+                    static_thr,
+                    feat_obj.model_dump_json(),
+                    family_contract.model_month,
+                    run_id,
+                ))
 
     if not events_batch:
         existing_rows = _state.count_audit_logs(sym, run_id)
@@ -3436,8 +3442,9 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                     continue
                 total_for_sym = 0
                 for cand in contract.candidates:
+                    family = _require_family(cand)
                     canonical_uid = (
-                        f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                        f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
                     )
                     n = _state.seed_training_predictions(
                         parquet_path=pred_path,
@@ -3591,9 +3598,7 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                     "bar_ticks", "horizon", "barrier_pips"
                 ]].values
 
-                family = str(getattr(cand, "family", "") or "").strip()
-                if not family:
-                    family = "oco_first_touch"
+                family = _require_family(cand)
 
                 # Metadata-level inference: release GIL during bulk CatBoost scoring if possible
                 with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():

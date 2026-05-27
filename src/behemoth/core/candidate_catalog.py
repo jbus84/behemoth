@@ -122,8 +122,7 @@ class CandidateCatalog:
                         candidates.extend(self._historical_registry.get_candidates(sym, month, family=fam))
         elif self._live_registry is not None:
             candidates = self._live_registry.get_candidates(sym)
-        ticks = sorted({int(c.bar_ticks) for c in candidates})
-        return ticks or ([100] if self._historical_mode else [])
+        return sorted({int(c.bar_ticks) for c in candidates})
 
     def resolve_contract(
         self, symbol: str, close_ts: datetime, family: str | None = None

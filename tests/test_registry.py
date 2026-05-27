@@ -159,7 +159,7 @@ class TestRegistryLoading:
         reg = CandidateRegistry.load(lock_dir)
 
         assert reg.symbols == ["EURUSD"]
-        bundle_paths = reg.get_bundle_paths("EURUSD")
+        bundle_paths = reg.get_bundle_paths("EURUSD", "oco_first_touch")
         assert bundle_paths is not None
         cbm_path = bundle_paths.model_cbm()
         json_path = bundle_paths.model_threshold_json()
@@ -179,7 +179,7 @@ class TestCandidateGeneration:
         assert hermetic_registry.get_candidates("XYZABC") == []
 
     def test_model_binding_present(self, hermetic_registry: CandidateRegistry):
-        bundle_paths = hermetic_registry.get_bundle_paths("EURUSD")
+        bundle_paths = hermetic_registry.get_bundle_paths("EURUSD", "oco_first_touch")
         assert bundle_paths is not None
         cbm_path = bundle_paths.model_cbm()
         json_path = bundle_paths.model_threshold_json()
@@ -227,7 +227,7 @@ def test_candidate_spec_rejects_lookahead_clean_family():
         "regime_desc": "all;barrier=2.0",
     }
     with pytest.raises(ValueError, match="first_touch_clean"):
-        CandidateSpec.from_row(row)
+        CandidateSpec.from_row(row, family="oco_first_touch")
 
 
 def test_candidate_spec_accepts_first_touch_family():
@@ -238,5 +238,5 @@ def test_candidate_spec_accepts_first_touch_family():
         "state_id": "oco_first_touch__all__k2",
         "regime_desc": "all;barrier=2.0",
     }
-    spec = CandidateSpec.from_row(row)
+    spec = CandidateSpec.from_row(row, family="oco_first_touch")
     assert spec.candidate_uid == "oco_first_touch__all__k2"
