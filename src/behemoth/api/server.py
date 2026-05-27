@@ -143,14 +143,14 @@ def _env_int(*keys: str, default: str) -> int:
 METRIC_INFERENCE_LATENCY = Histogram(
     "behemoth_inference_latency_seconds",
     "Time spent in CatBoost inference",
-    ["symbol"],
+    ["symbol", "family"],
     buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0)
 )
 
 METRIC_TRADES_TOTAL = Counter(
     "behemoth_trades_total",
     "Total trade intents",
-    ["symbol", "status"]  # status: OPEN, FILLED, REJECTED, CLOSED, CANCELLED
+    ["symbol", "family", "status"]  # status: OPEN, FILLED, REJECTED, CLOSED, CANCELLED
 )
 
 METRIC_SLIPPAGE_PIPS = Histogram(
@@ -175,7 +175,7 @@ METRIC_BAR_COUNT = Gauge(
 METRIC_RISK_BLOCKS_TOTAL = Counter(
     "behemoth_risk_blocks_total",
     "Total account-risk blocked execution intents",
-    ["symbol", "reason"],
+    ["symbol", "family", "reason"],
 )
 
 METRIC_ROLLING_THRESHOLD_DRIFT = Counter(
@@ -228,13 +228,13 @@ METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY = Gauge(
 METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL = Counter(
     "behemoth_account_risk_allocator_blocks_total",
     "Total account risk allocator budget blocks",
-    ["symbol", "reason"],
+    ["symbol", "family", "reason"],
 )
 
 METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL = Counter(
     "behemoth_account_risk_allocator_admitted_total",
     "Total account risk allocator-admitted candidates",
-    ["symbol"],
+    ["symbol", "family"],
 )
 
 METRIC_OPEN_POSITIONS_TOTAL = Gauge(
@@ -2686,7 +2686,7 @@ def _build_decisions(
             preselected_exec = int(locked_payload.get("selected_exec") or 0)
         else:
             if model is not None:
-                with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
                     pred_prob = float(model.predict_proba(arr)[:, 1][0])
             else:
                 pred_prob = 0.0
@@ -2806,7 +2806,7 @@ def _build_decisions(
                 selected_exec = 0
                 risk_blocked = True
                 risk_block_reason = str(trade_eval.get("block_reason") or "ACCOUNT_RISK_BLOCKED")
-                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=risk_block_reason).inc()
+                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, family=family, reason=risk_block_reason).inc()
 
         rank_score = None
         if preselected_exec == 1:
@@ -2920,8 +2920,8 @@ def _run_allocator(
             d.risk_blocked = True
             d.risk_block_reason = "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE"
             d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
-            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
+            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
             continue
 
         gross_loss_pips = max(
@@ -2939,15 +2939,15 @@ def _run_allocator(
             d.risk_reserved_amount_ccy = float(reserve_ccy)
             d.risk_headroom_after_ccy = float(allocator_remaining)
             d.risk_metrics_snapshot["allocator_admitted"] = True
-            METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym).inc()
+            METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym, family=d.family).inc()
         else:
             d.selected_exec = 0
             d.risk_blocked = True
             d.risk_block_reason = "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
             d.risk_metrics_snapshot["allocator_admitted"] = False
             d.risk_headroom_after_ccy = float(allocator_remaining)
-            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
+            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
 
     METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
 
@@ -3231,13 +3231,13 @@ async def predict_warmup(req: WarmupRequest) -> dict:
             )
             continue
 
-        X = valid_features[feature_columns].values
-        with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
-            pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
-
         family = str(getattr(cand, "family", "") or "").strip()
         if not family:
             family = "oco_first_touch"
+
+        X = valid_features[feature_columns].values
+        with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
+            pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
         canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         unique_values = int(np.unique(np.round(pred_probs, 12)).size)
         n_valid = int(len(pred_probs))
@@ -3354,7 +3354,7 @@ async def open_trade(req: TradeOpenRequest):
             if scan["broker_pos_id"] is None:
                 _barrier_manager.set_broker_pos_id(scan["scan_id"], req.broker_pos_id)
                 break
-    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status="OPEN").inc()
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family or "unknown", status="OPEN").inc()
     out = {"status": "ok", "internal_trade_id": internal_id}
     _append_http_trace(
         endpoint="/trades/open",
@@ -3608,13 +3608,17 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                     "bar_ticks", "horizon", "barrier_pips"
                 ]].values
 
+                family = str(getattr(cand, "family", "") or "").strip()
+                if not family:
+                    family = "oco_first_touch"
+
                 # Metadata-level inference: release GIL during bulk CatBoost scoring if possible
-                with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
                     pred_probs = model.predict_proba(X)[:, 1]
 
                 # ── Batch Logging to DuckDB ──
                 canonical_uid = (
-                    f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                    f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
                 )
                 valid_bars = bars_df.loc[valid_features.index]
                 events_batch = []
@@ -3713,7 +3717,7 @@ async def update_trade(req: TradeUpdateRequest):
             reason=f"trade_{req.status.value.lower()}",
         )
 
-    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status=req.status.value).inc()
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family or "unknown", status=req.status.value).inc()
     if req.pnl_pips is not None:
         # Note: We need a way to look up the symbol from broker_pos_id if we want granular metrics here.
         # For now, we update a global or handle it in the background worker.

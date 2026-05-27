@@ -406,6 +406,10 @@ class TradeUpdateRequest(BaseModel):
     run_id: str | None = None
     close_reason: str | None = None
     commission_ccy: float | None = None
+    family: str | None = Field(
+        default=None,
+        description="Mining family provenance for the trade.",
+    )
 
 
 class AccountRiskSnapshotRequest(BaseModel):
