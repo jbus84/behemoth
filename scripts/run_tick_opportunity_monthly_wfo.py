@@ -36,6 +36,7 @@ try:
     )
     from scripts.mining_family import FAMILY_REGISTRY
     from scripts.run_tick_opportunity_mining import (
+        _attach_directional_side_columns,
         _parse_ints,
         _prepare_frame,
         _quantiles,
@@ -47,6 +48,7 @@ except ModuleNotFoundError:
     )
     from mining_family import FAMILY_REGISTRY  # type: ignore
     from run_tick_opportunity_mining import (  # type: ignore
+        _attach_directional_side_columns,
         _parse_ints,
         _prepare_frame,
         _quantiles,
@@ -211,6 +213,7 @@ def _build_registry_family_events(
         if len(entries) == 0:
             continue
         chunk = df.iloc[entries][features].copy()
+        chunk.attrs.clear()
         chunk["close_ts"] = ts.iloc[entries].to_numpy()
         chunk["split"] = str(split_name)
         chunk["library"] = family_name
@@ -450,8 +453,15 @@ def _build_events_for_library(
         if fit_df.empty or eval_df.empty:
             continue
         q_fit = _quantiles(fit_df)
-        _LEGACY_WFO_FAMILIES = {"directional", "oco_first_touch"}
-        if families and any(f not in _LEGACY_WFO_FAMILIES for f in families):
+        _LEGACY_WFO_FAMILIES = {"oco_first_touch"}
+        use_registry = bool(families) and any(
+            f not in _LEGACY_WFO_FAMILIES for f in families
+        )
+        if use_registry and lib == "directional":
+            eval_df = _attach_directional_side_columns(
+                eval_df, horizons=horizons, q=q_fit
+            )
+        if use_registry:
             ev = _build_registry_family_events(
                 split_name="eval",
                 df=eval_df,
