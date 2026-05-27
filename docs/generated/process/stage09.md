@@ -6,7 +6,7 @@ Freezes Governance Locks, validates rule-universe coverage, and builds operator-
 
 ## Canonical Commands
 
-- `make freeze-oco`
+- `make freeze-live-governance`
 
 ## Required Inputs
 

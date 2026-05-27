@@ -307,7 +307,7 @@ stages:
       Freezes Governance Locks, validates rule-universe coverage, and builds
       operator-facing Promotion evidence.
     canonical_commands:
-      - make freeze-oco
+      - make freeze-live-governance
     required_inputs:
       - data/analysis/tick_opportunity_mining/reduced_core_rolling/
       - models/oco/
