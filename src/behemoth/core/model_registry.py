@@ -34,8 +34,13 @@ class ModelRegistry:
         """Check if any model is loaded for symbol (exact family or aggregate)."""
         sym = str(symbol).upper().strip()
         if family is not None:
-            cache_key = self.make_cache_key(sym, family=family)
-            return cache_key in self._models
+            fam = str(family).strip()
+            # Live: SYMBOL|FAMILY, Historical: SYMBOL|MONTH|FAMILY
+            for k in self._models:
+                parts = k.split("|")
+                if parts[0] == sym and parts[-1] == fam:
+                    return True
+            return False
         # Aggregate: explicit key parsing instead of prefix matching
         for k in self._models:
             parts = k.split("|")
@@ -47,8 +52,12 @@ class ModelRegistry:
         """Check if any threshold config is loaded for symbol (exact family or aggregate)."""
         sym = str(symbol).upper().strip()
         if family is not None:
-            cache_key = self.make_cache_key(sym, family=family)
-            return cache_key in self._thresholds
+            fam = str(family).strip()
+            for k in self._thresholds:
+                parts = k.split("|")
+                if parts[0] == sym and parts[-1] == fam:
+                    return True
+            return False
         # Aggregate: explicit key parsing instead of prefix matching
         for k in self._thresholds:
             parts = k.split("|")
@@ -59,13 +68,17 @@ class ModelRegistry:
     def get_latest_month(self, symbol: str, family: str | None = None) -> str | None:
         """Get latest loaded month for symbol (exact family or aggregate).
 
-        Raises ValueError if multiple different months are found for the
-        symbol without a family filter (ambiguous aggregate).
+        When multiple months exist without a family filter, returns the
+        latest month (no error) so status/health paths remain stable.
         """
         sym = str(symbol).upper().strip()
         if family is not None:
-            cache_key = self.make_cache_key(sym, family=family)
-            return self._model_months.get(cache_key)
+            fam = str(family).strip()
+            for k, m in self._model_months.items():
+                parts = k.split("|")
+                if parts[0] == sym and parts[-1] == fam:
+                    return m
+            return None
         # Aggregate: explicit key parsing instead of prefix matching
         months: set[str] = set()
         for k, m in self._model_months.items():
@@ -74,14 +87,7 @@ class ModelRegistry:
                 months.add(m)
         if not months:
             return None
-        if len(months) == 1:
-            return next(iter(months))
-        # Ambiguity: multiple families with different months
-        sorted_months = sorted(months)
-        raise ValueError(
-            f"Ambiguous months for {symbol}: {sorted_months}. "
-            f"Specify family to disambiguate."
-        )
+        return sorted(months)[-1]
 
     def get_model_and_threshold(
         self, cache_key: str
