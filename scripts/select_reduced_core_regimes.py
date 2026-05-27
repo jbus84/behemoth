@@ -131,7 +131,7 @@ def _parse_candidate_uid(uid: str) -> tuple[str, str, int, int, str]:
 
 def _library_for_family(family: str) -> str:
     fam = str(family).strip()
-    return "oco" if fam in {"oco_first_touch", "oco_asymmetric", "double_touch"} else fam
+    return "oco" if fam == "oco_first_touch" else fam
 
 
 def _parse_barrier_row(row: pd.Series) -> float:

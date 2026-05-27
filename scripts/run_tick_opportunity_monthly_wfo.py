@@ -411,7 +411,7 @@ def _build_events_for_library(
 ) -> pd.DataFrame:
     lib = str(library).strip().lower()
     _ensure_wfo_replay_supported(families)
-    if lib not in {"directional", "oco"} | CROSS_SYMBOL_WFO_FAMILIES:
+    if lib not in {"directional", "oco"} | SYMBOL_LOCAL_WFO_FAMILIES | CROSS_SYMBOL_WFO_FAMILIES:
         raise ValueError(f"bad library: {library}")
     c_path = candidate_dir / f"{symbol}_{lib}_candidates.csv"
     if not c_path.exists():
