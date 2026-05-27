@@ -3318,6 +3318,7 @@ async def open_trade(req: TradeOpenRequest):
             reservation_id=req.reservation_id,
             candidate_uid=req.candidate_uid,
             symbol=req.symbol,
+            family=req.family,
         )
     if _barrier_manager is not None:
         scans = _barrier_manager.find_holding_scans(req.symbol, req.candidate_uid)

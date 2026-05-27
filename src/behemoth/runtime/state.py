@@ -1229,6 +1229,7 @@ class StateManager:
         reservation_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
     ) -> str | None:
         """Promote a pending reservation to OPEN after broker fill."""
         if reservation_id:
@@ -1262,6 +1263,9 @@ class StateManager:
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
+        if family:
+            query += " AND family = ?"
+            params.append(family)
         query += " ORDER BY created_ts ASC LIMIT 1"
         row = self._store.execute(query, params).fetchone()
         if not row:
@@ -1281,6 +1285,7 @@ class StateManager:
         reservation_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
     ) -> str | None:
         """Broker-neutral alias for opening reservations after broker fill."""
         return self.promote_account_risk_reservation(
@@ -1288,6 +1293,7 @@ class StateManager:
             reservation_id=reservation_id,
             candidate_uid=candidate_uid,
             symbol=symbol,
+            family=family,
         )
 
     def release_account_risk_reservation(
