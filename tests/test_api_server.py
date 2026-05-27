@@ -189,6 +189,55 @@ class TestModelRegistryFamilyCacheKey:
         assert ModelRegistry.make_cache_key("EURUSD") == "EURUSD"
 
 
+class TestModelRegistryCacheFallback:
+    def test_exact_lookup_works(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|oco_first_touch")
+        assert model == "model_a"
+        assert thr == {"t": 0.5}
+
+    def test_symbol_fallback_with_single_family(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD")
+        assert model == "model_a"
+        assert thr == {"t": 0.5}
+
+    def test_symbol_month_fallback_with_single_family(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|2026-04|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|2026-04")
+        assert model == "model_a"
+        assert thr == {"t": 0.5}
+
+    def test_fallback_returns_none_when_multiple_families(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        reg.set_model_and_threshold("EURUSD|directional", "model_b", {"t": 0.6}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD")
+        assert model is None
+        assert thr is None
+
+    def test_fallback_returns_none_when_multiple_symbol_month_families(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|2026-04|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        reg.set_model_and_threshold("EURUSD|2026-04|directional", "model_b", {"t": 0.6}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|2026-04")
+        assert model is None
+        assert thr is None
+
+
 class TestLoadModelsMultiFamily:
     def test_load_models_skips_when_no_families(self, monkeypatch) -> None:
         from src.behemoth.core.registry import CandidateRegistry

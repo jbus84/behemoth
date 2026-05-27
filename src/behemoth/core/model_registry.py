@@ -63,8 +63,26 @@ class ModelRegistry:
     def get_model_and_threshold(
         self, cache_key: str
     ) -> tuple[object | None, dict[str, Any] | None]:
-        """Retrieve cached model and threshold config by key."""
-        return self._models.get(cache_key), self._thresholds.get(cache_key)
+        """Retrieve cached model and threshold config by key.
+
+        Supports exact lookup and unique-prefix fallback. If ``cache_key`` is
+        ``SYMBOL`` or ``SYMBOL|MONTH`` and only one family model exists,
+        returns that model for backward compatibility with single-family
+        deployments.
+        """
+        model = self._models.get(cache_key)
+        thr = self._thresholds.get(cache_key)
+        if model is not None:
+            return model, thr
+
+        # Fallback: unique prefix match for backward compat
+        pref = f"{cache_key}|"
+        model_keys = [k for k in self._models if k.startswith(pref)]
+        if len(model_keys) == 1:
+            k = model_keys[0]
+            return self._models.get(k), self._thresholds.get(k)
+
+        return None, None
 
     def set_model_and_threshold(
         self, cache_key: str, model: object, threshold_config: dict, month: str
