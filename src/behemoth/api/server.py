@@ -1871,14 +1871,14 @@ def _apply_historical_prediction_universe_gate(
             if current_ordinal is None:
                 continue
             last_idx = int(_historical_prediction_stage.get_cursor(contract.cache_key, canonical_uid))
-            lo = max(0, last_idx + 1)
+            lo = max(0, last_idx)
             lo_search = current_ordinal - tolerance
             idx = bisect_left(ordinal_list, lo_search, lo=lo)
             if idx >= len(ordinal_list):
                 continue
             if ordinal_list[idx] > current_ordinal + tolerance:
                 continue
-            _historical_prediction_stage.set_cursor(contract.cache_key, canonical_uid, idx)
+            _historical_prediction_stage.set_cursor(contract.cache_key, canonical_uid, idx + 1)
             filtered.append(cand)
         return filtered
 
@@ -1897,7 +1897,7 @@ def _apply_historical_prediction_universe_gate(
             if not ts_rows:
                 continue
             last_idx = int(_historical_prediction_stage.get_cursor(contract.cache_key, canonical_uid))
-            lo = max(0, last_idx + 1)
+            lo = max(0, last_idx)
             idx = bisect_left(ts_rows, close_ts_utc, lo=lo)
             choices: list[tuple[timedelta, datetime, int]] = []
             if idx > lo:
@@ -1917,7 +1917,7 @@ def _apply_historical_prediction_universe_gate(
             best_count = sum(1 for delta, _, _ in choices if delta == best_delta)
             if best_count > 1:
                 continue
-            _historical_prediction_stage.set_cursor(contract.cache_key, canonical_uid, int(choices[0][2]))
+            _historical_prediction_stage.set_cursor(contract.cache_key, canonical_uid, int(choices[0][2]) + 1)
             filtered.append(cand)
         return filtered
 
@@ -2444,6 +2444,11 @@ async def predict(req: PredictRequest) -> PredictResponse:
 
     Delegates to PredictionOrchestrator for explicit 7-step ordering.
     """
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    if _registry is None and not _is_historical_mode():
+        raise HTTPException(status_code=503, detail="Candidate registry not loaded")
+    _resolve_requested_volume_units(req)
     if _orchestrator is None:
         raise HTTPException(status_code=503, detail="Prediction orchestrator not initialized")
 
@@ -2455,7 +2460,21 @@ async def predict(req: PredictRequest) -> PredictResponse:
         symbol=req.symbol.upper(),
         request_payload=req,
     )
-    return _orchestrator.execute(req, run_id)
+    response = _orchestrator.execute(req, run_id)
+    _append_http_trace(
+        endpoint="/predict",
+        phase="response",
+        run_id=run_id,
+        symbol=req.symbol.upper(),
+        request_payload=req,
+        response_payload=response,
+        status_code=200,
+        extra={
+            "reason": "no_predictions" if not response.predictions else None,
+            "result_count": len(response.predictions),
+        },
+    )
+    return response
 
 
 def _orchestrator_build_predictions_fn(
@@ -2648,6 +2667,11 @@ def _build_decisions(
     fx_rate = fx_conv.get("conversion_rate")
     fx_age = fx_conv.get("conversion_age_sec")
 
+    def _risk_attr(name: str, default: Any = None) -> Any:
+        if isinstance(account_risk_eval, dict):
+            return account_risk_eval.get(name, default)
+        return getattr(account_risk_eval, name, default)
+
     for cand in candidates:
         base_features = base_features_by_ticks[int(cand.bar_ticks)]
         features = base_features.model_copy(
@@ -2745,22 +2769,22 @@ def _build_decisions(
 
             preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
         risk_metrics_snapshot: dict[str, Any] = {
-            "account_risk_enabled": bool(account_risk_eval.enabled),
+            "account_risk_enabled": bool(_risk_attr("enabled", False)),
             "account_risk_enabled_effective": bool(account_risk_enabled_effective),
             "account_risk_enabled_override": bool(account_risk_enabled_override),
             "account_risk_mode_source": "request_override",
-            "account_risk_profile_id": account_risk_eval.profile_id,
+            "account_risk_profile_id": _risk_attr("profile_id"),
             "account_risk_trade_cost_gate_mode": (
                 _account_risk_profile.cost_gate.trade_cost_gate_mode if _account_risk_profile is not None else ""
             ),
-            "account_risk_allow_trading": bool(account_risk_eval.allow_trading),
-            "account_risk_account_block_reason": account_risk_eval.block_reason,
-            "snapshot_available": bool(account_risk_eval.snapshot_available),
-            "daily_loss_headroom": account_risk_eval.daily_loss_headroom,
-            "max_loss_headroom": account_risk_eval.max_loss_headroom,
-            "daily_loss_used": account_risk_eval.daily_loss_used,
-            "max_loss_used": account_risk_eval.max_loss_used,
-            "trading_day_id": account_risk_eval.trading_day_id,
+            "account_risk_allow_trading": bool(_risk_attr("allow_trading", True)),
+            "account_risk_account_block_reason": _risk_attr("block_reason"),
+            "snapshot_available": bool(_risk_attr("snapshot_available", False)),
+            "daily_loss_headroom": _risk_attr("daily_loss_headroom"),
+            "max_loss_headroom": _risk_attr("max_loss_headroom"),
+            "daily_loss_used": _risk_attr("daily_loss_used"),
+            "max_loss_used": _risk_attr("max_loss_used"),
+            "trading_day_id": _risk_attr("trading_day_id"),
             "requested_volume_units": float(requested_volume_units),
             "allocator_pip_value_per_unit_usd": pip_value_per_unit,
             "allocator_fx_conversion_status": fx_status,

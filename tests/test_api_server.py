@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -17,6 +19,63 @@ from fastapi.testclient import TestClient
 
 from src.behemoth.api import server
 from src.behemoth.api.server import app
+
+_TEST_FAMILY = "oco_first_touch"
+
+
+def _family_for_test_candidate(candidate: Any) -> str:
+    family = getattr(candidate, "family", None)
+    if not isinstance(family, str) or not family.strip():
+        candidate.family = _TEST_FAMILY
+        return _TEST_FAMILY
+    return family.strip()
+
+
+def _normalise_test_contract(contract: Any, symbol: str, family: str | None = None) -> Any:
+    candidates = list(getattr(contract, "candidates", []))
+    for candidate in candidates:
+        _family_for_test_candidate(candidate)
+    if family is not None:
+        candidates = [candidate for candidate in candidates if candidate.family == family]
+    model_month = getattr(contract, "model_month", "2025-01")
+    return SimpleNamespace(
+        symbol=str(getattr(contract, "symbol", symbol)).upper(),
+        model_month=model_month,
+        cache_key=getattr(contract, "cache_key", f"{str(symbol).upper()}|{model_month}|{family or _TEST_FAMILY}"),
+        candidates=candidates,
+        bundle_paths=getattr(contract, "bundle_paths", None),
+        cap_pips=float(getattr(contract, "cap_pips", 1.2)),
+        source=getattr(contract, "source", "test"),
+        lock_path=getattr(contract, "lock_path", None),
+        family=family or _TEST_FAMILY,
+    )
+
+
+def _test_bundle_paths(pred_path: Path) -> Any:
+    return SimpleNamespace(predictions=lambda: pred_path)
+
+
+def _test_model_features(**updates: Any) -> server.ModelFeatures:
+    values = {
+        "cost_est_pips": 1.0,
+        "range_pips": 10.0,
+        "ret1_pips": 2.0,
+        "ret_z": 0.5,
+        "ret_abs_z": 0.5,
+        "vel_cost_units_h1": 2.0,
+        "vel_abs_cost_units_h1": 2.0,
+        "spread_z": 0.1,
+        "tick_rate_z": 0.1,
+        "hour_utc": 10.0,
+        "hl_first": 1.0,
+        "hl_first_mean_24": 0.5,
+        "hl_pos_frac_mean_24": 0.5,
+        "bar_ticks": 100.0,
+        "horizon": 24.0,
+        "barrier_pips": 15.0,
+    }
+    values.update(updates)
+    return server.ModelFeatures(**values)
 
 
 @pytest.fixture
@@ -29,6 +88,48 @@ def client(tmp_path, monkeypatch):
     server._config.persist_db_path = str(tmp_path / "behemoth_runtime.duckdb")
     try:
         with TestClient(app) as c:
+            if server._orchestrator is not None:
+
+                def resolve_contract_for_test(symbol, close_ts, family=None):
+                    contract = server._resolve_runtime_contract(symbol, close_ts)
+                    return _normalise_test_contract(contract, symbol, family)
+
+                monkeypatch.setattr(
+                    server._orchestrator._catalog,
+                    "resolve_contract",
+                    resolve_contract_for_test,
+                )
+                monkeypatch.setattr(
+                    server._orchestrator,
+                    "_step_check_warmup",
+                    lambda sym, candidates: server._check_warmup(sym, candidates),
+                )
+                monkeypatch.setattr(
+                    server._orchestrator,
+                    "_apply_historical_prediction_universe_gate",
+                    lambda contract, close_ts, candidates, bar_ordinals=None: server._apply_historical_prediction_universe_gate(
+                        contract=contract,
+                        close_ts=close_ts,
+                        candidates=candidates,
+                        bar_ordinals=bar_ordinals,
+                    ),
+                )
+
+            def resolve_family_contract_for_test(symbol, family, close_ts):
+                contract = server._resolve_runtime_contract(symbol, close_ts)
+                normalised = _normalise_test_contract(contract, symbol, family)
+                if not normalised.candidates:
+                    raise server.HTTPException(
+                        status_code=422,
+                        detail=f"No candidates for {str(symbol).upper()} family {family}",
+                    )
+                return normalised
+
+            monkeypatch.setattr(
+                server,
+                "_resolve_runtime_contract_for_family",
+                resolve_family_contract_for_test,
+            )
             yield c
     finally:
         server._config.persist_db_path = original_persist_db_path
@@ -481,6 +582,7 @@ class TestPredictLatestBarSchema:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_features = ModelFeatures(
             cost_est_pips=1.0,
@@ -516,6 +618,10 @@ class TestPredictLatestBarSchema:
         )
         barrier_manager = mock.MagicMock()
         barrier_manager.evaluate_bar.return_value = []
+        barrier_manager.evaluate_bar_with_result.return_value = SimpleNamespace(
+            mutations=[],
+            actions=[],
+        )
         barrier_manager.has_active_scan.return_value = False
         latest_bar = {
             "row_id": 17,
@@ -545,7 +651,9 @@ class TestPredictLatestBarSchema:
         )
 
         original_barrier_manager = server._barrier_manager
+        original_orchestrator_barrier_manager = server._orchestrator._barrier_manager
         server._barrier_manager = barrier_manager
+        server._orchestrator._barrier_manager = barrier_manager
         try:
             with (
                 mock.patch.object(
@@ -593,8 +701,8 @@ class TestPredictLatestBarSchema:
                 )
 
             assert response.status_code == 200
-            barrier_manager.evaluate_bar.assert_called_once()
-            bar_context = barrier_manager.evaluate_bar.call_args.args[0]
+            barrier_manager.evaluate_bar_with_result.assert_called_once()
+            bar_context = barrier_manager.evaluate_bar_with_result.call_args.args[0]
             assert isinstance(bar_context, BarContext)
             assert bar_context.symbol == "EURUSD"
             assert bar_context.bar_ticks == 100
@@ -607,7 +715,7 @@ class TestPredictLatestBarSchema:
             assert bar_context.hl_first == latest_bar["hl_first"]
             barrier_manager.register_scan.assert_called_once_with(
                 symbol="EURUSD",
-                candidate_uid="cand1",
+                candidate_uid="oco_first_touch|EURUSD|100|h24|cand1",
                 signal_bar_idx=latest_bar["row_id"],
                 ref_price=latest_bar["close_bid"],
                 signal_close_ask=latest_bar["close_ask"],
@@ -619,10 +727,11 @@ class TestPredictLatestBarSchema:
                 threshold=0.5,
                 model_month="2025-01",
                 reservation_id=None,
-                run_id=mock.ANY,
+                run_id=None,
             )
         finally:
             server._barrier_manager = original_barrier_manager
+            server._orchestrator._barrier_manager = original_orchestrator_barrier_manager
 
     def test_predict_rejects_legacy_latest_bar_keys(self, client):
         import unittest.mock as mock
@@ -636,6 +745,7 @@ class TestPredictLatestBarSchema:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         latest_bar = {
             "row_id": 17,
@@ -675,7 +785,7 @@ class TestPredictLatestBarSchema:
             mock.patch.object(
                 server._state,
                 "compute_features",
-                return_value=mock.MagicMock(),
+                return_value=_test_model_features(),
             ),
             mock.patch.object(
                 server._state,
@@ -828,7 +938,8 @@ class TestStatusEndpoint:
         )
         monkeypatch.setattr(server, "_has_loaded_model_for_symbol", lambda sym: sym == "EURUSD")
         monkeypatch.setattr(server, "_latest_loaded_month_for_symbol", lambda sym: "2026-03" if sym == "EURUSD" else None)
-        monkeypatch.setattr(server, "_thresholds", {"EURUSD": {"threshold": 0.9}})
+        monkeypatch.setattr(server._model_registry, "has_threshold", lambda sym, family=None: sym == "EURUSD")
+        monkeypatch.setattr(server._model_registry, "models_loaded", lambda: {"EURUSD|oco_first_touch": "2026-03"})
 
         r = client.get("/status")
 
@@ -1057,19 +1168,19 @@ class TestPredictEndpoint:
                 SELECT
                     TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
                     '2025-07' AS test_month,
-                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                    'oco_first_touch|EURUSD|100|h6|state_a' AS candidate_uid
                 """
             )
             con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="EURUSD",
             model_month="2025-07",
-            cache_key="EURUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"EURUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1082,7 +1193,7 @@ class TestPredictEndpoint:
             server._config.historical_prediction_universe_mode = "tolerant"
             out = server._apply_historical_prediction_universe_gate(
                 contract=contract,
-                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                close_ts=datetime(2025, 7, 7, 0, 0, 10, tzinfo=timezone.utc),
                 candidates=[cand],
             )
             assert len(out) == 1
@@ -1107,8 +1218,8 @@ class TestPredictEndpoint:
                 CREATE TABLE pred AS
                 SELECT * FROM (
                     VALUES
-                        (TIMESTAMPTZ '2025-07-07 00:00:10+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a'),
-                        (TIMESTAMPTZ '2025-07-07 00:00:20+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a')
+                        (TIMESTAMPTZ '2025-07-07 00:00:10+00:00', '2025-07', 'oco_first_touch|EURUSD|100|h6|state_a'),
+                        (TIMESTAMPTZ '2025-07-07 00:00:20+00:00', '2025-07', 'oco_first_touch|EURUSD|100|h6|state_a')
                 ) AS t(close_ts, test_month, candidate_uid)
                 """
             )
@@ -1116,12 +1227,12 @@ class TestPredictEndpoint:
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="EURUSD",
             model_month="2025-07",
-            cache_key="EURUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"EURUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1161,19 +1272,19 @@ class TestPredictEndpoint:
                 SELECT
                     TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
                     '2025-07' AS test_month,
-                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                    'oco_first_touch|EURUSD|100|h6|state_a' AS candidate_uid
                 """
             )
             con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="EURUSD",
             model_month="2025-07",
-            cache_key="EURUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"EURUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1186,7 +1297,7 @@ class TestPredictEndpoint:
             server._config.historical_prediction_universe_mode = "tolerant"
             first = server._apply_historical_prediction_universe_gate(
                 contract=contract,
-                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                close_ts=datetime(2025, 7, 7, 0, 0, 10, tzinfo=timezone.utc),
                 candidates=[cand],
             )
             second = server._apply_historical_prediction_universe_gate(
@@ -1218,21 +1329,21 @@ class TestPredictEndpoint:
                 CREATE TABLE pred AS
                 SELECT * FROM (
                     VALUES
-                        (TIMESTAMPTZ '2025-07-07 00:00:12+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.71, 0.61, 1),
-                        (TIMESTAMPTZ '2025-07-07 00:10:12+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.42, 0.61, 0)
-                ) AS t(close_ts, test_month, candidate_uid, pred_prob, threshold_exec, selected_exec)
+                        (TIMESTAMPTZ '2025-07-07 00:00:12+00:00', '2025-07', 'oco_first_touch|EURUSD|100|h6|state_a', 0, 0.71, 0.61, '{}', 1),
+                        (TIMESTAMPTZ '2025-07-07 00:10:12+00:00', '2025-07', 'oco_first_touch|EURUSD|100|h6|state_a', 1, 0.42, 0.61, '{}', 0)
+                ) AS t(close_ts, test_month, candidate_uid, bar_ordinal, pred_prob, threshold, features_json, selected_exec)
                 """
             )
             con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="EURUSD",
             model_month="2025-07",
-            cache_key="EURUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"EURUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1269,21 +1380,21 @@ class TestPredictEndpoint:
                 CREATE TABLE pred AS
                 SELECT * FROM (
                     VALUES
-                        (TIMESTAMPTZ '2025-07-07 00:00:10+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.52, 0.61, 0),
-                        (TIMESTAMPTZ '2025-07-07 00:00:20+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.72, 0.61, 1)
-                ) AS t(close_ts, test_month, candidate_uid, pred_prob, threshold_exec, selected_exec)
+                        (TIMESTAMPTZ '2025-07-07 00:00:10+00:00', '2025-07', 'oco_first_touch|EURUSD|100|h6|state_a', 0, 0.52, 0.61, '{}', 0),
+                        (TIMESTAMPTZ '2025-07-07 00:00:20+00:00', '2025-07', 'oco_first_touch|EURUSD|100|h6|state_a', 1, 0.72, 0.61, '{}', 1)
+                ) AS t(close_ts, test_month, candidate_uid, bar_ordinal, pred_prob, threshold, features_json, selected_exec)
                 """
             )
             con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="EURUSD",
             model_month="2025-07",
-            cache_key="EURUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"EURUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1299,7 +1410,7 @@ class TestPredictEndpoint:
                 close_ts=datetime(2025, 7, 7, 0, 0, 10, tzinfo=timezone.utc),
                 candidates=[cand],
             )
-            row = out["oco|EURUSD|100|h6|state_a"]
+            row = out["oco_first_touch|EURUSD|100|h6|state_a"]
             assert row["selected_exec"] == 0
             assert row["pred_prob"] == pytest.approx(0.52)
         finally:
@@ -1323,20 +1434,20 @@ class TestPredictEndpoint:
                 CREATE TABLE pred AS
                 SELECT * FROM (
                     VALUES
-                        (TIMESTAMPTZ '2025-07-08 04:30:34.649+00:00', '2025-07', 'oco|AUDUSD|100|h6|state_a', 0.58, 0.56, 1)
-                ) AS t(close_ts, test_month, candidate_uid, pred_prob, threshold_exec, selected_exec)
+                        (TIMESTAMPTZ '2025-07-08 04:30:34.649+00:00', '2025-07', 'oco_first_touch|AUDUSD|100|h6|state_a', 0, 0.58, 0.56, '{}', 1)
+                ) AS t(close_ts, test_month, candidate_uid, bar_ordinal, pred_prob, threshold, features_json, selected_exec)
                 """
             )
             con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="AUDUSD",
             model_month="2025-07",
-            cache_key="AUDUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"AUDUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1359,7 +1470,7 @@ class TestPredictEndpoint:
                 candidates=[cand],
             )
             assert first == {}
-            assert second["oco|AUDUSD|100|h6|state_a"]["selected_exec"] == 1
+            assert second["oco_first_touch|AUDUSD|100|h6|state_a"]["selected_exec"] == 1
         finally:
             server._config.governance_mode = orig_mode
             server._config.historical_prediction_payload_mode = orig_payload_mode
@@ -1385,19 +1496,19 @@ class TestPredictEndpoint:
                 SELECT
                     TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
                     '2025-07' AS test_month,
-                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                    'oco_first_touch|EURUSD|100|h6|state_a' AS candidate_uid
                 """
             )
             con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="EURUSD",
             model_month="2025-07",
-            cache_key="EURUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"EURUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1442,19 +1553,19 @@ class TestPredictEndpoint:
                 SELECT
                     TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
                     '2025-07' AS test_month,
-                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                    'oco_first_touch|EURUSD|100|h6|state_a' AS candidate_uid
                 """
             )
             con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
         finally:
             con.close()
 
-        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a", family=_TEST_FAMILY)
         contract = SimpleNamespace(
             symbol="EURUSD",
             model_month="2025-07",
-            cache_key="EURUSD|2025-07",
-            model_binding={"predictions_path": str(pred_path)},
+            cache_key=f"EURUSD|2025-07|{_TEST_FAMILY}|{pred_path.parent.name}",
+            bundle_paths=_test_bundle_paths(pred_path),
         )
 
         orig_mode = server._config.governance_mode
@@ -1667,7 +1778,7 @@ class TestPredictEndpoint:
             assert len(response_rows) == 1
             assert (
                 response_rows[0]["extra"]["reason"]
-                == "historical_prediction_universe_gate_filtered_all_candidates"
+                == "no_predictions"
             )
             assert response_rows[0]["extra"]["result_count"] == 0
         finally:
@@ -1700,6 +1811,7 @@ class TestPredictEndpoint:
                 ),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "compute_features", return_value=_test_model_features()),
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
@@ -1778,6 +1890,7 @@ class TestPredictEndpoint:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_features = ModelFeatures(
             cost_est_pips=1.0,
@@ -1961,7 +2074,7 @@ class TestPredictEndpoint:
             assert "event_ts" not in kwargs
             assert kwargs["close_ts"] == datetime(2025, 1, 1, tzinfo=timezone.utc)
             assert kwargs["symbol"] == "EURUSD"
-            assert kwargs["candidate_uid"] == "oco|EURUSD|100|h24|cand-blocked"
+            assert kwargs["candidate_uid"] == "oco_first_touch|EURUSD|100|h24|cand-blocked"
             assert kwargs["pred_prob"] == 0.3
             assert kwargs["threshold"] == 0.5
             assert kwargs["preselected_exec"] == 0
@@ -2012,7 +2125,7 @@ class TestPredictEndpoint:
         dummy_model.predict_proba.return_value = np.array([[0.7, 0.3]])
         close_ts = datetime(2025, 1, 1, tzinfo=timezone.utc)
         run_id = "threshold-gap-recovery"
-        candidate_uid = "oco|EURUSD|100|h24|cand-history-gap"
+        candidate_uid = "oco_first_touch|EURUSD|100|h24|cand-history-gap"
         original_mode = server._config.governance_mode
 
         try:
@@ -2063,7 +2176,7 @@ class TestPredictEndpoint:
             assert rows[0]["threshold_blocked"] is True
             assert rows[0]["threshold_block_reason"] == "ROLLING_HISTORY_GAP"
 
-            audit_row = server._state._con.execute(
+            audit_row = server._state._store.execute(
                 """
                 SELECT close_ts, symbol, candidate_uid, pred_prob, threshold, model_month, run_id
                 FROM audit_logs
@@ -2270,6 +2383,7 @@ class TestPredictEndpoint:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_features = ModelFeatures(
             cost_est_pips=1.0,
@@ -2362,6 +2476,7 @@ class TestPredictEndpoint:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_features = ModelFeatures(
             cost_est_pips=1.0,
@@ -2488,6 +2603,7 @@ class TestPredictEndpoint:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_features = ModelFeatures(
             cost_est_pips=1.0,
@@ -2687,8 +2803,9 @@ class TestPredictEndpoint:
 
         import numpy as np
 
-        from src.behemoth.api import server
+        from src.behemoth.api import predict_orchestrator, server
         from src.behemoth.core.schemas import ModelFeatures
+        from src.behemoth.risk.account import AccountRiskDecision
 
         cand_small = mock.MagicMock()
         cand_small.bar_ticks = 100
@@ -2759,20 +2876,22 @@ class TestPredictEndpoint:
             ),
             mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(
-                server,
-                "_resolve_account_risk_eval",
-                return_value={
-                    "enabled": True,
-                    "profile_id": "ftmo_10k_challenge_2step",
-                    "allow_trading": True,
-                    "block_reason": None,
-                    "snapshot_available": True,
-                    "daily_loss_headroom": 200.0,
-                    "max_loss_headroom": 200.0,
-                    "daily_loss_used": 0.0,
-                    "max_loss_used": 0.0,
-                    "trading_day_id": "2025-01-01",
-                },
+                predict_orchestrator,
+                "evaluate_account_risk_decision",
+                return_value=AccountRiskDecision(
+                    enabled=True,
+                    profile_id="ftmo_10k_challenge_2step",
+                    allow_trading=True,
+                    block_reason=None,
+                    snapshot_available=True,
+                    daily_loss_headroom=200.0,
+                    max_loss_headroom=200.0,
+                    daily_loss_used=0.0,
+                    max_loss_used=0.0,
+                    trading_day_id="2025-01-01",
+                    day_start_balance=10000.0,
+                    current_equity=10000.0,
+                ),
             ),
         ):
             snap = client.post(
@@ -2864,7 +2983,7 @@ class TestBuildDecisionsHistorical:
                 model=model_mock,
                 base_features_by_ticks={100: features},
                 regime_quantiles_by_ticks={},
-                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                close_ts=datetime(2025, 7, 7, 0, 0, 10, tzinfo=timezone.utc),
                 thr_cfg={"threshold_exec": 0.5, "threshold_source": "test"},
                 account_risk_eval=SimpleNamespace(
                     enabled=True,
@@ -2954,7 +3073,7 @@ class TestBuildDecisionsHistorical:
                     model=model_mock,
                     base_features_by_ticks={100: features},
                     regime_quantiles_by_ticks={},
-                    close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                    close_ts=datetime(2025, 7, 7, 0, 0, 10, tzinfo=timezone.utc),
                     thr_cfg={
                         "threshold_exec": 0.5,
                         "threshold_source": "test",
@@ -3194,11 +3313,8 @@ class TestTradeEndpoints:
 
         from src.behemoth.api import server
 
-        mock_con = mock.MagicMock()
-        mock_con.execute().fetchone.return_value = [999]
-
         with (
-            mock.patch.object(server._state, "_con", mock_con),
+            mock.patch.object(server._state, "get_latest_bar_id", return_value=999),
             mock.patch.object(server._state, "touch_trade"),
         ):
             r = client.post(
@@ -3821,7 +3937,7 @@ class TestPredictWarmup:
             ts = base_ts + timedelta(minutes=i)
             close_ts = ts + timedelta(seconds=30)
             bid = start_close + 0.0001 * (i % 50) - 0.00005 * ((i * 7) % 11)
-            server._state._con.execute(
+            server._state._store.execute(
                 "INSERT INTO tick_bars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     i,
@@ -3853,6 +3969,7 @@ class TestPredictWarmup:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_model = mock.MagicMock()
 
@@ -3907,6 +4024,7 @@ class TestPredictWarmup:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
@@ -3933,11 +4051,11 @@ class TestPredictWarmup:
 
         assert r.status_code == 201
         body = r.json()
-        canonical_uid = f"oco|{sym}|{dummy_cand.bar_ticks}|h{dummy_cand.horizon}|{dummy_cand.candidate_uid}"
+        canonical_uid = f"oco_first_touch|{sym}|{dummy_cand.bar_ticks}|h{dummy_cand.horizon}|{dummy_cand.candidate_uid}"
         assert body["audit_events_written"] >= 30
         assert body["stats"][canonical_uid]["unique_values"] >= 10
 
-        rows = server._state._con.execute(
+        rows = server._state._store.execute(
             """
             SELECT pred_prob
             FROM audit_logs
@@ -3968,6 +4086,7 @@ class TestPredictWarmup:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
@@ -4005,7 +4124,7 @@ class TestPredictWarmup:
         assert body2["audit_events_purged"] == written1
         assert body2["audit_events_written"] == written1
 
-        final_count = server._state._con.execute(
+        final_count = server._state._store.execute(
             "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
             [sym, run_id],
         ).fetchone()[0]
@@ -4024,7 +4143,7 @@ class TestPredictWarmup:
         run_id = "warmup-degenerate"
         self._seed_bars(sym, 340)
 
-        server._state._con.execute(
+        server._state._store.execute(
             "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
@@ -4044,6 +4163,7 @@ class TestPredictWarmup:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
@@ -4071,7 +4191,7 @@ class TestPredictWarmup:
         assert r.status_code == 500
         assert "degenerate distribution" in r.json()["detail"]
 
-        sentinel_count = server._state._con.execute(
+        sentinel_count = server._state._store.execute(
             """
             SELECT COUNT(*)
             FROM audit_logs
@@ -4095,7 +4215,7 @@ class TestPredictWarmup:
         run_id = "warmup-empty-valid"
         self._seed_bars(sym, 340)
 
-        server._state._con.execute(
+        server._state._store.execute(
             "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
@@ -4115,6 +4235,7 @@ class TestPredictWarmup:
         dummy_cand.horizon = 24
         dummy_cand.barrier_pips = 15.0
         dummy_cand.candidate_uid = "cand1"
+        dummy_cand.family = _TEST_FAMILY
 
         dummy_model = mock.MagicMock()
 
@@ -4149,7 +4270,7 @@ class TestPredictWarmup:
         assert body["stats"] == {}
         dummy_model.predict_proba.assert_not_called()
 
-        sentinel_count = server._state._con.execute(
+        sentinel_count = server._state._store.execute(
             """
             SELECT COUNT(*)
             FROM audit_logs
@@ -4157,7 +4278,7 @@ class TestPredictWarmup:
             """,
             [sym, run_id],
         ).fetchone()[0]
-        total_count = server._state._con.execute(
+        total_count = server._state._store.execute(
             "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
             [sym, run_id],
         ).fetchone()[0]
@@ -4171,7 +4292,7 @@ class TestRollingThresholdDrift:
 
         server._record_rolling_threshold_drift(
             symbol="GBPUSD",
-            candidate_uid="oco|GBPUSD|100|h6|cand_ok",
+            candidate_uid="oco_first_touch|GBPUSD|100|h6|cand_ok",
             rolling=0.72,
             baseline=0.70,
         )
@@ -4180,7 +4301,7 @@ class TestRollingThresholdDrift:
 
         assert metrics.status_code == 200
         assert "behemoth_rolling_threshold_drift_total" in metrics.text
-        assert 'candidate="oco|GBPUSD|100|h6|cand_ok"' in metrics.text
+        assert 'candidate="oco_first_touch|GBPUSD|100|h6|cand_ok"' in metrics.text
         assert 'state="ok"' in metrics.text
         assert 'symbol="GBPUSD"' in metrics.text
 
@@ -4190,7 +4311,7 @@ class TestRollingThresholdDrift:
         with caplog.at_level("WARNING"):
             server._record_rolling_threshold_drift(
                 symbol="USDJPY",
-                candidate_uid="oco|USDJPY|100|h6|cand_drift",
+                candidate_uid="oco_first_touch|USDJPY|100|h6|cand_drift",
                 rolling=0.771,
                 baseline=0.686,
             )
@@ -4199,7 +4320,7 @@ class TestRollingThresholdDrift:
 
         assert metrics.status_code == 200
         assert "behemoth_rolling_threshold_drift_total" in metrics.text
-        assert 'candidate="oco|USDJPY|100|h6|cand_drift"' in metrics.text
+        assert 'candidate="oco_first_touch|USDJPY|100|h6|cand_drift"' in metrics.text
         assert 'state="drift"' in metrics.text
         assert 'symbol="USDJPY"' in metrics.text
         assert "Rolling threshold drift" in caplog.text
@@ -4210,7 +4331,7 @@ class TestRollingThresholdDrift:
 
         server._record_rolling_threshold_drift(
             symbol="EURUSD",
-            candidate_uid="oco|EURUSD|100|h6|cand_none",
+            candidate_uid="oco_first_touch|EURUSD|100|h6|cand_none",
             rolling=0.72,
             baseline=0.0,
         )
@@ -4233,7 +4354,7 @@ class TestRollingThresholdDrift:
 
         sym = "EURUSD"
         candidate_uid = "cand_roll"
-        canonical_uid = f"oco|{sym}|100|h6|{candidate_uid}"
+        canonical_uid = f"oco_first_touch|{sym}|100|h6|{candidate_uid}"
         rolling_threshold = 0.74
         threshold_exec = 0.70
         candidate = SimpleNamespace(
@@ -4241,6 +4362,7 @@ class TestRollingThresholdDrift:
             horizon=6,
             barrier_pips=2.0,
             candidate_uid=candidate_uid,
+            family=_TEST_FAMILY,
             regime_desc="all;barrier=2.0",
         )
         features = ModelFeatures(
@@ -4528,7 +4650,7 @@ class TestSeedFileLoading:
             {
                 "close_ts": [pd.Timestamp("2026-03-30T12:00:00", tz="UTC")],
                 "symbol": ["TESTSYM"],
-                "candidate_uid": ["oco|TESTSYM|100|h300|test_state"],
+                "candidate_uid": ["oco_first_touch|TESTSYM|100|h300|test_state"],
                 "pred_prob": [0.75],
                 "threshold": [0.5],
                 "features_json": ["{}"],
@@ -4544,7 +4666,7 @@ class TestSeedFileLoading:
         server._load_seed_files(tmp_path)
 
         # Verify the row was inserted
-        row = server._state._con.execute(
+        row = server._state._store.execute(
             "SELECT pred_prob FROM audit_logs WHERE symbol = 'TESTSYM' AND run_id = 'threshold_seed'"
         ).fetchone()
         assert row is not None

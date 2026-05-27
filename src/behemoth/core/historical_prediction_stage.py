@@ -279,6 +279,7 @@ class HistoricalPredictionStage:
                     cast(bar_ordinal AS INTEGER) AS bar_ordinal,
                     cast(pred_prob AS DOUBLE) AS pred_prob,
                     cast(threshold AS DOUBLE) AS threshold,
+                    cast(selected_exec AS INTEGER) AS selected_exec,
                     features_json,
                     close_ts
                 FROM read_parquet(?)
@@ -296,7 +297,7 @@ class HistoricalPredictionStage:
             con.close()
 
         out: dict[str, list[dict[str, Any]]] = {}
-        for candidate_uid, bar_ordinal, pred_prob, threshold, features_json, close_ts in rows:
+        for candidate_uid, bar_ordinal, pred_prob, threshold, selected_exec, features_json, close_ts in rows:
             uid = str(candidate_uid or "").strip()
             if not uid:
                 continue
@@ -306,6 +307,8 @@ class HistoricalPredictionStage:
                 "bar_ordinal": bar_ordinal,
                 "pred_prob": pred_prob,
                 "threshold": threshold,
+                "threshold_exec": threshold,
+                "selected_exec": selected_exec,
                 "features_json": features_json,
                 "close_ts": close_ts,
             })
@@ -323,11 +326,14 @@ class HistoricalPredictionStage:
         Validates that cursor does not exceed the size of the loaded ordinal index.
         """
         ordinal_index = self._candidate_ordinal_index.get(cache_key, {})
-        ordinals = ordinal_index.get(candidate_uid, [])
-        if cursor < 0 or cursor > len(ordinals):
+        candidate_index = self._candidate_index.get(cache_key, {})
+        entries = ordinal_index.get(candidate_uid)
+        if entries is None:
+            entries = candidate_index.get(candidate_uid, [])
+        if cursor < 0 or cursor > len(entries):
             raise ValueError(
                 f"Cursor {cursor} out of bounds for {candidate_uid} "
-                f"(ordinal index size: {len(ordinals)})"
+                f"(index size: {len(entries)})"
             )
         if cache_key not in self._candidate_cursor:
             self._candidate_cursor[cache_key] = {}
