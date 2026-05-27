@@ -302,7 +302,7 @@ class PredictionOrchestrator:
         families = self._historical_registry.families_for_symbol_month(sym, requested_month)
         if not families:
             # Respect governance_missing_month_policy for month fallback
-            fallback_month = self._catalog._resolve_missing_historical_month(sym, requested_month)
+            fallback_month = self._catalog.resolve_missing_historical_month(sym, requested_month)
             if fallback_month is not None:
                 requested_month = fallback_month
                 families = self._historical_registry.families_for_symbol_month(sym, requested_month)

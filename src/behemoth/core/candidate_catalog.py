@@ -142,7 +142,7 @@ class CandidateCatalog:
         entry = self._historical_registry.get_entry(symbol, requested_month, family=family)
         resolved_month = requested_month
         if entry is None:
-            fallback_month = self._resolve_missing_historical_month(symbol, requested_month)
+            fallback_month = self.resolve_missing_historical_month(symbol, requested_month)
             if fallback_month is not None:
                 entry = self._historical_registry.get_entry(symbol, fallback_month, family=family)
                 resolved_month = fallback_month
@@ -190,7 +190,8 @@ class CandidateCatalog:
             lock_path=None,
         )
 
-    def _resolve_missing_historical_month(self, symbol: str, requested_month: str) -> str | None:
+    def resolve_missing_historical_month(self, symbol: str, requested_month: str) -> str | None:
+        """Find fallback month according to governance_missing_month_policy."""
         if self._historical_registry is None:
             return None
         months = self._historical_registry.months_for_symbol(symbol)
