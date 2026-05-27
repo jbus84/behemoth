@@ -108,7 +108,7 @@ def test_candidate_catalog_resolves_live_contract() -> None:
         assert catalog.active_bar_ticks("EURUSD") == [200]
 
 
-def test_candidate_catalog_resolves_historical_fallback_month() -> None:
+def test_candidate_catalog_rejects_missing_month() -> None:
     with TemporaryDirectory() as tmp_dir:
         bundle_paths = _create_bundle_paths_for_test(Path(tmp_dir), "EURUSD", "2026-03")
 
@@ -130,11 +130,9 @@ def test_candidate_catalog_resolves_historical_fallback_month() -> None:
             latest_loaded_month=lambda _symbol: "2026-03",
         )
 
-        contract = catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc), family="oco_first_touch")
+        with pytest.raises(KeyError, match="No historical lock for EURUSD month 2026-04 family oco_first_touch"):
+            catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc), family="oco_first_touch")
 
-        assert contract.source == "historical"
-        assert contract.cache_key == "EURUSD|2026-03|oco_first_touch"
-        assert contract.lock_path == "locks/2026-03/EURUSD_oco_first_touch_live_lock.json"
         assert catalog.active_bar_ticks("EURUSD", family="oco_first_touch") == [100]
 
 

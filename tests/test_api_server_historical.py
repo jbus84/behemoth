@@ -108,7 +108,7 @@ def test_app_config_live_defaults_keep_exact_model(monkeypatch) -> None:
     assert cfg.historical_prediction_tolerance_sec == pytest.approx(30.0)
 
 
-def test_resolve_runtime_contract_historical_falls_back_to_previous_month() -> None:
+def test_resolve_runtime_contract_historical_rejects_missing_month() -> None:
     original_mode = server._config.governance_mode
     original_policy = server._config.governance_missing_month_policy
     original_force = server._config.force_model_month
@@ -124,13 +124,14 @@ def test_resolve_runtime_contract_historical_falls_back_to_previous_month() -> N
         server._config.governance_missing_month_policy = "nearest_previous"
         server._config.force_model_month = ""
 
-        contract = server._resolve_runtime_contract_for_family(
-            "EURUSD",
-            "oco_first_touch",
-            datetime(2025, 8, 1, tzinfo=timezone.utc),
-        )
-        assert contract.model_month == "2025-07"
-        assert contract.cache_key == "EURUSD|2025-07|oco_first_touch"
+        with pytest.raises(HTTPException) as exc:
+            server._resolve_runtime_contract_for_family(
+                "EURUSD",
+                "oco_first_touch",
+                datetime(2025, 8, 1, tzinfo=timezone.utc),
+            )
+        assert exc.value.status_code == 422
+        assert "No historical lock" in str(exc.value.detail)
     finally:
         server._config.governance_mode = original_mode
         server._config.governance_missing_month_policy = original_policy

@@ -142,12 +142,6 @@ class CandidateCatalog:
         entry = self._historical_registry.get_entry(symbol, requested_month, family=family)
         resolved_month = requested_month
         if entry is None:
-            fallback_month = self.resolve_missing_historical_month(symbol, requested_month)
-            if fallback_month is not None:
-                entry = self._historical_registry.get_entry(symbol, fallback_month, family=family)
-                resolved_month = fallback_month
-
-        if entry is None:
             available = self._historical_registry.months_for_symbol(symbol)
             avail_txt = ",".join(available) if available else "<none>"
             raise KeyError(
