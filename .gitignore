@@ -45,8 +45,6 @@ tmp/
 .coverage
 test_ticks.cs
 
-# graphify internal files
-graphify-out/.graphify_python
-graphify-out/cost.json
-graphify-out/manifest.json
-graphify-out/.needs_update
+# Graphify output
+graphify-out/
+**/graphify-out/

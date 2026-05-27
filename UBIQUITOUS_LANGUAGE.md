@@ -7,7 +7,7 @@
 | **Certification Run** | A bounded execution of the staged governance process that produces evidence and verdicts for a target runtime context. | Cert, stage run, monthly run |
 | **Monthly Recert** | The official certification run for the current deployment period that gates promotion to live. | Recert month, monthly pass |
 | **Promotion** | The act of approving a certified lock set and artifact set for live use. | Deploy, publish, point live |
-| **Promoted Lock Set** | The authoritative lock bundle that defines the artifact, symbol, and month decisions live must use. | Live lock, promoted system, runtime config |
+| **Promoted Lock Set** | The authoritative lock bundle that defines the artifact, symbol, family, and month decisions live must use. | Live lock, promoted system, runtime config |
 | **Provenance** | The recorded branch, commit, inputs, and artifact lineage that explain why a certification result is valid. | Metadata, context |
 | **Evidence Root** | The filesystem location containing the reports and artifacts a certification run relied on. | Output dir, report folder |
 | **Freshness Gate** | A check that rejects stale or mismatched evidence before promotion or restart. | Recency check, staleness check |
@@ -36,7 +36,7 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Opportunity Mining** | Stage 2 hypothesis generation that scans the velocity dataset for broad, train-only positive-expectancy candidate states. | Training, fitting, selection |
-| **Candidate State** | A mined OCO or directional regime definition parameterized by structure such as `bar_ticks`, `horizon`, and `barrier_pips`. | Setup, signal |
+| **Candidate State** | A mined family-specific regime definition parameterized by structure such as `bar_ticks`, `horizon`, barriers, and family semantics. | Setup, signal |
 | **Candidate Universe** | The set of candidate states admitted to later evaluation after train-only mining filters. | Final shortlist, production states |
 | **Monthly WFO** | Stage 3 rolling month-by-month fitting and scoring where prior months train the next test month. | Backtest, monthly training |
 | **Model Fit** | The act of fitting the Stage-3 classifier on the allowed rolling training window. | Training run, model selection |
@@ -61,7 +61,21 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Certification Evidence** | The reports, summaries, and machine-readable status files that justify a process verdict. | Logs, outputs |
-| **Governance Lock** | The symbol-specific manifest that binds allowed states, model artifacts, and runtime assumptions for deployment. | Config file, model file |
+| **Governance Lock** | The governed manifest that binds allowed states, family identity, model artifacts, and runtime assumptions for deployment. | Config file, model file |
+| **Bundle Layout** | The governed artifact shape that binds a symbol, family, lock file, model artifacts, thresholds, and evidence paths. | Shape, artifact layout, bundle shape |
+| **Family Lock** | The lock file scoped to exactly one `(symbol, family)` pair for live mode or one `(symbol, month, family)` tuple for historical mode. | Lock fallback, symbol lock |
+| **Cross-Symbol Scope** | The explicit bundle metadata that names when a family's artifacts or features span multiple symbols. | Shared symbol mode, multi-symbol hack |
+
+## Mining family model
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Mining Family** | A named strategy-research family with its own candidate label semantics, measures, bundles, models, thresholds, and runtime dispatch path. | Strategy type, setup type, family fallback |
+| **OCO First Touch** | The Mining Family whose label semantics are first touch of an upper or lower barrier. | Default family, unqualified OCO |
+| **Symbol-Local Family** | A Mining Family whose features, labels, and artifacts are self-contained within one symbol. | Single-symbol family, normal family |
+| **Cross-Symbol Family** | A Mining Family whose features, labels, or artifacts depend on relationships across symbols. | Multi-symbol family, shared artifact family |
+| **Family-Aware Lookup** | A registry or runtime lookup that requires explicit family identity and does not infer or default to another family. | Fallback lookup, prefix match |
+| **Family Fallback** | Any silent substitution of a missing family, month, lock, cap, model, or threshold with another value. | Backward compatibility, best effort |
 
 ## Deployment decisions
 
@@ -99,8 +113,10 @@
 | **Candidate Catalog** | The runtime source of Candidate State definitions, model bindings, and production caps across live and historical modes. | Registry switch, candidate registry, historical registry |
 | **Runtime Candidate Contract** | The resolved Candidate State, model artifact binding, cap, cache key, and source month used for one prediction cycle. | Runtime contract, model contract, candidate bundle |
 | **Model Binding** | The locked model and threshold artifact paths and hashes required to score a Candidate State. | Model config, model path, artifact binding |
-| **Production Cap** | The governed maximum execution cap in pips applied to runtime scoring for a symbol. | Cap, live cap, production limit |
-| **Cache Key** | The symbol or symbol-month identifier used to bind runtime model, threshold, and historical prediction caches. | Model key, registry key |
+| **Production Cap** | The governed maximum execution cap in pips applied to runtime scoring for a symbol-family binding. | Cap, live cap, production limit |
+| **Cache Key** | The symbol-family or symbol-month-family identifier used to bind runtime model, threshold, and historical prediction caches. | Model key, registry key |
+| **Per-Family Dispatch** | The runtime act of resolving, loading, scoring, and accounting for each Mining Family with its own model and threshold. | Shared model dispatch, aggregate model, default dispatch |
+| **Multi-Family Portfolio Allocation** | Account-risk and admission logic that evaluates selected candidates globally across concurrently live families. | Per-family allocation, independent family risk |
 
 ## Runtime Feature Set contract
 
@@ -139,10 +155,12 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Historical Mode** | The runtime mode that scores by symbol-month Governance Locks and locked historical prediction artifacts. | Backtest mode, historical auto |
-| **Historical Prediction Artifact** | The locked prediction parquet used to replay the governed prediction universe for a symbol-month. | Prediction file, historical predictions |
+| **Historical Mode** | The runtime mode that scores by symbol-month-family Governance Locks and locked historical prediction artifacts. | Backtest mode, historical auto |
+| **Historical Prediction Artifact** | The locked prediction parquet used to replay the governed prediction universe for a symbol-month-family binding. | Prediction file, historical predictions |
 | **Historical Prediction Load Status** | The explicit result of attempting to load a Historical Prediction Artifact. | Empty predictions, cache status |
 | **Missing Historical Prediction Artifact** | A load status that means the locked historical prediction parquet was not found. | No predictions, empty universe |
+| **Requested Historical Month** | The exact model month requested by `force_model_month` or derived from the prediction timestamp in Historical Mode. | Fallback month, latest month |
+| **Missing Historical Month** | A hard failure state where the requested symbol-month-family lock is absent. | Latest available month, nearest previous month |
 
 ## Thresholds and execution
 
@@ -166,6 +184,16 @@
 | **Runtime Realized P&L** | The realized pip result from closed runtime trades. | broker pips, JForex P&L |
 | **Stateful Lifecycle Expected P&L** | The expected pip result from replaying governance signals through the same scan, touch, open, hold, and close constraints as the runtime. | label pips, locked pips, target pips |
 
+## Process graph and agent context
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Process Registry** | The executable Stage 01-14 process definition in `configs/process/stages.yaml`. | README process, stale plan, changelog process |
+| **Stage Capsule** | A generated LLM-readable Markdown summary of one Process Registry stage. | Handwritten plan, stale docs |
+| **Scoped Process Graph** | A generated process graph projected through a stage's declared seeds, allow list, deny list, and edge budget. | Raw graph, repo graph |
+| **Raw Graphify Export** | An exploratory Graphify output that must be filtered through registry scopes before it is used as process context. | Authoritative graph, current context |
+| **Historical Agent Notes** | Archived or git-history-only agent plans, specs, audits, and reports that are not current process truth. | Current docs, active source of truth |
+
 ## Relationships
 
 - A **Certification Run** produces **Evidence Root** contents and a final verdict of **PASS** or **FAIL**.
@@ -182,6 +210,9 @@
 - A **Promotion** is valid only when a **PASS** run has matching **Provenance** and a matching **Promoted Lock Set**.
 - A **Promoted Lock Set** determines **Symbol Universe** membership, **Deployment Period**, and each symbol's **GO** or **NO_GO** state.
 - A symbol may be **NO_GO** without the **Certification Run** being a **FAIL**.
+- A **Mining Family** must resolve through a **Family Lock**; **Family-Aware Lookup** must reject missing family identity instead of using **Family Fallback**.
+- A **Symbol-Local Family** must keep its runtime artifacts self-contained within the symbol, while a **Cross-Symbol Family** must declare **Cross-Symbol Scope**.
+- **Per-Family Dispatch** scores each **Mining Family** with its own **Model Binding**, and **Multi-Family Portfolio Allocation** admits candidates across all live families together.
 - **Restart Eligibility** evaluates whether the **Live Runtime** may resume using existing **Trade Tracking State**.
 - `RESTART_ELIGIBLE_DRAIN_ONLY` is a valid restart outcome when **Reconciliation** succeeds for monitoring but not for new entries.
 - **Warmup** must complete before stable **Rolling Threshold** behavior can be trusted.
@@ -196,7 +227,10 @@
 - The **Worker Queue** forms a **Tick Batch**, and a Tick Batch may complete one or more Tick Bars.
 - In **Historical Mode**, the **Historical Prediction Artifact** constrains which Candidate States are eligible for replay at a given timestamp.
 - **Missing Historical Prediction Artifact** is a load failure state, not proof that there were no selected predictions.
+- **Requested Historical Month** is exact; **Missing Historical Month** must fail rather than silently selecting a different month.
 - **Account Risk Decision**, **Trade Guard Decision**, and **Reservation Lifecycle** are separate decisions and must not be collapsed into a single boolean.
+- A **Raw Graphify Export** becomes useful process context only after projection into **Scoped Process Graph** artifacts from the **Process Registry**.
+- **Stage Capsules** are generated from the **Process Registry** and are safer LLM context than **Historical Agent Notes**.
 
 ## Parity principle
 
@@ -214,7 +248,7 @@ These phrases appear in supporting docs and implementation discussion, but they 
 
 - "final verdict" for the overall `PASS`/`FAIL` outcome of a certification run
 - "promotion bundle" or "artifact bundle" for the monthly collection of governed outputs reviewed before Promotion
-- "trade lifecycle" or "OCO flow" for the sequence from setup through execution management
+- "trade lifecycle" for the sequence from setup through execution management
 - "model traffic" or "signals" for the stream of live predictions after Warmup
 - "contract" should be qualified as **Runtime Candidate Contract**, **Model Feature Contract**, or **Python API Contract**
 - "state" should be qualified as **Runtime State**, **Trade Tracking State**, **Barrier Scan**, or **Reservation**
@@ -238,6 +272,14 @@ These phrases appear in supporting docs and implementation discussion, but they 
 >
 > **Domain expert:** "No. That is a **Missing Historical Prediction Artifact** load status, not an empty prediction universe."
 >
+> **Dev:** "If a directional model is missing, can the runtime fall back to **OCO First Touch**?"
+>
+> **Domain expert:** "No. That is **Family Fallback**. A **Family-Aware Lookup** must fail unless the exact **Mining Family** has a valid **Family Lock** and **Model Binding**."
+>
+> **Dev:** "Can I use the repo-wide Graphify output as LLM context?"
+>
+> **Domain expert:** "Not directly. Treat it as a **Raw Graphify Export** and project it through the **Process Registry** into a **Scoped Process Graph** or **Stage Capsule**."
+>
 > **Dev:** "Can I compare **Independent Label P&L** directly with **Runtime Realized P&L**?"
 >
 > **Domain expert:** "No. **Independent Label P&L** scores each selected signal independently. Runtime P&L parity needs **Stateful Lifecycle Expected P&L** because the runtime applies scan, touch, open, hold, and close constraints."
@@ -258,10 +300,14 @@ These phrases appear in supporting docs and implementation discussion, but they 
 - "candidate", "shortlist", and "allowed state" have been used interchangeably. Keep them ordered: **Candidate State** before selection, **Shortlist** after reduced-core selection, **Allowed State** once written into governance artifacts.
 - "bundle", "evidence", and "lock" have been blurred together. Prefer **Certification Evidence** for the reports proving a run, and **Governance Lock** or **Promoted Lock Set** for deployment manifests.
 - "flexibility" is too vague for live-vs-governance differences. Use **Runtime Variance** for acceptable in-contract differences, **Material Drift** for concerning divergence, and **Parity Breach** for out-of-contract behavior.
+- "fallback" has been used to mean both intentional policy and silent compatibility behavior. In runtime governance contexts, use **Family Fallback** only for forbidden silent substitution.
+- "family" must mean **Mining Family** unless explicitly qualified as a code module or human family.
+- "graph" has been used for both raw tool output and governed process context. Use **Raw Graphify Export** for exploratory output and **Scoped Process Graph** for registry-filtered context.
+- "docs" is too broad for process context. Use **Stage Capsule** for generated process documentation and **Historical Agent Notes** for stale plans/specs/audits.
 - "locked pips" and "locked selected" obscure the semantic layer being measured. Use **Independent Label P&L** for per-row label outcomes and **Governance Selected Signal Count** for selected signal counts.
 - "contract" is now overloaded after the refactor. Use **Runtime Candidate Contract** for candidate/model/cap resolution, **Model Feature Contract** for Feature Set schema enforcement, and **Python API Contract** for Java-to-Python endpoint semantics.
 - "registry" is ambiguous between live and historical candidate sources. Use **Candidate Catalog** for runtime resolution across modes.
 - "action" is ambiguous between broker commands, barrier outputs, and operator work. Use **Barrier Action** for runtime lifecycle outputs and **Order Lifecycle Event** for broker/order callbacks.
-- "state" is too broad for runtime discussions. Use **Runtime State** for the stored runtime surface, **Trade Tracking State** for persisted broker lifecycle records, **Barrier Scan** for OCO scan rows, and **Reservation** for account-risk allocations.
+- "state" is too broad for runtime discussions. Use **Runtime State** for the stored runtime surface, **Trade Tracking State** for persisted broker lifecycle records, **Barrier Scan** for barrier-tracking rows, and **Reservation** for account-risk allocations.
 - "empty predictions" must not be used for missing files in Historical Mode. Use **Missing Historical Prediction Artifact** when the locked artifact cannot be loaded.
 - "risk gate" has blurred account-level and trade-level decisions. Use **Account Risk Decision** for account limits and **Trade Guard Decision** for per-candidate checks.
