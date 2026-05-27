@@ -199,25 +199,25 @@ class TestModelRegistryCacheFallback:
         assert model == "model_a"
         assert thr == {"t": 0.5}
 
-    def test_symbol_fallback_with_single_family(self) -> None:
+    def test_exact_lookup_by_symbol_family(self) -> None:
         from src.behemoth.core.model_registry import ModelRegistry
 
         reg = ModelRegistry()
         reg.set_model_and_threshold("EURUSD|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
-        model, thr = reg.get_model_and_threshold("EURUSD")
+        model, thr = reg.get_model_and_threshold("EURUSD|oco_first_touch")
         assert model == "model_a"
         assert thr == {"t": 0.5}
 
-    def test_symbol_month_fallback_with_single_family(self) -> None:
+    def test_exact_lookup_by_symbol_month_family(self) -> None:
         from src.behemoth.core.model_registry import ModelRegistry
 
         reg = ModelRegistry()
         reg.set_model_and_threshold("EURUSD|2026-04|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
-        model, thr = reg.get_model_and_threshold("EURUSD|2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|2026-04|oco_first_touch")
         assert model == "model_a"
         assert thr == {"t": 0.5}
 
-    def test_fallback_returns_none_when_multiple_families(self) -> None:
+    def test_partial_key_returns_none(self) -> None:
         from src.behemoth.core.model_registry import ModelRegistry
 
         reg = ModelRegistry()
@@ -227,7 +227,7 @@ class TestModelRegistryCacheFallback:
         assert model is None
         assert thr is None
 
-    def test_fallback_returns_none_when_multiple_symbol_month_families(self) -> None:
+    def test_partial_symbol_month_key_returns_none(self) -> None:
         from src.behemoth.core.model_registry import ModelRegistry
 
         reg = ModelRegistry()

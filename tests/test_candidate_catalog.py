@@ -130,12 +130,12 @@ def test_candidate_catalog_resolves_historical_fallback_month() -> None:
             latest_loaded_month=lambda _symbol: "2026-03",
         )
 
-        contract = catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc))
+        contract = catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc), family="oco_first_touch")
 
         assert contract.source == "historical"
-        assert contract.cache_key == "EURUSD|2026-03"
+        assert contract.cache_key == "EURUSD|2026-03|oco_first_touch"
         assert contract.lock_path == "locks/2026-03/EURUSD_oco_first_touch_live_lock.json"
-        assert catalog.active_bar_ticks("EURUSD") == [100]
+        assert catalog.active_bar_ticks("EURUSD", family="oco_first_touch") == [100]
 
 
 def test_candidate_catalog_reports_missing_historical_months() -> None:
@@ -145,8 +145,8 @@ def test_candidate_catalog_reports_missing_historical_months() -> None:
         historical_mode=True,
     )
 
-    with pytest.raises(KeyError, match="No historical lock for EURUSD month 2026-04"):
-        catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc))
+    with pytest.raises(KeyError, match="No historical lock for EURUSD month 2026-04 family oco_first_touch"):
+        catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc), family="oco_first_touch")
 
 
 def test_registry_loads_multiple_families() -> None:

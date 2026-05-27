@@ -1670,13 +1670,11 @@ def _resolve_runtime_contract_for_family(sym: str, family: str, close_ts: dateti
                 detail=f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={_config.force_model_month!r}; expected YYYY-MM",
             )
     try:
-        contract = _candidate_catalog().resolve_contract(symbol, close_ts)
-    except LookupError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except KeyError as exc:
+        contract = _candidate_catalog().resolve_contract(symbol, close_ts, family=family)
+    except (LookupError, KeyError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc).strip("'")) from exc
 
-    # Filter to the requested family
+    # Filter to the requested family (live mode only; historical mode already returns per-family)
     family_candidates = [c for c in contract.candidates if c.family == family]
     if not family_candidates:
         raise HTTPException(status_code=422, detail=f"No candidates for {symbol} family {family}")

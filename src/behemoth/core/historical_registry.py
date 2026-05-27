@@ -109,31 +109,25 @@ class HistoricalCandidateRegistry:
         m = str(month).strip()
         return sorted(list({f for (sym, mo, f) in self._entries if sym == s and mo == m}))
 
-    def get_entry(self, symbol: str, month: str, family: str | None = None) -> HistoricalLockEntry | None:
+    def get_entry(self, symbol: str, month: str, family: str) -> HistoricalLockEntry | None:
         s = str(symbol).upper().strip()
         m = str(month).strip()
-        if family is not None:
-            key = (s, m, str(family).strip())
-            return self._entries.get(key)
-        # Backward-compat: return single-family entry when only one exists
-        matches = [e for (sym, mo, _f), e in self._entries.items() if sym == s and mo == m]
-        if len(matches) == 1:
-            return matches[0]
-        return None
+        key = (s, m, str(family).strip())
+        return self._entries.get(key)
 
-    def get_candidates(self, symbol: str, month: str, family: str | None = None) -> list[CandidateSpec]:
+    def get_candidates(self, symbol: str, month: str, family: str) -> list[CandidateSpec]:
         e = self.get_entry(symbol, month, family=family)
         return e.candidates if e is not None else []
 
-    def get_bundle_paths(self, symbol: str, month: str, family: str | None = None) -> BundlePaths | None:
+    def get_bundle_paths(self, symbol: str, month: str, family: str) -> BundlePaths | None:
         e = self.get_entry(symbol, month, family=family)
         return e.bundle_paths if e is not None else None
 
-    def get_cap_pips(self, symbol: str, month: str, family: str | None = None) -> float:
+    def get_cap_pips(self, symbol: str, month: str, family: str) -> float:
         e = self.get_entry(symbol, month, family=family)
         return float(e.cap_pips) if e is not None else 1.2
 
-    def get_lock_path(self, symbol: str, month: str, family: str | None = None) -> str | None:
+    def get_lock_path(self, symbol: str, month: str, family: str) -> str | None:
         e = self.get_entry(symbol, month, family=family)
         return str(e.lock_path) if e is not None else None
 

@@ -98,54 +98,67 @@ class CandidateCatalog:
     def historical_mode(self) -> bool:
         return self._historical_mode
 
-    def cache_key(self, symbol: str, model_month: str | None = None) -> str:
+    def cache_key(self, symbol: str, model_month: str | None = None, family: str | None = None) -> str:
         sym = _normalize_symbol(symbol)
+        parts = [sym]
         if self._historical_mode and model_month:
-            return f"{sym}|{str(model_month).strip()}"
-        return sym
+            parts.append(str(model_month).strip())
+        fam = str(family or "").strip()
+        if fam:
+            parts.append(fam)
+        return "|".join(parts)
 
-    def active_bar_ticks(self, symbol: str) -> list[int]:
+    def active_bar_ticks(self, symbol: str, family: str | None = None) -> list[int]:
         sym = _normalize_symbol(symbol)
         candidates: list[CandidateSpec] = []
         if self._historical_mode:
             month = self._latest_loaded_month(sym)
             if month and self._historical_registry is not None:
-                candidates = self._historical_registry.get_candidates(sym, month)
+                if family is not None:
+                    candidates = self._historical_registry.get_candidates(sym, month, family=family)
+                else:
+                    # Aggregate across all families for this symbol/month
+                    for fam in self._historical_registry.families_for_symbol_month(sym, month):
+                        candidates.extend(self._historical_registry.get_candidates(sym, month, family=fam))
         elif self._live_registry is not None:
             candidates = self._live_registry.get_candidates(sym)
         ticks = sorted({int(c.bar_ticks) for c in candidates})
         return ticks or ([100] if self._historical_mode else [])
 
-    def resolve_contract(self, symbol: str, close_ts: datetime) -> RuntimeCandidateContract:
+    def resolve_contract(
+        self, symbol: str, close_ts: datetime, family: str | None = None
+    ) -> RuntimeCandidateContract:
         sym = _normalize_symbol(symbol)
         if self._historical_mode:
-            return self._resolve_historical_contract(sym, close_ts)
+            if family is None:
+                raise ValueError("family is required in historical mode")
+            return self._resolve_historical_contract(sym, close_ts, family)
         return self._resolve_live_contract(sym)
 
-    def _resolve_historical_contract(self, symbol: str, close_ts: datetime) -> RuntimeCandidateContract:
+    def _resolve_historical_contract(self, symbol: str, close_ts: datetime, family: str) -> RuntimeCandidateContract:
         if self._historical_registry is None:
             raise LookupError("Historical governance registry not loaded")
         requested_month = self._force_model_month or _month_from_close_ts(close_ts)
-        entry = self._historical_registry.get_entry(symbol, requested_month)
+        entry = self._historical_registry.get_entry(symbol, requested_month, family=family)
         resolved_month = requested_month
         if entry is None:
             fallback_month = self._resolve_missing_historical_month(symbol, requested_month)
             if fallback_month is not None:
-                entry = self._historical_registry.get_entry(symbol, fallback_month)
+                entry = self._historical_registry.get_entry(symbol, fallback_month, family=family)
                 resolved_month = fallback_month
 
         if entry is None:
             available = self._historical_registry.months_for_symbol(symbol)
             avail_txt = ",".join(available) if available else "<none>"
             raise KeyError(
-                f"No historical lock for {symbol} month {requested_month} "
+                f"No historical lock for {symbol} month {requested_month} family {family} "
                 f"(policy={self._missing_month_policy}). available_months={avail_txt}"
             )
 
         return RuntimeCandidateContract(
             symbol=symbol,
             model_month=resolved_month,
-            cache_key=self.cache_key(symbol, resolved_month),
+            cache_key=self.cache_key(symbol, resolved_month, family=family),
             candidates=list(entry.candidates),
             bundle_paths=entry.bundle_paths,
             cap_pips=float(entry.cap_pips),

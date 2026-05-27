@@ -43,7 +43,7 @@ class UnifiedCandidateRegistry:
         self._is_historical_mode = is_historical_mode
         self._get_latest_month = get_latest_month or (lambda _: None)
 
-    def get_candidates(self, symbol: str) -> list[CandidateSpec]:
+    def get_candidates(self, symbol: str, family: str | None = None) -> list[CandidateSpec]:
         """Resolve candidates for a symbol in the current governance mode."""
         if self._is_historical_mode:
             if self._historical_registry is None:
@@ -51,13 +51,15 @@ class UnifiedCandidateRegistry:
             month = self._get_latest_month(symbol)
             if month is None:
                 return []
-            return self._historical_registry.get_candidates(symbol, month)
+            if family is None:
+                raise ValueError("family is required in historical mode")
+            return self._historical_registry.get_candidates(symbol, month, family=family)
         else:
             if self._live_registry is None:
                 return []
             return self._live_registry.get_candidates(symbol)
 
-    def get_cap_pips(self, symbol: str) -> float:
+    def get_cap_pips(self, symbol: str, family: str | None = None) -> float:
         """Resolve cap_pips for a symbol in the current governance mode."""
         if self._is_historical_mode:
             if self._historical_registry is None:
@@ -65,14 +67,16 @@ class UnifiedCandidateRegistry:
             month = self._get_latest_month(symbol)
             if month is None:
                 return 0.0
-            entry = self._historical_registry.get_entry(symbol, month)
+            if family is None:
+                raise ValueError("family is required in historical mode")
+            entry = self._historical_registry.get_entry(symbol, month, family=family)
             return float(entry.cap_pips) if entry else 0.0
         else:
             if self._live_registry is None:
                 return 0.0
-            return self._live_registry.get_cap_pips(symbol)
+            return self._live_registry.get_cap_pips(symbol, family=family)
 
-    def get_bundle_paths(self, symbol: str) -> BundlePaths | None:  # type: ignore
+    def get_bundle_paths(self, symbol: str, family: str | None = None) -> BundlePaths | None:  # type: ignore
         """Resolve bundle paths for a symbol in the current governance mode."""
         if self._is_historical_mode:
             if self._historical_registry is None:
@@ -80,8 +84,10 @@ class UnifiedCandidateRegistry:
             month = self._get_latest_month(symbol)
             if month is None:
                 return None
-            return self._historical_registry.get_bundle_paths(symbol, month)
+            if family is None:
+                raise ValueError("family is required in historical mode")
+            return self._historical_registry.get_bundle_paths(symbol, month, family=family)
         else:
             if self._live_registry is None:
                 return None
-            return self._live_registry.get_bundle_paths(symbol)
+            return self._live_registry.get_bundle_paths(symbol, family=family)

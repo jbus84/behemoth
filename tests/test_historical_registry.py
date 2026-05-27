@@ -77,9 +77,9 @@ def test_historical_registry_loads_month_scoped_entries(tmp_path: Path) -> None:
 
     assert reg.symbols == ["EURUSD", "GBPUSD"]
     assert reg.months_for_symbol("eurusd") == ["2025-07", "2025-08"]
-    assert len(reg.get_candidates("EURUSD", "2025-07")) == 1
-    assert reg.get_cap_pips("EURUSD", "2025-07") == pytest.approx(1.1)
-    bundle_paths = reg.get_bundle_paths("EURUSD", "2025-07")
+    assert len(reg.get_candidates("EURUSD", "2025-07", family="oco_first_touch")) == 1
+    assert reg.get_cap_pips("EURUSD", "2025-07", family="oco_first_touch") == pytest.approx(1.1)
+    bundle_paths = reg.get_bundle_paths("EURUSD", "2025-07", family="oco_first_touch")
     assert bundle_paths is not None
     assert bundle_paths.model_month == "2025-07"
     cbm_path = bundle_paths.model_cbm()
@@ -134,9 +134,6 @@ def test_historical_registry_loads_multiple_families_per_symbol_month(tmp_path: 
     assert directional.family == "directional"
     assert len(directional.candidates) == 1
     assert directional.candidates[0].family == "directional"
-
-    # Backward-compat without family returns None when multiple families exist
-    assert reg.get_entry("EURUSD", "2025-08") is None
 
     assert reg.get_candidates("EURUSD", "2025-08", family="oco_first_touch")[0].family == "oco_first_touch"
     assert reg.get_candidates("EURUSD", "2025-08", family="directional")[0].family == "directional"

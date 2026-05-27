@@ -31,58 +31,65 @@ class ModelRegistry:
         self._model_months: dict[str, str] = {}
 
     def has_model(self, symbol: str, family: str | None = None) -> bool:
-        """Check if any model is loaded for symbol (live or any month)."""
+        """Check if any model is loaded for symbol (exact family or aggregate)."""
         sym = str(symbol).upper().strip()
-        cache_key = self.make_cache_key(sym, family=family)
-        if cache_key in self._models:
-            return True
-        pref = f"{cache_key}|"
-        return any(k.startswith(pref) for k in self._models)
+        if family is not None:
+            cache_key = self.make_cache_key(sym, family=family)
+            return cache_key in self._models
+        # Aggregate: explicit key parsing instead of prefix matching
+        for k in self._models:
+            parts = k.split("|")
+            if parts[0] == sym:
+                return True
+        return False
 
     def has_threshold(self, symbol: str, family: str | None = None) -> bool:
-        """Check if any threshold config is loaded for symbol (live or any month)."""
+        """Check if any threshold config is loaded for symbol (exact family or aggregate)."""
         sym = str(symbol).upper().strip()
-        cache_key = self.make_cache_key(sym, family=family)
-        if cache_key in self._thresholds:
-            return True
-        pref = f"{cache_key}|"
-        return any(k.startswith(pref) for k in self._thresholds)
+        if family is not None:
+            cache_key = self.make_cache_key(sym, family=family)
+            return cache_key in self._thresholds
+        # Aggregate: explicit key parsing instead of prefix matching
+        for k in self._thresholds:
+            parts = k.split("|")
+            if parts[0] == sym:
+                return True
+        return False
 
     def get_latest_month(self, symbol: str, family: str | None = None) -> str | None:
-        """Get latest loaded month for symbol, or None if no models loaded."""
+        """Get latest loaded month for symbol (exact family or aggregate).
+
+        Raises ValueError if multiple different months are found for the
+        symbol without a family filter (ambiguous aggregate).
+        """
         sym = str(symbol).upper().strip()
-        cache_key = self.make_cache_key(sym, family=family)
-        if cache_key in self._model_months:
+        if family is not None:
+            cache_key = self.make_cache_key(sym, family=family)
             return self._model_months.get(cache_key)
-        pref = f"{cache_key}|"
-        months = [m for k, m in self._model_months.items() if k.startswith(pref)]
+        # Aggregate: explicit key parsing instead of prefix matching
+        months: set[str] = set()
+        for k, m in self._model_months.items():
+            parts = k.split("|")
+            if parts[0] == sym:
+                months.add(m)
         if not months:
             return None
-        return sorted(months)[-1]
+        if len(months) == 1:
+            return next(iter(months))
+        # Ambiguity: multiple families with different months
+        sorted_months = sorted(months)
+        raise ValueError(
+            f"Ambiguous months for {symbol}: {sorted_months}. "
+            f"Specify family to disambiguate."
+        )
 
     def get_model_and_threshold(
         self, cache_key: str
     ) -> tuple[object | None, dict[str, Any] | None]:
-        """Retrieve cached model and threshold config by key.
-
-        Supports exact lookup and unique-prefix fallback. If ``cache_key`` is
-        ``SYMBOL`` or ``SYMBOL|MONTH`` and only one family model exists,
-        returns that model for backward compatibility with single-family
-        deployments.
-        """
+        """Retrieve cached model and threshold config by exact cache key only."""
         model = self._models.get(cache_key)
         thr = self._thresholds.get(cache_key)
-        if model is not None:
-            return model, thr
-
-        # Fallback: unique prefix match for backward compat
-        pref = f"{cache_key}|"
-        model_keys = [k for k in self._models if k.startswith(pref)]
-        if len(model_keys) == 1:
-            k = model_keys[0]
-            return self._models.get(k), self._thresholds.get(k)
-
-        return None, None
+        return model, thr
 
     def set_model_and_threshold(
         self, cache_key: str, model: object, threshold_config: dict, month: str
