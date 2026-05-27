@@ -74,11 +74,14 @@ class ModelRegistry:
         sym = str(symbol).upper().strip()
         if family is not None:
             fam = str(family).strip()
+            months: set[str] = set()
             for k, m in self._model_months.items():
                 parts = k.split("|")
                 if parts[0] == sym and parts[-1] == fam:
-                    return m
-            return None
+                    months.add(m)
+            if not months:
+                return None
+            return sorted(months)[-1]
         # Aggregate: explicit key parsing instead of prefix matching
         months: set[str] = set()
         for k, m in self._model_months.items():

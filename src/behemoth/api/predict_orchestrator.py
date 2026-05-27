@@ -167,6 +167,7 @@ class PredictionOrchestrator:
         self._register_scans_fn = register_scans_fn
 
         # Create catalog for resolving candidates
+        self._force_model_month = getattr(config, "force_model_month", None)
         self._catalog = CandidateCatalog(
             context=CatalogContext(
                 live_registry=candidate_registry,
@@ -175,7 +176,7 @@ class PredictionOrchestrator:
                 missing_month_policy=self._pipeline_config.governance_missing_month_policy,
                 get_latest_month=self._get_latest_month,
             ),
-            force_model_month=getattr(config, "force_model_month", None),
+            force_model_month=self._force_model_month,
         )
 
     def execute(self, req: Any, run_id: str) -> PredictResponse:
@@ -286,10 +287,22 @@ class PredictionOrchestrator:
         """Resolve and merge all family contracts for a symbol in historical mode."""
         if self._historical_registry is None:
             raise LookupError("Historical governance registry not loaded")
-        requested_month = self._get_latest_month(sym)
-        if requested_month is None:
-            raise KeyError(f"No historical month for {sym}")
+        # Derive month from close_ts or forced month, not from model cache
+        # (models are lazy-loaded and may not exist before first prediction).
+        month_str = str(self._force_model_month or "").strip()
+        if month_str:
+            from src.behemoth.core.candidate_catalog import _normalize_model_month
+            requested_month = _normalize_model_month(month_str)
+        else:
+            requested_month = close_ts.strftime("%Y-%m")
         families = self._historical_registry.families_for_symbol_month(sym, requested_month)
+        if not families:
+            # Fallback: try other months in the registry
+            for m in self._historical_registry.months_for_symbol(sym):
+                families = self._historical_registry.families_for_symbol_month(sym, m)
+                if families:
+                    requested_month = m
+                    break
         if not families:
             raise KeyError(f"No historical families for {sym} month {requested_month}")
 
