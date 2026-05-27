@@ -1421,6 +1421,8 @@ class _CandidateDecision:
     risk_headroom_after_ccy: float | None = None
     risk_reservation_id: str | None = None
     family: str = ""
+    model_month: str = ""
+    cap_pips: float = 0.0
 
 
 @dataclass
@@ -2434,22 +2436,20 @@ def _orchestrator_build_predictions_fn(
 ) -> list[OcoPrediction]:
     """Inject step-5 logic (inference + threshold + allocator) into the orchestrator.
 
-    Dispatches per-family: groups candidates by their family tag, resolves the
-    runtime contract and model for each family, then delegates to
-    ``_build_predictions``. Results are merged and sorted by ``pred_prob``
-    descending.
+    Scores candidates per-family using family-specific model/threshold/cap,
+    then runs ONE global allocator pass over all preselected decisions across
+    all families. Results are sorted by ``pred_prob`` descending.
     """
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
 
     requested_volume_units = _resolve_requested_volume_units(req)
-    all_results: list[OcoPrediction] = []
+    all_decisions: list[_CandidateDecision] = []
 
     # Group candidates by family
     by_family: dict[str, list[Any]] = {}
     for cand in candidates:
         fam = str(getattr(cand, "family", "") or "").strip()
-        # Fallback for candidates without a family tag (legacy/historical fixtures)
         if not fam:
             fam = "oco_first_touch"
         by_family.setdefault(fam, []).append(cand)
@@ -2467,7 +2467,7 @@ def _orchestrator_build_predictions_fn(
                 has_predictions = False
         historical_prediction_universe_gated = bool(has_predictions)
 
-        results, _candidate_trace_rows = _build_predictions(
+        family_decisions = _build_decisions(
             sym=sym,
             candidates=family_cands,
             model=model,
@@ -2481,7 +2481,6 @@ def _orchestrator_build_predictions_fn(
             requested_volume_units=requested_volume_units,
             model_month=family_contract.model_month,
             cap_pips=family_contract.cap_pips,
-            run_id=run_id,
             skip_regime_gate=historical_prediction_universe_gated,
             historical_prediction_overrides=_resolve_historical_prediction_payload_overrides(
                 contract=family_contract,
@@ -2489,10 +2488,28 @@ def _orchestrator_build_predictions_fn(
                 candidates=family_cands,
             ),
         )
-        all_results.extend(results)
+        all_decisions.extend(family_decisions)
 
-    all_results.sort(key=lambda p: p.pred_prob, reverse=True)
-    return all_results
+    # Single global allocator pass across all families
+    _run_allocator(
+        sym=sym,
+        decisions=all_decisions,
+        account_risk_eval=account_risk_eval,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+        requested_volume_units=requested_volume_units,
+        close_ts=close_ts,
+    )
+
+    results, _trace_rows = _materialize_predictions(
+        sym=sym,
+        decisions=all_decisions,
+        close_ts=close_ts,
+        run_id=run_id,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+    )
+
+    results.sort(key=lambda p: p.pred_prob, reverse=True)
+    return results
 
 
 def _orchestrator_register_scans_fn(
@@ -2555,7 +2572,7 @@ def _check_warmup(sym: str, candidates: list[Any]) -> None:
             )
 
 
-def _build_predictions(
+def _build_decisions(
     sym: str,
     candidates: list[Any],
     model: Any,
@@ -2569,17 +2586,16 @@ def _build_predictions(
     requested_volume_units: float,
     model_month: str,
     cap_pips: float,
-    run_id: str | None = None,
     skip_regime_gate: bool = False,
     historical_prediction_overrides: dict[str, dict[str, Any]] | None = None,
-) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
-    """Build predictions for each candidate using model + account risk portfolio allocator."""
+) -> list[_CandidateDecision]:
+    """Score candidates and build _CandidateDecisions without allocator or materialization."""
     import numpy as np
 
     threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
     threshold_mode = str(thr_cfg.get("threshold_source", "default"))
     logger.debug(
-        "Predict %s: threshold_exec=%.4f mode=%s month=%s",
+        "Build decisions %s: threshold_exec=%.4f mode=%s month=%s",
         sym, threshold_exec, threshold_mode, model_month,
     )
 
@@ -2640,7 +2656,6 @@ def _build_predictions(
 
             day_str = close_ts.strftime("%Y-%m-%d")
 
-            # Model expiry check: block immediately if past valid-through date.
             model_valid_through = thr_cfg.get("model_valid_through", "")
             if model_valid_through and day_str > model_valid_through:
                 logger.warning(
@@ -2664,8 +2679,6 @@ def _build_predictions(
                         lookback_days=rolling_days,
                         min_history=min_history,
                     )
-
-                is_live = _config.governance_mode == "live"
 
                 if dynamic_thr is not None:
                     _record_rolling_threshold_drift(
@@ -2785,9 +2798,22 @@ def _build_predictions(
                 trade_eval=trade_eval,
                 risk_rank_score=rank_score,
                 family=family,
+                model_month=model_month,
+                cap_pips=cap_pips,
             )
         )
+    return decisions
 
+
+def _run_allocator(
+    sym: str,
+    decisions: list[_CandidateDecision],
+    account_risk_eval: dict[str, Any],
+    account_risk_enabled_effective: bool,
+    requested_volume_units: float,
+    close_ts: datetime | None = None,
+) -> None:
+    """Run a single global allocator pass over pre-scored decisions."""
     allocator_enabled = bool(
         account_risk_enabled_effective
         and _account_risk_profile is not None
@@ -2795,86 +2821,115 @@ def _build_predictions(
         and _state is not None
         and _config.account_risk_enforce_blocks
     )
+    if not allocator_enabled:
+        return
 
-    if allocator_enabled:
-        include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
-        include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
-        active_reserved_loss_ccy = _state.sum_active_account_risk_reserved_loss_ccy(
-            include_pending=include_pending,
-            include_open=include_open,
-        )
-        daily_headroom = account_risk_eval.daily_loss_headroom
-        max_headroom = account_risk_eval.max_loss_headroom
-        daily_budget = None if daily_headroom is None else float(daily_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_daily)
-        max_budget = None if max_headroom is None else float(max_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_max)
-        if daily_budget is None and max_budget is None:
-            allocator_remaining = 0.0
-        elif daily_budget is None:
-            allocator_remaining = float(max_budget)
-        elif max_budget is None:
-            allocator_remaining = float(daily_budget)
-        else:
-            allocator_remaining = min(float(daily_budget), float(max_budget))
-        allocator_remaining = (
-            allocator_remaining
-            - float(_account_risk_profile.allocator.allocator_min_headroom_buffer_ccy)
-            - float(active_reserved_loss_ccy)
-        )
-        allocator_remaining = max(0.0, allocator_remaining)
-        METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy))
+    close_ts_utc = close_ts if close_ts is not None else datetime.now(timezone.utc)
+    if close_ts_utc.tzinfo is None:
+        close_ts_utc = close_ts_utc.replace(tzinfo=timezone.utc)
+    fx_conv = _pip_value_per_unit_usd(
+        sym,
+        now_utc=close_ts_utc,
+        max_age_sec=max(1, int(_config.account_risk_fx_rate_max_age_sec)),
+    )
+    pip_value_per_unit = fx_conv.get("pip_value_per_unit_usd")
+    pip_value_per_unit = float(pip_value_per_unit) if pip_value_per_unit is not None else None
 
-        to_allocate = [
-            d
-            for d in decisions
-            if d.preselected_exec == 1 and d.selected_exec == 1
-        ]
-        to_allocate.sort(
-            key=lambda d: (
-                float(d.risk_rank_score if d.risk_rank_score is not None else -1e12),
-                float(d.pred_prob),
-            ),
-            reverse=True,
-        )
-        newly_reserved_ccy = 0.0
-        for d in to_allocate:
-            est_cost = d.trade_eval.get("estimated_trade_cost_pips")
-            if est_cost is None:
-                continue
-            if pip_value_per_unit is None or pip_value_per_unit <= 0:
-                d.selected_exec = 0
-                d.risk_blocked = True
-                d.risk_block_reason = "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE"
-                d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
-                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                continue
+    include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
+    include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
+    active_reserved_loss_ccy = _state.sum_active_account_risk_reserved_loss_ccy(
+        include_pending=include_pending,
+        include_open=include_open,
+    )
+    daily_headroom = account_risk_eval.daily_loss_headroom
+    max_headroom = account_risk_eval.max_loss_headroom
+    daily_budget = None if daily_headroom is None else float(daily_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_daily)
+    max_budget = None if max_headroom is None else float(max_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_max)
+    if daily_budget is None and max_budget is None:
+        allocator_remaining = 0.0
+    elif daily_budget is None:
+        allocator_remaining = float(max_budget)
+    elif max_budget is None:
+        allocator_remaining = float(daily_budget)
+    else:
+        allocator_remaining = min(float(daily_budget), float(max_budget))
+    allocator_remaining = (
+        allocator_remaining
+        - float(_account_risk_profile.allocator.allocator_min_headroom_buffer_ccy)
+        - float(active_reserved_loss_ccy)
+    )
+    allocator_remaining = max(0.0, allocator_remaining)
+    METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy))
 
-            gross_loss_pips = max(
-                0.0,
-                float(d.cand.barrier_pips) + float(cap_pips) + float(est_cost),
-            )
-            reserve_ccy = float(gross_loss_pips) * float(pip_value_per_unit) * float(requested_volume_units)
-            d.risk_metrics_snapshot["allocator_gross_loss_pips"] = float(gross_loss_pips)
-            d.risk_metrics_snapshot["allocator_reserved_loss_ccy"] = float(reserve_ccy)
+    to_allocate = [
+        d
+        for d in decisions
+        if d.preselected_exec == 1 and d.selected_exec == 1
+    ]
+    to_allocate.sort(
+        key=lambda d: (
+            float(d.risk_rank_score if d.risk_rank_score is not None else -1e12),
+            float(d.pred_prob),
+        ),
+        reverse=True,
+    )
+    newly_reserved_ccy = 0.0
+    for d in to_allocate:
+        est_cost = d.trade_eval.get("estimated_trade_cost_pips")
+        if est_cost is None:
+            continue
+        if pip_value_per_unit is None or pip_value_per_unit <= 0:
+            d.selected_exec = 0
+            d.risk_blocked = True
+            d.risk_block_reason = "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE"
             d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
-            if reserve_ccy <= allocator_remaining:
-                allocator_remaining -= reserve_ccy
-                newly_reserved_ccy += reserve_ccy
-                d.risk_reserved = True
-                d.risk_reserved_amount_ccy = float(reserve_ccy)
-                d.risk_headroom_after_ccy = float(allocator_remaining)
-                d.risk_metrics_snapshot["allocator_admitted"] = True
-                METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym).inc()
-            else:
-                d.selected_exec = 0
-                d.risk_blocked = True
-                d.risk_block_reason = "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
-                d.risk_metrics_snapshot["allocator_admitted"] = False
-                d.risk_headroom_after_ccy = float(allocator_remaining)
-                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+            continue
 
-        METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
+        gross_loss_pips = max(
+            0.0,
+            float(d.cand.barrier_pips) + float(d.cap_pips) + float(est_cost),
+        )
+        reserve_ccy = float(gross_loss_pips) * float(pip_value_per_unit) * float(requested_volume_units)
+        d.risk_metrics_snapshot["allocator_gross_loss_pips"] = float(gross_loss_pips)
+        d.risk_metrics_snapshot["allocator_reserved_loss_ccy"] = float(reserve_ccy)
+        d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
+        if reserve_ccy <= allocator_remaining:
+            allocator_remaining -= reserve_ccy
+            newly_reserved_ccy += reserve_ccy
+            d.risk_reserved = True
+            d.risk_reserved_amount_ccy = float(reserve_ccy)
+            d.risk_headroom_after_ccy = float(allocator_remaining)
+            d.risk_metrics_snapshot["allocator_admitted"] = True
+            METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym).inc()
+        else:
+            d.selected_exec = 0
+            d.risk_blocked = True
+            d.risk_block_reason = "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
+            d.risk_metrics_snapshot["allocator_admitted"] = False
+            d.risk_headroom_after_ccy = float(allocator_remaining)
+            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+
+    METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
+
+
+def _materialize_predictions(
+    sym: str,
+    decisions: list[_CandidateDecision],
+    close_ts: datetime,
+    run_id: str | None,
+    account_risk_enabled_effective: bool,
+) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
+    """Log evaluations, create reservations, and build OcoPredictions from decisions."""
+    allocator_enabled = bool(
+        account_risk_enabled_effective
+        and _account_risk_profile is not None
+        and _account_risk_profile.allocator.allocator_enabled
+        and _state is not None
+        and _config.account_risk_enforce_blocks
+    )
 
     results: list[OcoPrediction] = []
     trace_rows: list[dict[str, Any]] = []
@@ -2891,7 +2946,7 @@ def _build_predictions(
                 threshold_block_reason=getattr(d, "threshold_block_reason", None),
                 risk_blocked=d.risk_blocked,
                 risk_block_reason=d.risk_block_reason,
-                model_month=model_month,
+                model_month=d.model_month,
                 close_ts=close_ts,
                 run_id=run_id,
             )
@@ -2911,9 +2966,9 @@ def _build_predictions(
                     candidate_uid=d.candidate_uid,
                     reserved_loss_ccy=float(d.risk_reserved_amount_ccy),
                     barrier_pips=float(d.cand.barrier_pips),
-                    cap_pips=float(cap_pips),
+                    cap_pips=float(d.cap_pips),
                     cost_est_pips=float(d.features.cost_est_pips),
-                    volume_units=float(requested_volume_units),
+                    volume_units=float(d.risk_metrics_snapshot.get("requested_volume_units", 0)),
                     source="predict_allocator",
                     status="PENDING",
                     family=d.family,
@@ -2927,7 +2982,7 @@ def _build_predictions(
                 pred_prob=d.pred_prob,
                 threshold=d.curr_threshold,
                 features=d.features,
-                model_month=model_month,
+                model_month=d.model_month,
                 close_ts=close_ts,
                 run_id=run_id,
             )
@@ -2945,7 +3000,7 @@ def _build_predictions(
                 status=event_status,
                 block_reason=d.risk_block_reason,
                 reserved_loss_ccy=d.risk_reserved_amount_ccy,
-                requested_volume_units=float(requested_volume_units),
+                requested_volume_units=float(d.risk_metrics_snapshot.get("requested_volume_units", 0)),
                 pred_prob=float(d.pred_prob),
                 threshold_exec=float(d.curr_threshold),
                 risk_rank_score=d.risk_rank_score,
@@ -2964,9 +3019,9 @@ def _build_predictions(
                 bar_ticks=int(d.cand.bar_ticks),
                 horizon=int(d.cand.horizon),
                 barrier_pips=float(d.cand.barrier_pips),
-                cap_pips=float(cap_pips),
+                cap_pips=float(d.cap_pips),
                 threshold_source=d.curr_source,
-                model_month=model_month,
+                model_month=d.model_month,
                 threshold_blocked=d.threshold_blocked,
                 threshold_block_reason=d.threshold_block_reason,
                 risk_blocked=d.risk_blocked,
@@ -2994,6 +3049,59 @@ def _build_predictions(
             }
         )
     return results, trace_rows
+
+
+def _build_predictions(
+    sym: str,
+    candidates: list[Any],
+    model: Any,
+    base_features_by_ticks: dict[int, ModelFeatures],
+    regime_quantiles_by_ticks: dict[int, dict[str, float]],
+    close_ts: datetime,
+    thr_cfg: dict[str, Any],
+    account_risk_eval: dict[str, Any],
+    account_risk_enabled_effective: bool,
+    account_risk_enabled_override: bool,
+    requested_volume_units: float,
+    model_month: str,
+    cap_pips: float,
+    run_id: str | None = None,
+    skip_regime_gate: bool = False,
+    historical_prediction_overrides: dict[str, dict[str, Any]] | None = None,
+) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
+    """Build predictions for each candidate using model + account risk portfolio allocator."""
+    decisions = _build_decisions(
+        sym=sym,
+        candidates=candidates,
+        model=model,
+        base_features_by_ticks=base_features_by_ticks,
+        regime_quantiles_by_ticks=regime_quantiles_by_ticks,
+        close_ts=close_ts,
+        thr_cfg=thr_cfg,
+        account_risk_eval=account_risk_eval,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+        account_risk_enabled_override=account_risk_enabled_override,
+        requested_volume_units=requested_volume_units,
+        model_month=model_month,
+        cap_pips=cap_pips,
+        skip_regime_gate=skip_regime_gate,
+        historical_prediction_overrides=historical_prediction_overrides,
+    )
+    _run_allocator(
+        sym=sym,
+        decisions=decisions,
+        account_risk_eval=account_risk_eval,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+        requested_volume_units=requested_volume_units,
+        close_ts=close_ts,
+    )
+    return _materialize_predictions(
+        sym=sym,
+        decisions=decisions,
+        close_ts=close_ts,
+        run_id=run_id,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+    )
 
 
 @app.post("/predict/warmup", status_code=201)

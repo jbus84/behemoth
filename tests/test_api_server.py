@@ -2708,6 +2708,131 @@ class TestPredictEndpoint:
             assert admitted[0]["risk_reservation_id"] is not None
 
 
+class TestCrossFamilyAllocator:
+    def test_global_allocator_admits_higher_ranked_later_family(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+        from src.behemoth.risk.account import AccountRiskAllocator
+
+        features = ModelFeatures(
+            cost_est_pips=0.1,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=3.0,
+        )
+
+        # Lower-ranked candidate from family A
+        cand_a = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="cand_a",
+        )
+        decision_a = server._CandidateDecision(
+            candidate_uid="oco_first_touch|EURUSD|100|h6|cand_a",
+            cand=cand_a,
+            features=features,
+            pred_prob=0.60,
+            curr_threshold=0.50,
+            curr_source="test",
+            preselected_exec=1,
+            selected_exec=1,
+            risk_blocked=False,
+            risk_block_reason=None,
+            risk_metrics_snapshot={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 1.0},
+            trade_eval={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 1.0, "allow_trade": True},
+            risk_rank_score=0.9,
+            family="oco_first_touch",
+            model_month="2025-01",
+            cap_pips=1.2,
+        )
+
+        # Higher-ranked candidate from family B
+        cand_b = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="cand_b",
+        )
+        decision_b = server._CandidateDecision(
+            candidate_uid="directional|EURUSD|100|h6|cand_b",
+            cand=cand_b,
+            features=features,
+            pred_prob=0.80,
+            curr_threshold=0.50,
+            curr_source="test",
+            preselected_exec=1,
+            selected_exec=1,
+            risk_blocked=False,
+            risk_block_reason=None,
+            risk_metrics_snapshot={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 2.0},
+            trade_eval={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 2.0, "allow_trade": True},
+            risk_rank_score=1.9,
+            family="directional",
+            model_month="2025-01",
+            cap_pips=1.2,
+        )
+
+        decisions = [decision_a, decision_b]
+
+        allocator = AccountRiskAllocator(
+            allocator_enabled=True,
+            allocator_budget_fraction_daily=1.0,
+            allocator_budget_fraction_max=1.0,
+            allocator_min_headroom_buffer_ccy=0.0,
+            allocator_reserve_pending=True,
+            allocator_reserve_open=True,
+            allocator_priority="rank_score",
+        )
+        profile = mock.MagicMock()
+        profile.allocator = allocator
+        profile.cost_gate.trade_cost_gate_mode = "warn"
+
+        account_risk_eval = SimpleNamespace(
+            daily_loss_headroom=12000.0,
+            max_loss_headroom=12000.0,
+        )
+
+        with (
+            mock.patch.object(server, "_account_risk_profile", profile),
+            mock.patch.object(server._config, "account_risk_enforce_blocks", True),
+            mock.patch.object(
+                server._state,
+                "sum_active_account_risk_reserved_loss_ccy",
+                return_value=0.0,
+            ),
+            mock.patch.object(
+                server,
+                "_pip_value_per_unit_usd",
+                return_value={"conversion_status": "ok", "pip_value_per_unit_usd": 0.1},
+            ),
+        ):
+            server._run_allocator(
+                sym="EURUSD",
+                decisions=decisions,
+                account_risk_eval=account_risk_eval,
+                account_risk_enabled_effective=True,
+                requested_volume_units=10000.0,
+                close_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            )
+
+        # Higher-ranked family B should be admitted, lower-ranked family A blocked
+        assert decision_b.selected_exec == 1, "higher-ranked family B should be admitted"
+        assert decision_b.risk_reserved is True
+        assert decision_a.selected_exec == 0, "lower-ranked family A should be blocked"
+        assert decision_a.risk_block_reason == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
+
+
 class TestReloadEndpoint:
     def test_reload_returns_ok(self, client):
         r = client.post("/reload")
