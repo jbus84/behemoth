@@ -179,6 +179,83 @@ class TestBundlePathsThresholdOverrides:
         assert thr_cfg["rolling_threshold_min_history"] == 300
 
 
+class TestModelRegistryFamilyCacheKey:
+    def test_family_cache_key(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        assert ModelRegistry.make_cache_key("EURUSD", "2026-04", "directional") == "EURUSD|2026-04|directional"
+        assert ModelRegistry.make_cache_key("EURUSD", None, "directional") == "EURUSD|directional"
+        assert ModelRegistry.make_cache_key("EURUSD", "2026-04") == "EURUSD|2026-04"
+        assert ModelRegistry.make_cache_key("EURUSD") == "EURUSD"
+
+
+class TestModelRegistryCacheFallback:
+    def test_exact_lookup_works(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|oco_first_touch")
+        assert model == "model_a"
+        assert thr == {"t": 0.5}
+
+    def test_exact_lookup_by_symbol_family(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|oco_first_touch")
+        assert model == "model_a"
+        assert thr == {"t": 0.5}
+
+    def test_exact_lookup_by_symbol_month_family(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|2026-04|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|2026-04|oco_first_touch")
+        assert model == "model_a"
+        assert thr == {"t": 0.5}
+
+    def test_partial_key_returns_none(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        reg.set_model_and_threshold("EURUSD|directional", "model_b", {"t": 0.6}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD")
+        assert model is None
+        assert thr is None
+
+    def test_partial_symbol_month_key_returns_none(self) -> None:
+        from src.behemoth.core.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.set_model_and_threshold("EURUSD|2026-04|oco_first_touch", "model_a", {"t": 0.5}, "2026-04")
+        reg.set_model_and_threshold("EURUSD|2026-04|directional", "model_b", {"t": 0.6}, "2026-04")
+        model, thr = reg.get_model_and_threshold("EURUSD|2026-04")
+        assert model is None
+        assert thr is None
+
+
+class TestLoadModelsMultiFamily:
+    def test_load_models_skips_when_no_families(self, monkeypatch) -> None:
+        from src.behemoth.api import server
+        from src.behemoth.core.registry import CandidateRegistry
+
+        empty_reg = CandidateRegistry()
+        monkeypatch.setattr(server, "_registry", empty_reg)
+        monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
+        monkeypatch.setattr(server._model_registry, "clear", lambda: None)
+
+        original_symbols = server._config.symbols
+        server._config.symbols = ["EURUSD"]
+        try:
+            server._load_models()
+        finally:
+            server._config.symbols = original_symbols
+
+
 class TestMetricsEndpoint:
     def test_metrics_returns_prometheus_format(self, client):
         r = client.get("/metrics")
@@ -824,6 +901,55 @@ class TestStatusEndpoint:
         monkeypatch.setattr(server, "_registry", RegistryStub())
 
         assert server._active_bar_ticks_for_symbol("AUDUSD") == []
+
+    def test_status_reports_per_family_model_state(self, client, monkeypatch):
+        monkeypatch.setattr(server, "_effective_governance_dir", lambda: "configs/research/governance/oco")
+        monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
+        monkeypatch.setattr(
+            server,
+            "_config",
+            type("Cfg", (), {"symbols": ["EURUSD"], "governance_mode": "live"})(),
+        )
+        monkeypatch.setattr(server, "_active_bar_ticks_for_symbol", lambda sym: [1000])
+        monkeypatch.setattr(
+            server,
+            "_state",
+            type(
+                "StateStub",
+                (),
+                {"bar_count": staticmethod(lambda sym, bt: 11)},
+            )(),
+        )
+        monkeypatch.setattr(server, "_has_loaded_model_for_symbol", lambda sym: True)
+        monkeypatch.setattr(server, "_latest_loaded_month_for_symbol", lambda sym: "2026-03")
+
+        class ModelRegistryStub:
+            @staticmethod
+            def models_loaded():
+                return {
+                    "EURUSD|oco_first_touch": "2026-03",
+                    "EURUSD|directional_reversal": "2026-03",
+                }
+
+            @staticmethod
+            def has_threshold(symbol, family=None):
+                return True
+
+        monkeypatch.setattr(server, "_model_registry", ModelRegistryStub())
+
+        r = client.get("/status")
+
+        assert r.status_code == 200
+        body = r.json()
+        eurusd = next(row for row in body if row["symbol"] == "EURUSD")
+        assert eurusd["model_loaded"] is True
+        assert eurusd["model_month"] == "2026-03"
+        families = eurusd["families"]
+        assert len(families) == 2
+        assert {f["family"] for f in families} == {"oco_first_touch", "directional_reversal"}
+        for f in families:
+            assert f["model_loaded"] is True
+            assert f["model_month"] == "2026-03"
 
     def test_runtime_feed_status_returns_symbols(self, client):
         r = client.get("/runtime/feed/status")
@@ -2680,6 +2806,319 @@ class TestPredictEndpoint:
             assert admitted[0]["risk_reservation_id"] is not None
 
 
+class TestBuildDecisionsHistorical:
+    def test_build_decisions_uses_locked_payload_values(self) -> None:
+        """_build_decisions should use pred_prob, threshold_exec, and selected_exec from locked payload."""
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        cand = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="state_a", family="oco_first_touch"
+        )
+        features = ModelFeatures(
+            cost_est_pips=0.1,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=10.0,
+        )
+
+        model_mock = mock.MagicMock()
+        overrides = {
+            "oco_first_touch|EURUSD|100|h6|state_a": {
+                "pred_prob": 0.71,
+                "threshold_exec": 0.60,
+                "selected_exec": 1,
+            }
+        }
+
+        with (
+            mock.patch.object(server, "_pip_value_per_unit_usd", return_value={
+                "conversion_status": "ok",
+                "pip_value_per_unit_usd": 0.1,
+            }),
+            mock.patch.object(server._config, "account_risk_fx_rate_max_age_sec", 300),
+            mock.patch.object(server._config, "account_risk_enforce_blocks", False),
+            mock.patch.object(server, "_candidate_regime_name", return_value="all"),
+            mock.patch.object(server, "_regime_is_active", return_value=True),
+            mock.patch.object(server, "_account_risk_profile", None),
+        ):
+            decisions = server._build_decisions(
+                sym="EURUSD",
+                candidates=[cand],
+                model=model_mock,
+                base_features_by_ticks={100: features},
+                regime_quantiles_by_ticks={},
+                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                thr_cfg={"threshold_exec": 0.5, "threshold_source": "test"},
+                account_risk_eval=SimpleNamespace(
+                    enabled=True,
+                    profile_id="test",
+                    allow_trading=True,
+                    block_reason=None,
+                    snapshot_available=True,
+                    daily_loss_headroom=100.0,
+                    max_loss_headroom=100.0,
+                    daily_loss_used=0.0,
+                    max_loss_used=0.0,
+                    trading_day_id="2025-07-07",
+                ),
+                account_risk_enabled_effective=False,
+                account_risk_enabled_override=False,
+                requested_volume_units=10000.0,
+                model_month="2025-07",
+                cap_pips=1.2,
+                skip_regime_gate=True,
+                historical_prediction_overrides=overrides,
+            )
+
+        assert len(decisions) == 1
+        d = decisions[0]
+        assert d.pred_prob == pytest.approx(0.71)
+        assert d.curr_threshold == pytest.approx(0.60)
+        assert d.curr_source == "historical_locked_predictions"
+        assert d.preselected_exec == 1
+        assert d.selected_exec == 1
+        assert d.risk_metrics_snapshot["historical_locked_payload"] is True
+        model_mock.predict_proba.assert_not_called()
+
+    def test_build_decisions_falls_back_to_model_when_no_override(self) -> None:
+        """_build_decisions should call model inference when no locked payload is present."""
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        cand = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="state_b", family="oco_first_touch"
+        )
+        features = ModelFeatures(
+            cost_est_pips=0.1,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=10.0,
+        )
+
+        model_mock = mock.MagicMock()
+        model_mock.predict_proba.return_value = np.array([[0.1, 0.85]])
+
+        with (
+            mock.patch.object(server, "_pip_value_per_unit_usd", return_value={
+                "conversion_status": "ok",
+                "pip_value_per_unit_usd": 0.1,
+            }),
+            mock.patch.object(server._config, "account_risk_fx_rate_max_age_sec", 300),
+            mock.patch.object(server._config, "account_risk_enforce_blocks", False),
+            mock.patch.object(server, "_candidate_regime_name", return_value="all"),
+            mock.patch.object(server, "_regime_is_active", return_value=True),
+            mock.patch.object(server, "_account_risk_profile", None),
+        ):
+            orig_state = server._state
+            server._state = mock.MagicMock()
+            server._state.get_rolling_threshold.return_value = 0.45
+            try:
+                decisions = server._build_decisions(
+                    sym="EURUSD",
+                    candidates=[cand],
+                    model=model_mock,
+                    base_features_by_ticks={100: features},
+                    regime_quantiles_by_ticks={},
+                    close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                    thr_cfg={
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                    account_risk_eval=SimpleNamespace(
+                        enabled=True,
+                        profile_id="test",
+                        allow_trading=True,
+                        block_reason=None,
+                        snapshot_available=True,
+                        daily_loss_headroom=100.0,
+                        max_loss_headroom=100.0,
+                        daily_loss_used=0.0,
+                        max_loss_used=0.0,
+                        trading_day_id="2025-07-07",
+                    ),
+                    account_risk_enabled_effective=False,
+                    account_risk_enabled_override=False,
+                    requested_volume_units=10000.0,
+                    model_month="2025-07",
+                    cap_pips=1.2,
+                    skip_regime_gate=True,
+                    historical_prediction_overrides=None,
+                )
+            finally:
+                server._state = orig_state
+
+        assert len(decisions) == 1
+        d = decisions[0]
+        assert d.pred_prob == pytest.approx(0.85)
+        assert d.curr_source == "test:rolling_dynamic"
+        assert d.preselected_exec == 1
+        assert d.selected_exec == 1
+        model_mock.predict_proba.assert_called_once()
+
+
+class TestCrossFamilyAllocator:
+    def test_global_allocator_admits_higher_ranked_later_family(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+        from src.behemoth.risk.account import AccountRiskAllocator
+
+        features = ModelFeatures(
+            cost_est_pips=0.1,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=3.0,
+        )
+
+        # Lower-ranked candidate from family A
+        cand_a = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="cand_a",
+        )
+        decision_a = server._CandidateDecision(
+            candidate_uid="oco_first_touch|EURUSD|100|h6|cand_a",
+            cand=cand_a,
+            features=features,
+            pred_prob=0.60,
+            curr_threshold=0.50,
+            curr_source="test",
+            preselected_exec=1,
+            selected_exec=1,
+            risk_blocked=False,
+            risk_block_reason=None,
+            risk_metrics_snapshot={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 1.0},
+            trade_eval={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 1.0, "allow_trade": True},
+            risk_rank_score=0.9,
+            family="oco_first_touch",
+            model_month="2025-01",
+            cap_pips=1.2,
+        )
+
+        # Higher-ranked candidate from family B
+        cand_b = SimpleNamespace(
+            bar_ticks=100, horizon=6, barrier_pips=10.0, candidate_uid="cand_b",
+        )
+        decision_b = server._CandidateDecision(
+            candidate_uid="directional|EURUSD|100|h6|cand_b",
+            cand=cand_b,
+            features=features,
+            pred_prob=0.80,
+            curr_threshold=0.50,
+            curr_source="test",
+            preselected_exec=1,
+            selected_exec=1,
+            risk_blocked=False,
+            risk_block_reason=None,
+            risk_metrics_snapshot={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 2.0},
+            trade_eval={"estimated_trade_cost_pips": 0.1, "expected_edge_proxy_pips": 2.0, "allow_trade": True},
+            risk_rank_score=1.9,
+            family="directional",
+            model_month="2025-01",
+            cap_pips=1.2,
+        )
+
+        decisions = [decision_a, decision_b]
+
+        allocator = AccountRiskAllocator(
+            allocator_enabled=True,
+            allocator_budget_fraction_daily=1.0,
+            allocator_budget_fraction_max=1.0,
+            allocator_min_headroom_buffer_ccy=0.0,
+            allocator_reserve_pending=True,
+            allocator_reserve_open=True,
+            allocator_priority="rank_score",
+        )
+        profile = mock.MagicMock()
+        profile.allocator = allocator
+        profile.cost_gate.trade_cost_gate_mode = "warn"
+
+        account_risk_eval = SimpleNamespace(
+            daily_loss_headroom=12000.0,
+            max_loss_headroom=12000.0,
+        )
+
+        with (
+            mock.patch.object(server, "_account_risk_profile", profile),
+            mock.patch.object(server._config, "account_risk_enforce_blocks", True),
+            mock.patch.object(
+                server._state,
+                "sum_active_account_risk_reserved_loss_ccy",
+                return_value=0.0,
+            ),
+            mock.patch.object(
+                server,
+                "_pip_value_per_unit_usd",
+                return_value={"conversion_status": "ok", "pip_value_per_unit_usd": 0.1},
+            ),
+        ):
+            server._run_allocator(
+                sym="EURUSD",
+                decisions=decisions,
+                account_risk_eval=account_risk_eval,
+                account_risk_enabled_effective=True,
+                requested_volume_units=10000.0,
+                close_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            )
+
+        # Higher-ranked family B should be admitted, lower-ranked family A blocked
+        assert decision_b.selected_exec == 1, "higher-ranked family B should be admitted"
+        assert decision_b.risk_reserved is True
+        assert decision_a.selected_exec == 0, "lower-ranked family A should be blocked"
+        assert decision_a.risk_block_reason == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
+
+
 class TestReloadEndpoint:
     def test_reload_returns_ok(self, client):
         r = client.post("/reload")
@@ -2709,6 +3148,29 @@ class TestTradeEndpoints:
             )
             assert r.status_code == 200
             assert r.json()["internal_trade_id"] == 123
+
+    def test_open_trade_passes_family(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        with mock.patch.object(server._state, "open_trade", return_value=123) as mock_open:
+            r = client.post(
+                "/trades/open",
+                json={
+                    "symbol": "EURUSD",
+                    "candidate_uid": "test_cand",
+                    "broker_pos_id": "456",
+                    "side": "BUY",
+                    "entry_price": 1.1000,
+                    "entry_ts": "2025-01-01T00:00:00Z",
+                    "horizon": 12,
+                    "family": "directional",
+                },
+            )
+            assert r.status_code == 200
+            call_kwargs = mock_open.call_args.kwargs
+            assert call_kwargs.get("family") == "directional"
 
     @pytest.mark.requires_models
     def test_touch_trade_success(self, client):
@@ -4211,3 +4673,38 @@ class TestOpenSummaryEndpoint:
             server._config.persist_db_path = original_path
 
         assert not any("live_position_summary" in p for p in written_paths)
+
+
+class TestPredictionFamilyField:
+    def test_oco_prediction_has_family_field(self):
+        from src.behemoth.core.schemas import OcoPrediction
+        p = OcoPrediction(
+            symbol="EURUSD",
+            close_ts=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            candidate_uid="directional|eurusd|100|h4|k1",
+            pred_prob=0.75,
+            threshold_exec=0.5,
+            selected_exec=1,
+            bar_ticks=100,
+            horizon=4,
+            barrier_pips=10.0,
+            cap_pips=1.5,
+            threshold_source="test",
+            model_month="2026-04",
+            family="directional",
+        )
+        assert p.family == "directional"
+
+    def test_trade_open_request_has_family_field(self):
+        from src.behemoth.core.schemas import TradeOpenRequest
+        req = TradeOpenRequest(
+            symbol="EURUSD",
+            candidate_uid="directional|eurusd|100|h4|k1",
+            broker_pos_id="bp-1",
+            side="Buy",
+            entry_price=1.1000,
+            entry_ts=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            horizon=4,
+            family="directional",
+        )
+        assert req.family == "directional"

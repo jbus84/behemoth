@@ -13,13 +13,26 @@ from src.behemoth.core.historical_registry import HistoricalCandidateRegistry, H
 from src.behemoth.core.registry import CandidateRegistry, CandidateSpec
 
 
-def _candidate(symbol: str = "EURUSD", bar_ticks: int = 100) -> CandidateSpec:
+def test_candidate_spec_has_family_field() -> None:
+    spec = CandidateSpec(
+        symbol="EURUSD",
+        bar_ticks=100,
+        horizon=4,
+        barrier_pips=10.0,
+        candidate_uid="test__all__k1",
+        family="directional",
+    )
+    assert spec.family == "directional"
+
+
+def _candidate(symbol: str = "EURUSD", bar_ticks: int = 100, family: str = "oco_first_touch") -> CandidateSpec:
     return CandidateSpec(
         symbol=symbol,
         bar_ticks=bar_ticks,
         horizon=6,
         barrier_pips=2.0,
         candidate_uid=f"library|{symbol}|{bar_ticks}|h6|b2",
+        family=family,
     )
 
 
@@ -77,8 +90,8 @@ def test_candidate_catalog_resolves_live_contract() -> None:
 
         registry = CandidateRegistry()
         registry._candidates_by_symbol["EURUSD"] = [_candidate(bar_ticks=200)]
-        registry._caps_by_symbol["EURUSD"] = 1.5
-        registry._bundle_paths_by_symbol["EURUSD"] = bundle_paths
+        registry._caps_by_symbol_family[("EURUSD", "oco_first_touch")] = 1.5
+        registry._bundle_paths_by_symbol_family[("EURUSD", "oco_first_touch")] = bundle_paths
 
         catalog = CandidateCatalog(
             live_registry=registry,
@@ -95,14 +108,15 @@ def test_candidate_catalog_resolves_live_contract() -> None:
         assert catalog.active_bar_ticks("EURUSD") == [200]
 
 
-def test_candidate_catalog_resolves_historical_fallback_month() -> None:
+def test_candidate_catalog_rejects_missing_month() -> None:
     with TemporaryDirectory() as tmp_dir:
         bundle_paths = _create_bundle_paths_for_test(Path(tmp_dir), "EURUSD", "2026-03")
 
         historical = HistoricalCandidateRegistry()
-        historical._entries[("EURUSD", "2026-03")] = HistoricalLockEntry(
+        historical._entries[("EURUSD", "2026-03", "oco_first_touch")] = HistoricalLockEntry(
             symbol="EURUSD",
             month="2026-03",
+            family="oco_first_touch",
             lock_path="locks/2026-03/EURUSD_oco_first_touch_live_lock.json",
             candidates=[_candidate()],
             cap_pips=1.2,
@@ -116,12 +130,10 @@ def test_candidate_catalog_resolves_historical_fallback_month() -> None:
             latest_loaded_month=lambda _symbol: "2026-03",
         )
 
-        contract = catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc))
+        with pytest.raises(KeyError, match="No historical lock for EURUSD month 2026-04 family oco_first_touch"):
+            catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc), family="oco_first_touch")
 
-        assert contract.source == "historical"
-        assert contract.cache_key == "EURUSD|2026-03"
-        assert contract.lock_path == "locks/2026-03/EURUSD_oco_first_touch_live_lock.json"
-        assert catalog.active_bar_ticks("EURUSD") == [100]
+        assert catalog.active_bar_ticks("EURUSD", family="oco_first_touch") == [100]
 
 
 def test_candidate_catalog_reports_missing_historical_months() -> None:
@@ -131,5 +143,104 @@ def test_candidate_catalog_reports_missing_historical_months() -> None:
         historical_mode=True,
     )
 
-    with pytest.raises(KeyError, match="No historical lock for EURUSD month 2026-04"):
-        catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc))
+    with pytest.raises(KeyError, match="No historical lock for EURUSD month 2026-04 family oco_first_touch"):
+        catalog.resolve_contract("EURUSD", datetime(2026, 4, 2, tzinfo=timezone.utc), family="oco_first_touch")
+
+
+def test_registry_loads_multiple_families() -> None:
+    import hashlib
+
+    with TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        for family in ("oco_first_touch", "directional"):
+            lock = t / f"eurusd_{family}_live_lock.json"
+            models_dir = t / "models"
+            models_dir.mkdir(exist_ok=True)
+            cbm = models_dir / f"EURUSD_{family}_model_2026-04.cbm"
+            thr = models_dir / f"EURUSD_{family}_model_2026-04.json"
+            cbm.write_bytes(b"cbm")
+            thr.write_text('{"t":1}')
+            preds = t / f"eurusd_{family}_locked_predictions.parquet"
+            states_csv = t / f"eurusd_{family}_allowed_states.csv"
+            preds.write_bytes(b"preds")
+            states_csv.write_text("state\na\n")
+            payload = {
+                "schema_version": 3,
+                "symbol": "EURUSD",
+                "bundle": {"month": "2026-04", "dir_relpath": ".", "family": family},
+                "deployability": {"live_deployable": True, "model_month": "2026-04"},
+                "locked_runtime": {"production_cap_pips": 1.2},
+                "state_universe": {
+                    "rows": [
+                        {
+                            "state_id": f"{family}__all__k1",
+                            "symbol": "EURUSD",
+                            "bar_ticks": 100,
+                            "horizon": 4,
+                            "barrier_pips": 10.0,
+                        }
+                    ]
+                },
+                "artifacts": {
+                    "predictions": {"path": preds.name, "sha256": hashlib.sha256(b"preds").hexdigest()},
+                    "allowed_states_csv": {"path": states_csv.name, "sha256": hashlib.sha256(states_csv.read_bytes()).hexdigest()},
+                    "model_cbm": {"path": f"models/{cbm.name}", "sha256": hashlib.sha256(b"cbm").hexdigest()},
+                    "model_threshold_json": {"path": f"models/{thr.name}", "sha256": hashlib.sha256(thr.read_bytes()).hexdigest()},
+                },
+            }
+            lock.write_text(json.dumps(payload))
+
+        reg = CandidateRegistry.load(lock_dir=t)
+        cands = reg.get_candidates("EURUSD")
+        families = {c.family for c in cands}
+        assert families == {"oco_first_touch", "directional"}
+
+
+def test_candidate_catalog_returns_all_family_candidates() -> None:
+    import hashlib
+
+    with TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        for family in ("oco_first_touch", "directional"):
+            lock = t / f"eurusd_{family}_live_lock.json"
+            models_dir = t / "models"
+            models_dir.mkdir(exist_ok=True)
+            cbm = models_dir / f"EURUSD_{family}_model_2026-04.cbm"
+            thr = models_dir / f"EURUSD_{family}_model_2026-04.json"
+            cbm.write_bytes(b"cbm")
+            thr.write_text('{"t":1}')
+            preds = t / f"eurusd_{family}_locked_predictions.parquet"
+            states_csv = t / f"eurusd_{family}_allowed_states.csv"
+            preds.write_bytes(b"preds")
+            states_csv.write_text("state\na\n")
+            payload = {
+                "schema_version": 3,
+                "symbol": "EURUSD",
+                "bundle": {"month": "2026-04", "dir_relpath": ".", "family": family},
+                "deployability": {"live_deployable": True, "model_month": "2026-04"},
+                "locked_runtime": {"production_cap_pips": 1.2},
+                "state_universe": {
+                    "rows": [
+                        {
+                            "state_id": f"{family}__all__k1",
+                            "symbol": "EURUSD",
+                            "bar_ticks": 100,
+                            "horizon": 4,
+                            "barrier_pips": 10.0,
+                        }
+                    ]
+                },
+                "artifacts": {
+                    "predictions": {"path": preds.name, "sha256": hashlib.sha256(b"preds").hexdigest()},
+                    "allowed_states_csv": {"path": states_csv.name, "sha256": hashlib.sha256(states_csv.read_bytes()).hexdigest()},
+                    "model_cbm": {"path": f"models/{cbm.name}", "sha256": hashlib.sha256(b"cbm").hexdigest()},
+                    "model_threshold_json": {"path": f"models/{thr.name}", "sha256": hashlib.sha256(thr.read_bytes()).hexdigest()},
+                },
+            }
+            lock.write_text(json.dumps(payload))
+
+        reg = CandidateRegistry.load(lock_dir=t)
+        catalog = CandidateCatalog(live_registry=reg, historical_registry=None, historical_mode=False)
+        contract = catalog.resolve_contract("EURUSD", datetime(2026, 5, 1, tzinfo=timezone.utc))
+        families = {c.family for c in contract.candidates}
+        assert families == {"oco_first_touch", "directional"}

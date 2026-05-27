@@ -168,6 +168,7 @@ class AccountRiskStateReader(Protocol):
         symbol: str | None = None,
         include_pending: bool = True,
         include_open: bool = True,
+        family: str | None = None,
     ) -> float:
         """Total reserved loss across active reservations.
 
@@ -182,12 +183,13 @@ class AccountRiskStateReader(Protocol):
         ...
 
     def list_active_account_risk_reservations(
-        self, *, symbol: str | None = None
+        self, *, symbol: str | None = None, family: str | None = None
     ) -> list[dict[str, Any]]:
         """Get all active (PENDING or OPEN) reservations.
 
         Args:
             symbol: Symbol filter, or None for all
+            family: Family filter, or None for all
 
         Returns:
             List of reservation dicts with state, loss, barrier, etc.
@@ -262,12 +264,13 @@ class ReservationWriter(Protocol):
         broker_pos_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
         reason: str = "released",
     ) -> int:
         """Release (transition to RELEASED) active reservations matching criteria.
 
         Args:
-            reservation_id, broker_pos_id, candidate_uid, symbol: Match criteria
+            reservation_id, broker_pos_id, candidate_uid, symbol, family: Match criteria
             reason: Reason for release
 
         Returns:

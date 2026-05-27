@@ -15,18 +15,19 @@ def _write_lock(
     month: str,
     model_month: str | None = None,
     include_hashes: bool = True,
+    family: str = "oco_first_touch",
 ) -> Path:
     import hashlib
 
     month_dir = root / month
     month_dir.mkdir(parents=True, exist_ok=True)
-    lock_path = month_dir / f"{symbol.lower()}_oco_first_touch_live_lock.json"
+    lock_path = month_dir / f"{symbol.lower()}_{family}_live_lock.json"
 
     # Create model files in bundle-relative models/ directory
     models_dir = month_dir / "models"
     models_dir.mkdir(exist_ok=True)
-    cbm_file = models_dir / f"{symbol}_model_{model_month or month}.cbm"
-    json_file = models_dir / f"{symbol}_model_{model_month or month}.json"
+    cbm_file = models_dir / f"{symbol}_{family}_model_{model_month or month}.cbm"
+    json_file = models_dir / f"{symbol}_{family}_model_{model_month or month}.json"
     cbm_file.write_bytes(b"fake-cbm-" + symbol.encode())
     json_file.write_text('{"threshold": 0.5}')
 
@@ -35,8 +36,8 @@ def _write_lock(
     json_sha = hashlib.sha256(json_file.read_bytes()).hexdigest() if include_hashes else ""
 
     artifacts = {
-        "model_cbm": {"path": f"models/{symbol}_model_{model_month or month}.cbm", "sha256": cbm_sha},
-        "model_threshold_json": {"path": f"models/{symbol}_model_{model_month or month}.json", "sha256": json_sha},
+        "model_cbm": {"path": f"models/{symbol}_{family}_model_{model_month or month}.cbm", "sha256": cbm_sha},
+        "model_threshold_json": {"path": f"models/{symbol}_{family}_model_{model_month or month}.json", "sha256": json_sha},
     }
 
     payload = {
@@ -45,7 +46,7 @@ def _write_lock(
         "bundle": {
             "month": month,
             "dir_relpath": ".",
-            "family": "oco_first_touch",
+            "family": family,
         },
         "artifacts": artifacts,
         "deployability": {"live_deployable": True, "model_month": model_month or month},
@@ -57,7 +58,7 @@ def _write_lock(
                     "bar_ticks": 100,
                     "horizon": 3,
                     "barrier_pips": 8.0,
-                    "state_id": "oco_first_touch__all__k2",
+                    "state_id": f"{family}__all__k2",
                     "regime_desc": "all",
                 }
             ]
@@ -76,13 +77,13 @@ def test_historical_registry_loads_month_scoped_entries(tmp_path: Path) -> None:
 
     assert reg.symbols == ["EURUSD", "GBPUSD"]
     assert reg.months_for_symbol("eurusd") == ["2025-07", "2025-08"]
-    assert len(reg.get_candidates("EURUSD", "2025-07")) == 1
-    assert reg.get_cap_pips("EURUSD", "2025-07") == pytest.approx(1.1)
-    bundle_paths = reg.get_bundle_paths("EURUSD", "2025-07")
+    assert len(reg.get_candidates("EURUSD", "2025-07", family="oco_first_touch")) == 1
+    assert reg.get_cap_pips("EURUSD", "2025-07", family="oco_first_touch") == pytest.approx(1.1)
+    bundle_paths = reg.get_bundle_paths("EURUSD", "2025-07", family="oco_first_touch")
     assert bundle_paths is not None
     assert bundle_paths.model_month == "2025-07"
     cbm_path = bundle_paths.model_cbm()
-    assert "EURUSD_model_2025-07.cbm" in cbm_path.name
+    assert "EURUSD_oco_first_touch_model_2025-07.cbm" in cbm_path.name
     assert len(reg.all_candidates()) == 3
 
 
@@ -109,3 +110,32 @@ def test_historical_registry_skips_invalid_lock_entries(tmp_path: Path) -> None:
 def test_historical_registry_missing_dir_raises() -> None:
     with pytest.raises(FileNotFoundError):
         HistoricalCandidateRegistry.load("configs/research/governance/does_not_exist")
+
+
+def test_historical_registry_loads_multiple_families_per_symbol_month(tmp_path: Path) -> None:
+    _write_lock(tmp_path, symbol="EURUSD", month="2025-08", family="oco_first_touch")
+    _write_lock(tmp_path, symbol="EURUSD", month="2025-08", family="directional")
+
+    reg = HistoricalCandidateRegistry.load(tmp_path)
+
+    assert reg.entry_count() == 2
+    assert reg.symbols == ["EURUSD"]
+    assert reg.months_for_symbol("eurusd") == ["2025-08"]
+    assert reg.families_for_symbol_month("eurusd", "2025-08") == ["directional", "oco_first_touch"]
+
+    oco = reg.get_entry("EURUSD", "2025-08", family="oco_first_touch")
+    assert oco is not None
+    assert oco.family == "oco_first_touch"
+    assert len(oco.candidates) == 1
+    assert oco.candidates[0].family == "oco_first_touch"
+
+    directional = reg.get_entry("EURUSD", "2025-08", family="directional")
+    assert directional is not None
+    assert directional.family == "directional"
+    assert len(directional.candidates) == 1
+    assert directional.candidates[0].family == "directional"
+
+    assert reg.get_candidates("EURUSD", "2025-08", family="oco_first_touch")[0].family == "oco_first_touch"
+    assert reg.get_candidates("EURUSD", "2025-08", family="directional")[0].family == "directional"
+    assert reg.all_candidates()[0].family in ("oco_first_touch", "directional")
+    assert reg.all_candidates()[1].family in ("oco_first_touch", "directional")

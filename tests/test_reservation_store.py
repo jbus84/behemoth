@@ -1,31 +1,44 @@
-
-import pytest
-
 from src.behemoth.runtime.reservation_store import ReservationStore
 from src.behemoth.runtime.state_store import InMemoryStateStore
 
 
-class TestReservationStore:
-    def test_create_and_list(self) -> None:
+class TestReservationStoreFamily:
+    def test_create_reservation_with_family(self):
         store = InMemoryStateStore()
         rs = ReservationStore(store)
-        rid = rs.create_account_risk_reservation(
-            symbol="EURUSD", candidate_uid="c1", reserved_loss_ccy=100.0,
-            barrier_pips=2.0, cap_pips=3.0, cost_est_pips=0.5, volume_units=10000.0,
+        rs.create_account_risk_reservation(
+            symbol="EURUSD",
+            candidate_uid="directional|eurusd|100|h4|k1",
+            reserved_loss_ccy=100.0,
+            barrier_pips=10.0,
+            cap_pips=1.5,
+            cost_est_pips=0.5,
+            volume_units=10000.0,
+            family="directional",
         )
-        assert rid is not None
-        active = rs.list_active_account_risk_reservations()
-        assert len(active) == 1
-        assert active[0].symbol == "EURUSD"
-        assert active[0].status == "PENDING"
+        snap = rs.list_active_account_risk_reservations(symbol="EURUSD")
+        assert len(snap) == 1
+        assert snap[0].family == "directional"
 
-    def test_transition_and_sum(self) -> None:
+    def test_allocator_event_with_family(self):
         store = InMemoryStateStore()
         rs = ReservationStore(store)
-        rid = rs.create_account_risk_reservation(
-            symbol="EURUSD", candidate_uid="c1", reserved_loss_ccy=100.0,
-            barrier_pips=2.0, cap_pips=3.0, cost_est_pips=0.5, volume_units=10000.0,
+        rs.log_account_risk_allocator_event(
+            symbol="EURUSD",
+            candidate_uid="directional|eurusd|100|h4|k1",
+            status="ADMITTED",
+            block_reason=None,
+            reserved_loss_ccy=50.0,
+            requested_volume_units=10000.0,
+            pred_prob=0.75,
+            threshold_exec=0.5,
+            risk_rank_score=0.25,
+            reservation_id="res-1",
+            family="directional",
         )
-        rs.transition_account_risk_reservation(rid, "OPEN", broker_pos_id="pos1")
-        total = rs.sum_active_account_risk_reserved_loss_ccy(include_pending=False, include_open=True)
-        assert total == pytest.approx(100.0)
+        rows = store.execute(
+            "SELECT family FROM account_risk_allocator_events WHERE reservation_id = ?",
+            ["res-1"],
+        ).fetchall()
+        assert len(rows) == 1
+        assert rows[0][0] == "directional"

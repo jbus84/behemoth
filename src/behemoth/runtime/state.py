@@ -107,7 +107,8 @@ CREATE TABLE IF NOT EXISTS trades (
     entry_model_month VARCHAR,
     exit_bar_id INTEGER,
     close_reason VARCHAR,
-    commission_ccy DOUBLE
+    commission_ccy DOUBLE,
+    family VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS account_risk_snapshots (
@@ -231,11 +232,11 @@ _ACCOUNT_RISK_SNAPSHOT_INSERT_SQL = (
 )
 
 _ACCOUNT_RISK_RES_INSERT_SQL = (
-    "INSERT INTO account_risk_reservations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO account_risk_reservations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 _ACCOUNT_RISK_ALLOC_EVENT_INSERT_SQL = (
-    "INSERT INTO account_risk_allocator_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO account_risk_allocator_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 _RAW_TICK_INSERT_SQL = (
@@ -316,6 +317,21 @@ class StateManager:
         self._ensure_table_column(
             table_name="raw_ticks",
             column_name="run_id",
+            column_sql="VARCHAR",
+        )
+        self._ensure_table_column(
+            table_name="trades",
+            column_name="family",
+            column_sql="VARCHAR",
+        )
+        self._ensure_table_column(
+            table_name="account_risk_reservations",
+            column_name="family",
+            column_sql="VARCHAR",
+        )
+        self._ensure_table_column(
+            table_name="account_risk_allocator_events",
+            column_name="family",
             column_sql="VARCHAR",
         )
 
@@ -683,6 +699,7 @@ class StateManager:
         horizon: int,
         reservation_id: str | None = None,
         run_id: str | None = None,
+        family: str | None = None,
     ) -> str:
         """Record the opening of a position."""
         import uuid
@@ -712,11 +729,13 @@ class StateManager:
             """INSERT INTO trades (
                 internal_trade_id, broker_pos_id, symbol, candidate_uid, side,
                 entry_price, entry_ts, entry_bar_id, horizon_bars, status, run_id,
-                reservation_id, entry_pred_prob, entry_threshold, entry_model_month
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?)""",
+                reservation_id, entry_pred_prob, entry_threshold, entry_model_month,
+                family
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?)""",
             [internal_id, broker_pos_id, symbol.upper(), candidate_uid, side,
              float(entry_price), entry_ts, entry_bar_id, horizon, run_id,
-             reservation_id, entry_pred_prob, entry_threshold, entry_model_month],
+             reservation_id, entry_pred_prob, entry_threshold, entry_model_month,
+             family],
         )
         return internal_id
 
@@ -992,6 +1011,7 @@ class StateManager:
         side: str | None = None,
         source: str = "predict_allocator",
         status: str = "PENDING",
+        family: str | None = None,
     ) -> str:
         """Create an account risk reservation row and return reservation id."""
         import uuid
@@ -1016,6 +1036,7 @@ class StateManager:
                 float(volume_units),
                 side,
                 source,
+                family,
             ],
         )
         # Write audit event to DuckDB (authoritative)
@@ -1208,6 +1229,7 @@ class StateManager:
         reservation_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
     ) -> str | None:
         """Promote a pending reservation to OPEN after broker fill."""
         if reservation_id:
@@ -1241,6 +1263,9 @@ class StateManager:
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
+        if family:
+            query += " AND family = ?"
+            params.append(family)
         query += " ORDER BY created_ts ASC LIMIT 1"
         row = self._store.execute(query, params).fetchone()
         if not row:
@@ -1260,6 +1285,7 @@ class StateManager:
         reservation_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
     ) -> str | None:
         """Broker-neutral alias for opening reservations after broker fill."""
         return self.promote_account_risk_reservation(
@@ -1267,6 +1293,7 @@ class StateManager:
             reservation_id=reservation_id,
             candidate_uid=candidate_uid,
             symbol=symbol,
+            family=family,
         )
 
     def release_account_risk_reservation(
@@ -1276,6 +1303,7 @@ class StateManager:
         broker_pos_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
         reason: str = "released",
     ) -> int:
         """Release active reservation rows and return affected row count."""
@@ -1293,6 +1321,9 @@ class StateManager:
         if symbol:
             where.append("symbol = ?")
             params.append(symbol.upper())
+        if family:
+            where.append("family = ?")
+            params.append(family)
         if len(where) == 1:
             return 0
         where_sql = " AND ".join(where)
@@ -1317,6 +1348,7 @@ class StateManager:
         broker_pos_id: str | None = None,
         candidate_uid: str | None = None,
         symbol: str | None = None,
+        family: str | None = None,
         reason: str = "released",
     ) -> int:
         """Broker-neutral alias for releasing active reservations."""
@@ -1325,6 +1357,7 @@ class StateManager:
             broker_pos_id=broker_pos_id,
             candidate_uid=candidate_uid,
             symbol=symbol,
+            family=family,
             reason=reason,
         )
 
@@ -1361,6 +1394,7 @@ class StateManager:
         symbol: str | None = None,
         include_pending: bool = True,
         include_open: bool = True,
+        family: str | None = None,
     ) -> float:
         """Return total active reserved account risk loss in account currency."""
         statuses: list[str] = []
@@ -1380,6 +1414,9 @@ class StateManager:
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
+        if family:
+            query += " AND family = ?"
+            params.append(family)
         row = self._store.execute(query, params).fetchone()
         if not row or row[0] is None:
             return 0.0
@@ -1391,27 +1428,32 @@ class StateManager:
         symbol: str | None = None,
         include_pending: bool = True,
         include_open: bool = True,
+        family: str | None = None,
     ) -> float:
         """Broker-neutral alias for active reserved loss totals."""
         return self.sum_active_account_risk_reserved_loss_ccy(
             symbol=symbol,
             include_pending=include_pending,
             include_open=include_open,
+            family=family,
         )
 
-    def list_active_account_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
+    def list_active_account_risk_reservations(self, *, symbol: str | None = None, family: str | None = None) -> list[dict]:
         """Return active PENDING/OPEN account risk reservations."""
         params: list[Any] = []
         query = """
             SELECT reservation_id, created_ts, updated_ts, symbol, candidate_uid, broker_pos_id,
                    status, reserved_loss_ccy, barrier_pips, cap_pips, cost_est_pips, volume_units,
-                   side, source
+                   side, source, family
             FROM account_risk_reservations
             WHERE status IN ('PENDING', 'OPEN')
         """
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
+        if family:
+            query += " AND family = ?"
+            params.append(family)
         query += " ORDER BY created_ts ASC"
         rows = self._store.execute(query, params).fetchall()
         out: list[dict] = []
@@ -1438,13 +1480,14 @@ class StateManager:
                     "volume_units": float(r[11]),
                     "side": r[12],
                     "source": r[13],
+                    "family": r[14],
                 }
             )
         return out
 
-    def list_active_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
+    def list_active_risk_reservations(self, *, symbol: str | None = None, family: str | None = None) -> list[dict]:
         """Broker-neutral alias for active risk reservation rows."""
-        return self.list_active_account_risk_reservations(symbol=symbol)
+        return self.list_active_account_risk_reservations(symbol=symbol, family=family)
 
     def log_account_risk_allocator_event(
         self,
@@ -1459,6 +1502,7 @@ class StateManager:
         threshold_exec: float,
         risk_rank_score: float | None,
         reservation_id: str | None,
+        family: str | None = None,
     ) -> None:
         """Persist allocator decision events for monitoring and reconciliation."""
         now_utc = datetime.now(tz=timezone.utc)
@@ -1476,6 +1520,7 @@ class StateManager:
                 float(threshold_exec),
                 float(risk_rank_score) if risk_rank_score is not None else None,
                 reservation_id,
+                family,
             ],
         )
 

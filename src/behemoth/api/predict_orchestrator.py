@@ -167,6 +167,7 @@ class PredictionOrchestrator:
         self._register_scans_fn = register_scans_fn
 
         # Create catalog for resolving candidates
+        self._force_model_month = getattr(config, "force_model_month", None)
         self._catalog = CandidateCatalog(
             context=CatalogContext(
                 live_registry=candidate_registry,
@@ -175,7 +176,7 @@ class PredictionOrchestrator:
                 missing_month_policy=self._pipeline_config.governance_missing_month_policy,
                 get_latest_month=self._get_latest_month,
             ),
-            force_model_month=getattr(config, "force_model_month", None),
+            force_model_month=self._force_model_month,
         )
 
     def execute(self, req: Any, run_id: str) -> PredictResponse:
@@ -247,13 +248,15 @@ class PredictionOrchestrator:
     ) -> list[Any]:
         """Step 1: Resolve candidates from contract with filters."""
         logger.debug("Step 1: resolving candidates for %s", sym)
+
+        contract: Any = None
         try:
-            contract = self._catalog.resolve_contract(sym, close_ts)
-        except LookupError as exc:
+            if self._is_historical_mode:
+                contract = self._resolve_historical_aggregate_contract(sym, close_ts)
+            else:
+                contract = self._catalog.resolve_contract(sym, close_ts)
+        except (LookupError, KeyError, ValueError) as exc:
             logger.warning("Step 1: failed to resolve contract for %s: %s", sym, exc)
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except KeyError as exc:
-            logger.warning("Step 1: contract lookup failed for %s: %s", sym, exc)
             raise HTTPException(status_code=422, detail=str(exc).strip("'")) from exc
 
         candidates = list(contract.candidates)
@@ -277,6 +280,63 @@ class PredictionOrchestrator:
         )
 
         return candidates
+
+    def _resolve_historical_aggregate_contract(
+        self, sym: str, close_ts: datetime
+    ) -> Any:
+        """Resolve and merge all family contracts for a symbol in historical mode."""
+        if self._historical_registry is None:
+            raise LookupError("Historical governance registry not loaded")
+        # Derive month from close_ts or forced month, not from model cache
+        # (models are lazy-loaded and may not exist before first prediction).
+        month_str = str(self._force_model_month or "").strip()
+        if month_str:
+            from src.behemoth.core.candidate_catalog import _normalize_model_month
+            requested_month = _normalize_model_month(month_str)
+            if requested_month is None:
+                raise KeyError(
+                    f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={month_str!r}; expected YYYY-MM"
+                )
+        else:
+            requested_month = close_ts.strftime("%Y-%m")
+        families = self._historical_registry.families_for_symbol_month(sym, requested_month)
+        if not families:
+            raise KeyError(f"No historical families for {sym} month {requested_month}")
+
+        all_candidates: list[Any] = []
+        first_contract: Any = None
+        for family in families:
+            try:
+                family_contract = self._catalog.resolve_contract(sym, close_ts, family=family)
+                all_candidates.extend(family_contract.candidates)
+                if first_contract is None:
+                    first_contract = family_contract
+            except (LookupError, KeyError) as exc:
+                logger.warning(
+                    "Aggregate contract: skipped %s family %s: %s", sym, family, exc
+                )
+                continue
+
+        if not all_candidates or first_contract is None:
+            raise KeyError(f"No historical contracts resolved for {sym}")
+
+        # Build a merged contract using first family's metadata.
+        # Callers that need per-family metadata (bundle_paths, cap_pips)
+        # should resolve per-family downstream in _orchestrator_build_predictions_fn.
+        return type(
+            "AggregateRuntimeCandidateContract",
+            (),
+            {
+                "symbol": sym,
+                "model_month": first_contract.model_month,
+                "cache_key": self._catalog.cache_key(sym, first_contract.model_month),
+                "candidates": all_candidates,
+                "bundle_paths": first_contract.bundle_paths,
+                "cap_pips": first_contract.cap_pips,
+                "source": "historical",
+                "lock_path": getattr(first_contract, "lock_path", None),
+            },
+        )()
 
     def _normalize_completed_bar_ticks(self, raw: list[int] | None) -> set[int]:
         """Normalize client-provided completed bar-tick identifiers."""

@@ -41,9 +41,10 @@ class CandidateSpec:
     barrier_pips: float
     candidate_uid: str
     regime_desc: str = ""
+    family: str = ""
 
     @staticmethod
-    def from_row(row: dict) -> CandidateSpec:
+    def from_row(row: dict, family: str = "") -> CandidateSpec:
         """Build from a state_universe row in the live lock JSON.
 
         Rejects first_touch_clean candidates: that family's win rate was
@@ -65,6 +66,7 @@ class CandidateSpec:
             barrier_pips=float(row["barrier_pips"]),
             candidate_uid=state_id,
             regime_desc=row.get("regime_desc", ""),
+            family=family,
         )
 
 
@@ -74,8 +76,8 @@ class CandidateRegistry:
 
     _candidates_by_symbol: dict[str, list[CandidateSpec]] = field(default_factory=dict)
     _frozen_timestamps: dict[str, str] = field(default_factory=dict)
-    _caps_by_symbol: dict[str, float] = field(default_factory=dict)
-    _bundle_paths_by_symbol: dict[str, BundlePaths] = field(default_factory=dict)  # type: ignore
+    _caps_by_symbol_family: dict[tuple[str, str], float] = field(default_factory=dict)
+    _bundle_paths_by_symbol_family: dict[tuple[str, str], BundlePaths] = field(default_factory=dict)  # type: ignore
 
     @classmethod
     def load(
@@ -97,8 +99,7 @@ class CandidateRegistry:
             raise FileNotFoundError(f"Governance live lock directory not found: {p_dir}")
 
         reg = cls()
-        # Filtered to OCO until CandidateRegistry supports multi-family lookup.
-        for p in iter_locks(p_dir, family="oco_first_touch"):
+        for p in iter_locks(p_dir, family=None):
             try:
                 data = json.loads(p.read_text())
                 sym = data.get("symbol", "").upper()
@@ -108,6 +109,7 @@ class CandidateRegistry:
                 # Load and validate bundle (raises BundleIntegrityError on v1 — intentional)
                 from src.behemoth.core.bundle_paths import BundlePaths  # noqa: E402
                 bp = BundlePaths.from_lock(p)
+                family = bp.family
 
                 # Quarantine Policy: Skip if marked as not deployable
                 if not bp.live_deployable:
@@ -116,15 +118,16 @@ class CandidateRegistry:
                     continue
 
                 rows = data.get("state_universe", {}).get("rows", [])
-                candidates = [CandidateSpec.from_row(r) for r in rows]
-                reg._candidates_by_symbol[sym] = candidates
+                candidates = [CandidateSpec.from_row(r, family=family) for r in rows]
+                existing = reg._candidates_by_symbol.get(sym, [])
+                reg._candidates_by_symbol[sym] = existing + candidates
                 reg._frozen_timestamps[sym] = data.get("frozen_at_utc", "")
 
                 # Extract execution cap from locked_runtime
                 locked = data.get("locked_runtime", {})
-                reg._caps_by_symbol[sym] = float(locked.get("production_cap_pips", 1.2))
-                # Store BundlePaths directly
-                reg._bundle_paths_by_symbol[sym] = bp
+                reg._caps_by_symbol_family[(sym, family)] = float(locked.get("production_cap_pips", 1.2))
+                # Store BundlePaths directly, keyed by (symbol, family)
+                reg._bundle_paths_by_symbol_family[(sym, family)] = bp
             except Exception as e:
                 import logging
                 logging.getLogger("behemoth.api").error("Failed to parse %s: %s", p.name, e)
@@ -140,13 +143,27 @@ class CandidateRegistry:
         """Return all valid candidate specs for a symbol."""
         return self._candidates_by_symbol.get(symbol.upper(), [])
 
-    def get_cap_pips(self, symbol: str) -> float:
-        """Return the locked production cap for a symbol."""
-        return self._caps_by_symbol.get(symbol.upper(), 1.2)
+    def get_cap_pips(self, symbol: str, family: str = "") -> float:
+        """Return the locked production cap for a symbol/family pair."""
+        sym = symbol.upper()
+        if family:
+            return self._caps_by_symbol_family.get((sym, family), 1.2)
+        # Backward-compat: return single-family cap when only one exists
+        caps = [c for (s, f), c in self._caps_by_symbol_family.items() if s == sym]
+        if len(caps) == 1:
+            return caps[0]
+        return 1.2
 
-    def get_bundle_paths(self, symbol: str) -> BundlePaths | None:  # type: ignore
-        """Return frozen bundle paths for a symbol."""
-        return self._bundle_paths_by_symbol.get(symbol.upper())
+    def get_bundle_paths(self, symbol: str, family: str = "") -> BundlePaths | None:  # type: ignore
+        """Return frozen bundle paths for a symbol/family pair."""
+        sym = symbol.upper()
+        if family:
+            return self._bundle_paths_by_symbol_family.get((sym, family))
+        # Backward-compat: return single-family path when only one exists
+        paths = [bp for (s, f), bp in self._bundle_paths_by_symbol_family.items() if s == sym]
+        if len(paths) == 1:
+            return paths[0]
+        return None
 
     def all_candidates(self) -> list[CandidateSpec]:
         """Return all candidates across all symbols."""

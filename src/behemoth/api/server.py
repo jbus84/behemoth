@@ -143,14 +143,14 @@ def _env_int(*keys: str, default: str) -> int:
 METRIC_INFERENCE_LATENCY = Histogram(
     "behemoth_inference_latency_seconds",
     "Time spent in CatBoost inference",
-    ["symbol"],
+    ["symbol", "family"],
     buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0)
 )
 
 METRIC_TRADES_TOTAL = Counter(
     "behemoth_trades_total",
     "Total trade intents",
-    ["symbol", "status"]  # status: OPEN, FILLED, REJECTED, CLOSED, CANCELLED
+    ["symbol", "family", "status"]  # status: OPEN, FILLED, REJECTED, CLOSED, CANCELLED
 )
 
 METRIC_SLIPPAGE_PIPS = Histogram(
@@ -175,7 +175,7 @@ METRIC_BAR_COUNT = Gauge(
 METRIC_RISK_BLOCKS_TOTAL = Counter(
     "behemoth_risk_blocks_total",
     "Total account-risk blocked execution intents",
-    ["symbol", "reason"],
+    ["symbol", "family", "reason"],
 )
 
 METRIC_ROLLING_THRESHOLD_DRIFT = Counter(
@@ -228,13 +228,13 @@ METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY = Gauge(
 METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL = Counter(
     "behemoth_account_risk_allocator_blocks_total",
     "Total account risk allocator budget blocks",
-    ["symbol", "reason"],
+    ["symbol", "family", "reason"],
 )
 
 METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL = Counter(
     "behemoth_account_risk_allocator_admitted_total",
     "Total account risk allocator-admitted candidates",
-    ["symbol"],
+    ["symbol", "family"],
 )
 
 METRIC_OPEN_POSITIONS_TOTAL = Gauge(
@@ -449,16 +449,19 @@ def _is_historical_mode() -> bool:
     }
 
 
-def _cache_key(symbol: str, model_month: str | None = None) -> str:
-    return _candidate_catalog().cache_key(symbol, model_month)
+def _cache_key(symbol: str, model_month: str | None = None, family: str | None = None) -> str:
+    base = _candidate_catalog().cache_key(symbol, model_month)
+    if family:
+        return f"{base}|{family}"
+    return base
 
 
-def _has_loaded_model_for_symbol(symbol: str) -> bool:
-    return _model_registry.has_model(symbol)
+def _has_loaded_model_for_symbol(symbol: str, family: str | None = None) -> bool:
+    return _model_registry.has_model(symbol, family=family)
 
 
-def _latest_loaded_month_for_symbol(symbol: str) -> str | None:
-    return _model_registry.get_latest_month(symbol)
+def _latest_loaded_month_for_symbol(symbol: str, family: str | None = None) -> str | None:
+    return _model_registry.get_latest_month(symbol, family=family)
 
 
 def _effective_governance_dir() -> str:
@@ -530,6 +533,27 @@ def _deployment_state_for_symbol(symbol: str) -> str:
     if _has_loaded_model_for_symbol(symbol):
         return "live_loaded"
     return "error"
+
+
+def _model_family_details_for_symbol(symbol: str) -> list[StatusSymbolFamily]:
+    """Return per-family model load state for a symbol."""
+    sym = str(symbol).upper().strip()
+    loaded = _model_registry.models_loaded()
+    out: list[StatusSymbolFamily] = []
+    for cache_key, month in loaded.items():
+        parts = cache_key.split("|")
+        if parts[0] != sym:
+            continue
+        # Live keys: SYMBOL|FAMILY
+        # Historical keys: SYMBOL|MONTH|FAMILY
+        if len(parts) >= 2:
+            family = parts[-1]
+            out.append(StatusSymbolFamily(
+                family=family,
+                model_loaded=True,
+                model_month=month,
+            ))
+    return sorted(out, key=lambda f: f.family)
 
 
 def _run_historical_preflight(history_dir: Path) -> None:
@@ -1059,23 +1083,29 @@ def _load_models() -> None:
         return
 
     for sym in _config.symbols:
-        try:
-            bundle_paths = _registry.get_bundle_paths(sym)
-            if not bundle_paths:
-                logger.error("No governance bundle paths for %s — skipping model load.", sym)
-                continue
-            cache_key = _cache_key(sym)
-            _model_registry.load_bundle_paths(
-                symbol=sym,
-                bundle_paths=bundle_paths,
-                cache_key=cache_key,
-                locked_runtime_overrides={},
-                expected_month=bundle_paths.model_month or None,
-                catboost_cls=_catboost_cls(),
-            )
-        except BundleIntegrityError as exc:
-            logger.error("Bundle integrity error for %s — skipping model load: %s", sym, exc)
+        candidates = _registry.get_candidates(sym)
+        families = sorted({c.family for c in candidates if c.family})
+        if not families:
+            logger.error("No governance families for %s — skipping model load.", sym)
             continue
+        for family in families:
+            try:
+                bundle_paths = _registry.get_bundle_paths(sym, family)
+                if not bundle_paths:
+                    logger.error("No governance bundle paths for %s family %s — skipping.", sym, family)
+                    continue
+                cache_key = _cache_key(sym, family=family)
+                _model_registry.load_bundle_paths(
+                    symbol=sym,
+                    bundle_paths=bundle_paths,
+                    cache_key=cache_key,
+                    locked_runtime_overrides={},
+                    expected_month=bundle_paths.model_month or None,
+                    catboost_cls=_catboost_cls(),
+                )
+            except BundleIntegrityError as exc:
+                logger.error("Bundle integrity error for %s %s — skipping: %s", sym, family, exc)
+                continue
 
 def _load_seed_files(seed_dir: Path | None = None) -> None:
     """Load pre-computed threshold seed parquets into audit_logs."""
@@ -1411,6 +1441,9 @@ class _CandidateDecision:
     risk_reserved_amount_ccy: float | None = None
     risk_headroom_after_ccy: float | None = None
     risk_reservation_id: str | None = None
+    family: str = ""
+    model_month: str = ""
+    cap_pips: float = 0.0
 
 
 @dataclass
@@ -1583,21 +1616,6 @@ def _get_feed_tracker(symbol: str) -> dict[str, Any]:
     return row
 
 
-def _resolve_missing_historical_month(symbol: str, requested_month: str) -> str | None:
-    if _historical_registry is None:
-        return None
-    months = _historical_registry.months_for_symbol(symbol)
-    if not months:
-        return None
-    policy = str(_config.governance_missing_month_policy).strip().lower()
-    if policy in {"latest", "latest_available"}:
-        return months[-1]
-    if policy in {"nearest_previous", "previous", "floor"}:
-        prior = [m for m in months if m <= requested_month]
-        return prior[-1] if prior else None
-    return None
-
-
 def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeContract:
     symbol = str(sym).upper().strip()
     if _config.force_model_month and _is_historical_mode():
@@ -1625,7 +1643,52 @@ def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeC
     )
 
 
+def _resolve_runtime_contract_for_family(sym: str, family: str, close_ts: datetime) -> _ResolvedRuntimeContract:
+    """Resolve runtime contract for a specific symbol and family."""
+    symbol = str(sym).upper().strip()
+    family = str(family).strip()
+    if _config.force_model_month and _is_historical_mode():
+        forced_month = _normalize_model_month(_config.force_model_month)
+        if forced_month is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={_config.force_model_month!r}; expected YYYY-MM",
+            )
+    try:
+        contract = _candidate_catalog().resolve_contract(symbol, close_ts, family=family)
+    except (LookupError, KeyError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc).strip("'")) from exc
+
+    # Filter to the requested family (live mode only; historical mode already returns per-family)
+    family_candidates = [c for c in contract.candidates if c.family == family]
+    if not family_candidates:
+        raise HTTPException(status_code=422, detail=f"No candidates for {symbol} family {family}")
+
+    # Get per-family metadata
+    if _registry is not None:
+        bundle_paths = _registry.get_bundle_paths(symbol, family)
+        cap_pips = _registry.get_cap_pips(symbol, family)
+    else:
+        bundle_paths = contract.bundle_paths
+        cap_pips = contract.cap_pips
+
+    model_month = bundle_paths.model_month if bundle_paths else contract.model_month
+    cache_key = _cache_key(symbol, model_month, family)
+
+    return _ResolvedRuntimeContract(
+        symbol=symbol,
+        model_month=model_month,
+        cache_key=cache_key,
+        candidates=family_candidates,
+        bundle_paths=bundle_paths or contract.bundle_paths,
+        cap_pips=float(cap_pips),
+        source=contract.source,
+        lock_path=contract.lock_path,
+    )
+
+
 def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any, dict[str, Any]]:
+    """Ensure model and threshold are loaded for the contract's cache_key."""
     model, thr_cfg = _model_registry.get_model_and_threshold(contract.cache_key)
     if model is not None and isinstance(thr_cfg, dict):
         return model, thr_cfg
@@ -1725,8 +1788,11 @@ def _resolve_historical_prediction_payload_overrides(
     close_ts_utc = _as_utc_ts(close_ts)
     out: dict[str, dict[str, Any]] = {}
     for cand in candidates:
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
         canonical_uid = (
-            f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+            f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         )
         rows = rows_by_uid.get(canonical_uid, [])
         if not rows:
@@ -1771,8 +1837,11 @@ def _apply_historical_prediction_universe_gate(
         tolerance = int(_config.historical_prediction_ordinal_tolerance)
         filtered: list[Any] = []
         for cand in candidates:
+            family = str(getattr(cand, "family", "") or "").strip()
+            if not family:
+                family = "oco_first_touch"
             canonical_uid = (
-                f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
             )
             ordinal_list = ordinal_index.get(canonical_uid, [])
             if not ordinal_list:
@@ -1799,8 +1868,11 @@ def _apply_historical_prediction_universe_gate(
         tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
         filtered: list[Any] = []
         for cand in candidates:
+            family = str(getattr(cand, "family", "") or "").strip()
+            if not family:
+                family = "oco_first_touch"
             canonical_uid = (
-                f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
             )
             ts_rows = candidate_index.get(canonical_uid, [])
             if not ts_rows:
@@ -1838,8 +1910,11 @@ def _apply_historical_prediction_universe_gate(
         return []
     filtered: list[Any] = []
     for cand in candidates:
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
         canonical_uid = (
-            f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+            f"{family}|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         )
         if canonical_uid in allowed:
             filtered.append(cand)
@@ -2001,6 +2076,12 @@ class HealthResponse(BaseModel):
     historical_preflight_summary: str | None = None
 
 
+class StatusSymbolFamily(BaseModel):
+    family: str
+    model_loaded: bool
+    model_month: str | None = None
+
+
 class StatusSymbol(BaseModel):
     symbol: str
     bar_ticks: list[int]
@@ -2012,6 +2093,7 @@ class StatusSymbol(BaseModel):
     deployment_state: str
     restart_verdict: str | None = None
     restart_reasons: list[str] = Field(default_factory=list)
+    families: list[StatusSymbolFamily] = Field(default_factory=list)
 
 
 class FeedStatusSymbol(BaseModel):
@@ -2098,6 +2180,7 @@ class AccountRiskReservationReleaseRequest(BaseModel):
     broker_pos_id: str | None = None
     reservation_id: str | None = None
     reason: str | None = None
+    family: str | None = None
 
 
 class AccountRiskReservationsStatusResponse(BaseModel):
@@ -2240,9 +2323,13 @@ async def get_account_status(symbol: str | None = None) -> AccountRiskStatusResp
 
 
 @app.get("/risk/account_risk/reservations/status", response_model=AccountRiskReservationsStatusResponse)
-async def get_account_risk_reservations_status(symbol: str | None = None) -> AccountRiskReservationsStatusResponse:
+async def get_account_risk_reservations_status(
+    symbol: str | None = None,
+    family: str | None = None,
+) -> AccountRiskReservationsStatusResponse:
     """Return active account-risk reservation totals and rows."""
     sym = str(symbol or "").strip().upper() or None
+    fam = str(family or "").strip() or None
     if (not _config.account_risk_enabled) or (_account_risk_profile is None) or (_state is None):
         return AccountRiskReservationsStatusResponse(enabled=False, symbol=sym)
     include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
@@ -2251,8 +2338,9 @@ async def get_account_risk_reservations_status(symbol: str | None = None) -> Acc
         symbol=sym,
         include_pending=include_pending,
         include_open=include_open,
+        family=fam,
     )
-    rows = _state.list_active_account_risk_reservations(symbol=sym)
+    rows = _state.list_active_account_risk_reservations(symbol=sym, family=fam)
     return AccountRiskReservationsStatusResponse(
         enabled=True,
         symbol=sym,
@@ -2270,9 +2358,10 @@ async def get_account_risk_reservations_status(symbol: str | None = None) -> Acc
 )
 async def get_account_reservations_status(
     symbol: str | None = None,
+    family: str | None = None,
 ) -> AccountRiskReservationsStatusResponse:
     """Return active broker-neutral reservation totals and rows."""
-    return await get_account_risk_reservations_status(symbol)
+    return await get_account_risk_reservations_status(symbol, family)
 
 
 @app.post("/risk/account_risk/reservations/release")
@@ -2290,6 +2379,7 @@ async def release_account_risk_reservations_v2(req: AccountRiskReservationReleas
         candidate_uid=req.candidate_uid,
         broker_pos_id=req.broker_pos_id,
         symbol=req.symbol,
+        family=req.family,
         reason=req.reason or "manual_release",
     )
     return {"ok": True, "released_count": int(released)}
@@ -2312,6 +2402,7 @@ async def release_account_risk_reservations(
         candidate_uid=req.candidate_uid,
         broker_pos_id=req.broker_pos_id,
         symbol=req.symbol,
+        family=req.family,
         reason=req.reason or "manual_release",
     )
     return {"ok": True, "released_count": int(released)}
@@ -2365,48 +2456,78 @@ def _orchestrator_build_predictions_fn(
 ) -> list[OcoPrediction]:
     """Inject step-5 logic (inference + threshold + allocator) into the orchestrator.
 
-    The orchestrator is HTTP/contract-agnostic, so this closure resolves the
-    runtime contract, model, threshold config, and historical-prediction
-    overrides from server-module state, then delegates to ``_build_predictions``.
-    Results are sorted by ``pred_prob`` descending (highest first), matching
-    the original predict pipeline.
+    Scores candidates per-family using family-specific model/threshold/cap,
+    then runs ONE global allocator pass over all preselected decisions across
+    all families. Results are sorted by ``pred_prob`` descending.
     """
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
-    contract = _resolve_runtime_contract(sym, close_ts)
-    model, thr_cfg = _ensure_model_and_threshold(contract)
+
     requested_volume_units = _resolve_requested_volume_units(req)
-    # Check if historical predictions are available via bundle_paths
-    has_predictions = False
-    if _is_historical_mode():
-        try:
-            _ = contract.bundle_paths.predictions()
-            has_predictions = True
-        except Exception:
-            has_predictions = False
-    historical_prediction_universe_gated = bool(has_predictions)
-    results, _candidate_trace_rows = _build_predictions(
+    all_decisions: list[_CandidateDecision] = []
+
+    # Group candidates by family
+    by_family: dict[str, list[Any]] = {}
+    for cand in candidates:
+        fam = str(getattr(cand, "family", "") or "").strip()
+        if not fam:
+            fam = "oco_first_touch"
+        by_family.setdefault(fam, []).append(cand)
+
+    for family, family_cands in by_family.items():
+        family_contract = _resolve_runtime_contract_for_family(sym, family, close_ts)
+        model, thr_cfg = _ensure_model_and_threshold(family_contract)
+
+        has_predictions = False
+        if _is_historical_mode():
+            try:
+                _ = family_contract.bundle_paths.predictions()
+                has_predictions = True
+            except Exception:
+                has_predictions = False
+        historical_prediction_universe_gated = bool(has_predictions)
+
+        family_decisions = _build_decisions(
+            sym=sym,
+            candidates=family_cands,
+            model=model,
+            base_features_by_ticks=base_features_by_ticks,
+            regime_quantiles_by_ticks=regime_quantiles_by_ticks,
+            close_ts=close_ts,
+            thr_cfg=thr_cfg,
+            account_risk_eval=account_risk_eval,
+            account_risk_enabled_effective=account_risk_enabled_effective,
+            account_risk_enabled_override=account_risk_enabled_override,
+            requested_volume_units=requested_volume_units,
+            model_month=family_contract.model_month,
+            cap_pips=family_contract.cap_pips,
+            skip_regime_gate=historical_prediction_universe_gated,
+            historical_prediction_overrides=_resolve_historical_prediction_payload_overrides(
+                contract=family_contract,
+                close_ts=close_ts,
+                candidates=family_cands,
+            ),
+        )
+        all_decisions.extend(family_decisions)
+
+    # Single global allocator pass across all families
+    _run_allocator(
         sym=sym,
-        candidates=candidates,
-        model=model,
-        base_features_by_ticks=base_features_by_ticks,
-        regime_quantiles_by_ticks=regime_quantiles_by_ticks,
-        close_ts=close_ts,
-        thr_cfg=thr_cfg,
+        decisions=all_decisions,
         account_risk_eval=account_risk_eval,
         account_risk_enabled_effective=account_risk_enabled_effective,
-        account_risk_enabled_override=account_risk_enabled_override,
         requested_volume_units=requested_volume_units,
-        model_month=contract.model_month,
-        cap_pips=contract.cap_pips,
-        run_id=run_id,
-        skip_regime_gate=historical_prediction_universe_gated,
-        historical_prediction_overrides=_resolve_historical_prediction_payload_overrides(
-            contract=contract,
-            close_ts=close_ts,
-            candidates=candidates,
-        ),
+        close_ts=close_ts,
     )
+
+    results, _trace_rows = _materialize_predictions(
+        sym=sym,
+        decisions=all_decisions,
+        close_ts=close_ts,
+        run_id=run_id,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+    )
+
     results.sort(key=lambda p: p.pred_prob, reverse=True)
     return results
 
@@ -2471,7 +2592,7 @@ def _check_warmup(sym: str, candidates: list[Any]) -> None:
             )
 
 
-def _build_predictions(
+def _build_decisions(
     sym: str,
     candidates: list[Any],
     model: Any,
@@ -2485,17 +2606,16 @@ def _build_predictions(
     requested_volume_units: float,
     model_month: str,
     cap_pips: float,
-    run_id: str | None = None,
     skip_regime_gate: bool = False,
     historical_prediction_overrides: dict[str, dict[str, Any]] | None = None,
-) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
-    """Build predictions for each candidate using model + account risk portfolio allocator."""
+) -> list[_CandidateDecision]:
+    """Score candidates and build _CandidateDecisions without allocator or materialization."""
     import numpy as np
 
     threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
     threshold_mode = str(thr_cfg.get("threshold_source", "default"))
     logger.debug(
-        "Predict %s: threshold_exec=%.4f mode=%s month=%s",
+        "Build decisions %s: threshold_exec=%.4f mode=%s month=%s",
         sym, threshold_exec, threshold_mode, model_month,
     )
 
@@ -2522,7 +2642,10 @@ def _build_predictions(
                 "barrier_pips": float(cand.barrier_pips),
             }
         )
-        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
+        canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         locked_payload = (
             (historical_prediction_overrides or {}).get(canonical_uid)
             if historical_prediction_overrides is not None
@@ -2546,14 +2669,13 @@ def _build_predictions(
             preselected_exec = int(locked_payload.get("selected_exec") or 0)
         else:
             if model is not None:
-                with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
                     pred_prob = float(model.predict_proba(arr)[:, 1][0])
             else:
                 pred_prob = 0.0
 
             day_str = close_ts.strftime("%Y-%m-%d")
 
-            # Model expiry check: block immediately if past valid-through date.
             model_valid_through = thr_cfg.get("model_valid_through", "")
             if model_valid_through and day_str > model_valid_through:
                 logger.warning(
@@ -2577,8 +2699,6 @@ def _build_predictions(
                         lookback_days=rolling_days,
                         min_history=min_history,
                     )
-
-                is_live = _config.governance_mode == "live"
 
                 if dynamic_thr is not None:
                     _record_rolling_threshold_drift(
@@ -2669,7 +2789,7 @@ def _build_predictions(
                 selected_exec = 0
                 risk_blocked = True
                 risk_block_reason = str(trade_eval.get("block_reason") or "ACCOUNT_RISK_BLOCKED")
-                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=risk_block_reason).inc()
+                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, family=family, reason=risk_block_reason).inc()
 
         rank_score = None
         if preselected_exec == 1:
@@ -2697,9 +2817,23 @@ def _build_predictions(
                 risk_metrics_snapshot=risk_metrics_snapshot,
                 trade_eval=trade_eval,
                 risk_rank_score=rank_score,
+                family=family,
+                model_month=model_month,
+                cap_pips=cap_pips,
             )
         )
+    return decisions
 
+
+def _run_allocator(
+    sym: str,
+    decisions: list[_CandidateDecision],
+    account_risk_eval: dict[str, Any],
+    account_risk_enabled_effective: bool,
+    requested_volume_units: float,
+    close_ts: datetime | None = None,
+) -> None:
+    """Run a single global allocator pass over pre-scored decisions."""
     allocator_enabled = bool(
         account_risk_enabled_effective
         and _account_risk_profile is not None
@@ -2707,86 +2841,115 @@ def _build_predictions(
         and _state is not None
         and _config.account_risk_enforce_blocks
     )
+    if not allocator_enabled:
+        return
 
-    if allocator_enabled:
-        include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
-        include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
-        active_reserved_loss_ccy = _state.sum_active_account_risk_reserved_loss_ccy(
-            include_pending=include_pending,
-            include_open=include_open,
-        )
-        daily_headroom = account_risk_eval.daily_loss_headroom
-        max_headroom = account_risk_eval.max_loss_headroom
-        daily_budget = None if daily_headroom is None else float(daily_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_daily)
-        max_budget = None if max_headroom is None else float(max_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_max)
-        if daily_budget is None and max_budget is None:
-            allocator_remaining = 0.0
-        elif daily_budget is None:
-            allocator_remaining = float(max_budget)
-        elif max_budget is None:
-            allocator_remaining = float(daily_budget)
-        else:
-            allocator_remaining = min(float(daily_budget), float(max_budget))
-        allocator_remaining = (
-            allocator_remaining
-            - float(_account_risk_profile.allocator.allocator_min_headroom_buffer_ccy)
-            - float(active_reserved_loss_ccy)
-        )
-        allocator_remaining = max(0.0, allocator_remaining)
-        METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy))
+    close_ts_utc = close_ts if close_ts is not None else datetime.now(timezone.utc)
+    if close_ts_utc.tzinfo is None:
+        close_ts_utc = close_ts_utc.replace(tzinfo=timezone.utc)
+    fx_conv = _pip_value_per_unit_usd(
+        sym,
+        now_utc=close_ts_utc,
+        max_age_sec=max(1, int(_config.account_risk_fx_rate_max_age_sec)),
+    )
+    pip_value_per_unit = fx_conv.get("pip_value_per_unit_usd")
+    pip_value_per_unit = float(pip_value_per_unit) if pip_value_per_unit is not None else None
 
-        to_allocate = [
-            d
-            for d in decisions
-            if d.preselected_exec == 1 and d.selected_exec == 1
-        ]
-        to_allocate.sort(
-            key=lambda d: (
-                float(d.risk_rank_score if d.risk_rank_score is not None else -1e12),
-                float(d.pred_prob),
-            ),
-            reverse=True,
-        )
-        newly_reserved_ccy = 0.0
-        for d in to_allocate:
-            est_cost = d.trade_eval.get("estimated_trade_cost_pips")
-            if est_cost is None:
-                continue
-            if pip_value_per_unit is None or pip_value_per_unit <= 0:
-                d.selected_exec = 0
-                d.risk_blocked = True
-                d.risk_block_reason = "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE"
-                d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
-                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                continue
+    include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
+    include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
+    active_reserved_loss_ccy = _state.sum_active_account_risk_reserved_loss_ccy(
+        include_pending=include_pending,
+        include_open=include_open,
+    )
+    daily_headroom = account_risk_eval.daily_loss_headroom
+    max_headroom = account_risk_eval.max_loss_headroom
+    daily_budget = None if daily_headroom is None else float(daily_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_daily)
+    max_budget = None if max_headroom is None else float(max_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_max)
+    if daily_budget is None and max_budget is None:
+        allocator_remaining = 0.0
+    elif daily_budget is None:
+        allocator_remaining = float(max_budget)
+    elif max_budget is None:
+        allocator_remaining = float(daily_budget)
+    else:
+        allocator_remaining = min(float(daily_budget), float(max_budget))
+    allocator_remaining = (
+        allocator_remaining
+        - float(_account_risk_profile.allocator.allocator_min_headroom_buffer_ccy)
+        - float(active_reserved_loss_ccy)
+    )
+    allocator_remaining = max(0.0, allocator_remaining)
+    METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy))
 
-            gross_loss_pips = max(
-                0.0,
-                float(d.cand.barrier_pips) + float(cap_pips) + float(est_cost),
-            )
-            reserve_ccy = float(gross_loss_pips) * float(pip_value_per_unit) * float(requested_volume_units)
-            d.risk_metrics_snapshot["allocator_gross_loss_pips"] = float(gross_loss_pips)
-            d.risk_metrics_snapshot["allocator_reserved_loss_ccy"] = float(reserve_ccy)
+    to_allocate = [
+        d
+        for d in decisions
+        if d.preselected_exec == 1 and d.selected_exec == 1
+    ]
+    to_allocate.sort(
+        key=lambda d: (
+            float(d.risk_rank_score if d.risk_rank_score is not None else -1e12),
+            float(d.pred_prob),
+        ),
+        reverse=True,
+    )
+    newly_reserved_ccy = 0.0
+    for d in to_allocate:
+        est_cost = d.trade_eval.get("estimated_trade_cost_pips")
+        if est_cost is None:
+            continue
+        if pip_value_per_unit is None or pip_value_per_unit <= 0:
+            d.selected_exec = 0
+            d.risk_blocked = True
+            d.risk_block_reason = "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE"
             d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
-            if reserve_ccy <= allocator_remaining:
-                allocator_remaining -= reserve_ccy
-                newly_reserved_ccy += reserve_ccy
-                d.risk_reserved = True
-                d.risk_reserved_amount_ccy = float(reserve_ccy)
-                d.risk_headroom_after_ccy = float(allocator_remaining)
-                d.risk_metrics_snapshot["allocator_admitted"] = True
-                METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym).inc()
-            else:
-                d.selected_exec = 0
-                d.risk_blocked = True
-                d.risk_block_reason = "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
-                d.risk_metrics_snapshot["allocator_admitted"] = False
-                d.risk_headroom_after_ccy = float(allocator_remaining)
-                METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
+            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
+            continue
 
-        METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
+        gross_loss_pips = max(
+            0.0,
+            float(d.cand.barrier_pips) + float(d.cap_pips) + float(est_cost),
+        )
+        reserve_ccy = float(gross_loss_pips) * float(pip_value_per_unit) * float(requested_volume_units)
+        d.risk_metrics_snapshot["allocator_gross_loss_pips"] = float(gross_loss_pips)
+        d.risk_metrics_snapshot["allocator_reserved_loss_ccy"] = float(reserve_ccy)
+        d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
+        if reserve_ccy <= allocator_remaining:
+            allocator_remaining -= reserve_ccy
+            newly_reserved_ccy += reserve_ccy
+            d.risk_reserved = True
+            d.risk_reserved_amount_ccy = float(reserve_ccy)
+            d.risk_headroom_after_ccy = float(allocator_remaining)
+            d.risk_metrics_snapshot["allocator_admitted"] = True
+            METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym, family=d.family).inc()
+        else:
+            d.selected_exec = 0
+            d.risk_blocked = True
+            d.risk_block_reason = "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
+            d.risk_metrics_snapshot["allocator_admitted"] = False
+            d.risk_headroom_after_ccy = float(allocator_remaining)
+            METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
+            METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, family=d.family, reason=d.risk_block_reason).inc()
+
+    METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
+
+
+def _materialize_predictions(
+    sym: str,
+    decisions: list[_CandidateDecision],
+    close_ts: datetime,
+    run_id: str | None,
+    account_risk_enabled_effective: bool,
+) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
+    """Log evaluations, create reservations, and build OcoPredictions from decisions."""
+    allocator_enabled = bool(
+        account_risk_enabled_effective
+        and _account_risk_profile is not None
+        and _account_risk_profile.allocator.allocator_enabled
+        and _state is not None
+        and _config.account_risk_enforce_blocks
+    )
 
     results: list[OcoPrediction] = []
     trace_rows: list[dict[str, Any]] = []
@@ -2803,7 +2966,7 @@ def _build_predictions(
                 threshold_block_reason=getattr(d, "threshold_block_reason", None),
                 risk_blocked=d.risk_blocked,
                 risk_block_reason=d.risk_block_reason,
-                model_month=model_month,
+                model_month=d.model_month,
                 close_ts=close_ts,
                 run_id=run_id,
             )
@@ -2823,11 +2986,12 @@ def _build_predictions(
                     candidate_uid=d.candidate_uid,
                     reserved_loss_ccy=float(d.risk_reserved_amount_ccy),
                     barrier_pips=float(d.cand.barrier_pips),
-                    cap_pips=float(cap_pips),
+                    cap_pips=float(d.cap_pips),
                     cost_est_pips=float(d.features.cost_est_pips),
-                    volume_units=float(requested_volume_units),
+                    volume_units=float(d.risk_metrics_snapshot.get("requested_volume_units", 0)),
                     source="predict_allocator",
                     status="PENDING",
+                    family=d.family,
                 )
                 d.risk_reservation_id = reservation_id
                 d.risk_metrics_snapshot["risk_reservation_id"] = reservation_id
@@ -2838,7 +3002,7 @@ def _build_predictions(
                 pred_prob=d.pred_prob,
                 threshold=d.curr_threshold,
                 features=d.features,
-                model_month=model_month,
+                model_month=d.model_month,
                 close_ts=close_ts,
                 run_id=run_id,
             )
@@ -2856,11 +3020,12 @@ def _build_predictions(
                 status=event_status,
                 block_reason=d.risk_block_reason,
                 reserved_loss_ccy=d.risk_reserved_amount_ccy,
-                requested_volume_units=float(requested_volume_units),
+                requested_volume_units=float(d.risk_metrics_snapshot.get("requested_volume_units", 0)),
                 pred_prob=float(d.pred_prob),
                 threshold_exec=float(d.curr_threshold),
                 risk_rank_score=d.risk_rank_score,
                 reservation_id=d.risk_reservation_id,
+                family=d.family,
             )
 
         results.append(
@@ -2874,9 +3039,9 @@ def _build_predictions(
                 bar_ticks=int(d.cand.bar_ticks),
                 horizon=int(d.cand.horizon),
                 barrier_pips=float(d.cand.barrier_pips),
-                cap_pips=float(cap_pips),
+                cap_pips=float(d.cap_pips),
                 threshold_source=d.curr_source,
-                model_month=model_month,
+                model_month=d.model_month,
                 threshold_blocked=d.threshold_blocked,
                 threshold_block_reason=d.threshold_block_reason,
                 risk_blocked=d.risk_blocked,
@@ -2887,6 +3052,7 @@ def _build_predictions(
                 risk_headroom_after_ccy=d.risk_headroom_after_ccy,
                 risk_rank_score=d.risk_rank_score,
                 risk_reservation_id=d.risk_reservation_id,
+                family=d.family,
             )
         )
         trace_rows.append(
@@ -2903,6 +3069,59 @@ def _build_predictions(
             }
         )
     return results, trace_rows
+
+
+def _build_predictions(
+    sym: str,
+    candidates: list[Any],
+    model: Any,
+    base_features_by_ticks: dict[int, ModelFeatures],
+    regime_quantiles_by_ticks: dict[int, dict[str, float]],
+    close_ts: datetime,
+    thr_cfg: dict[str, Any],
+    account_risk_eval: dict[str, Any],
+    account_risk_enabled_effective: bool,
+    account_risk_enabled_override: bool,
+    requested_volume_units: float,
+    model_month: str,
+    cap_pips: float,
+    run_id: str | None = None,
+    skip_regime_gate: bool = False,
+    historical_prediction_overrides: dict[str, dict[str, Any]] | None = None,
+) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
+    """Build predictions for each candidate using model + account risk portfolio allocator."""
+    decisions = _build_decisions(
+        sym=sym,
+        candidates=candidates,
+        model=model,
+        base_features_by_ticks=base_features_by_ticks,
+        regime_quantiles_by_ticks=regime_quantiles_by_ticks,
+        close_ts=close_ts,
+        thr_cfg=thr_cfg,
+        account_risk_eval=account_risk_eval,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+        account_risk_enabled_override=account_risk_enabled_override,
+        requested_volume_units=requested_volume_units,
+        model_month=model_month,
+        cap_pips=cap_pips,
+        skip_regime_gate=skip_regime_gate,
+        historical_prediction_overrides=historical_prediction_overrides,
+    )
+    _run_allocator(
+        sym=sym,
+        decisions=decisions,
+        account_risk_eval=account_risk_eval,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+        requested_volume_units=requested_volume_units,
+        close_ts=close_ts,
+    )
+    return _materialize_predictions(
+        sym=sym,
+        decisions=decisions,
+        close_ts=close_ts,
+        run_id=run_id,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+    )
 
 
 @app.post("/predict/warmup", status_code=201)
@@ -2995,11 +3214,14 @@ async def predict_warmup(req: WarmupRequest) -> dict:
             )
             continue
 
-        X = valid_features[feature_columns].values
-        with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
-            pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
+        family = str(getattr(cand, "family", "") or "").strip()
+        if not family:
+            family = "oco_first_touch"
 
-        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        X = valid_features[feature_columns].values
+        with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
+            pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
+        canonical_uid = f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
         unique_values = int(np.unique(np.round(pred_probs, 12)).size)
         n_valid = int(len(pred_probs))
         stats[canonical_uid] = {
@@ -3099,6 +3321,7 @@ async def open_trade(req: TradeOpenRequest):
         horizon=req.horizon,
         reservation_id=req.reservation_id,
         run_id=run_id,
+        family=req.family,
     )
     if _config.account_risk_enabled and (_account_risk_profile is not None):
         _state.promote_account_risk_reservation(
@@ -3106,6 +3329,7 @@ async def open_trade(req: TradeOpenRequest):
             reservation_id=req.reservation_id,
             candidate_uid=req.candidate_uid,
             symbol=req.symbol,
+            family=req.family,
         )
     if _barrier_manager is not None:
         scans = _barrier_manager.find_holding_scans(req.symbol, req.candidate_uid)
@@ -3113,7 +3337,7 @@ async def open_trade(req: TradeOpenRequest):
             if scan["broker_pos_id"] is None:
                 _barrier_manager.set_broker_pos_id(scan["scan_id"], req.broker_pos_id)
                 break
-    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status="OPEN").inc()
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family or "unknown", status="OPEN").inc()
     out = {"status": "ok", "internal_trade_id": internal_id}
     _append_http_trace(
         endpoint="/trades/open",
@@ -3367,13 +3591,17 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                     "bar_ticks", "horizon", "barrier_pips"
                 ]].values
 
+                family = str(getattr(cand, "family", "") or "").strip()
+                if not family:
+                    family = "oco_first_touch"
+
                 # Metadata-level inference: release GIL during bulk CatBoost scoring if possible
-                with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
                     pred_probs = model.predict_proba(X)[:, 1]
 
                 # ── Batch Logging to DuckDB ──
                 canonical_uid = (
-                    f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                    f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
                 )
                 valid_bars = bars_df.loc[valid_features.index]
                 events_batch = []
@@ -3472,7 +3700,7 @@ async def update_trade(req: TradeUpdateRequest):
             reason=f"trade_{req.status.value.lower()}",
         )
 
-    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status=req.status.value).inc()
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family or "unknown", status=req.status.value).inc()
     if req.pnl_pips is not None:
         # Note: We need a way to look up the symbol from broker_pos_id if we want granular metrics here.
         # For now, we update a global or handle it in the background worker.
@@ -3562,6 +3790,7 @@ async def status() -> list[StatusSymbol]:
             deployment_state=deployment_state,
             restart_verdict=restart_verdict,
             restart_reasons=list(restart_reasons),
+            families=_model_family_details_for_symbol(sym),
         ))
     return out
 

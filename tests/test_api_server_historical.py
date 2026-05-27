@@ -29,6 +29,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
     return HistoricalLockEntry(
         symbol=symbol,
         month=month,
+        family="oco_first_touch",
         lock_path=str(lock_path),
         candidates=[
             CandidateSpec(
@@ -37,6 +38,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
                 horizon=4,
                 barrier_pips=10.0,
                 candidate_uid="oco_first_touch__all__k2",
+                family="oco_first_touch",
             )
         ],
         cap_pips=1.2,
@@ -53,20 +55,21 @@ def test_resolve_runtime_contract_historical_uses_close_ts_month() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-08")] = _mk_entry("EURUSD", "2025-08")
+        hist._entries[("EURUSD", "2025-08", "oco_first_touch")] = _mk_entry("EURUSD", "2025-08")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
         server._config.governance_missing_month_policy = "error"
         server._config.force_model_month = ""
 
-        contract = server._resolve_runtime_contract(
+        contract = server._resolve_runtime_contract_for_family(
             "EURUSD",
+            "oco_first_touch",
             datetime(2025, 8, 15, tzinfo=timezone.utc),
         )
         assert contract.source == "historical"
         assert contract.model_month == "2025-08"
-        assert contract.cache_key == "EURUSD|2025-08"
+        assert contract.cache_key == "EURUSD|2025-08|oco_first_touch"
         assert contract.cap_pips == pytest.approx(1.2)
         assert len(contract.candidates) == 1
     finally:
@@ -105,7 +108,7 @@ def test_app_config_live_defaults_keep_exact_model(monkeypatch) -> None:
     assert cfg.historical_prediction_tolerance_sec == pytest.approx(30.0)
 
 
-def test_resolve_runtime_contract_historical_falls_back_to_previous_month() -> None:
+def test_resolve_runtime_contract_historical_rejects_missing_month() -> None:
     original_mode = server._config.governance_mode
     original_policy = server._config.governance_missing_month_policy
     original_force = server._config.force_model_month
@@ -114,19 +117,21 @@ def test_resolve_runtime_contract_historical_falls_back_to_previous_month() -> N
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-07")] = _mk_entry("EURUSD", "2025-07")
+        hist._entries[("EURUSD", "2025-07", "oco_first_touch")] = _mk_entry("EURUSD", "2025-07")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
         server._config.governance_missing_month_policy = "nearest_previous"
         server._config.force_model_month = ""
 
-        contract = server._resolve_runtime_contract(
-            "EURUSD",
-            datetime(2025, 8, 1, tzinfo=timezone.utc),
-        )
-        assert contract.model_month == "2025-07"
-        assert contract.cache_key == "EURUSD|2025-07"
+        with pytest.raises(HTTPException) as exc:
+            server._resolve_runtime_contract_for_family(
+                "EURUSD",
+                "oco_first_touch",
+                datetime(2025, 8, 1, tzinfo=timezone.utc),
+            )
+        assert exc.value.status_code == 422
+        assert "No historical lock" in str(exc.value.detail)
     finally:
         server._config.governance_mode = original_mode
         server._config.governance_missing_month_policy = original_policy
@@ -144,7 +149,7 @@ def test_resolve_runtime_contract_historical_missing_month_errors() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-07")] = _mk_entry("EURUSD", "2025-07")
+        hist._entries[("EURUSD", "2025-07", "oco_first_touch")] = _mk_entry("EURUSD", "2025-07")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
@@ -152,11 +157,12 @@ def test_resolve_runtime_contract_historical_missing_month_errors() -> None:
         server._config.force_model_month = ""
 
         with pytest.raises(HTTPException) as exc:
-            server._resolve_runtime_contract(
+            server._resolve_runtime_contract_for_family(
                 "EURUSD",
+                "oco_first_touch",
                 datetime(2025, 8, 1, tzinfo=timezone.utc),
             )
-        assert exc.value.status_code == 503
+        assert exc.value.status_code == 422
         assert "No historical lock" in str(exc.value.detail)
     finally:
         server._config.governance_mode = original_mode
@@ -175,19 +181,20 @@ def test_resolve_runtime_contract_historical_force_month_override() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-07")] = _mk_entry("EURUSD", "2025-07")
+        hist._entries[("EURUSD", "2025-07", "oco_first_touch")] = _mk_entry("EURUSD", "2025-07")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
         server._config.governance_missing_month_policy = "error"
         server._config.force_model_month = "202507"
 
-        contract = server._resolve_runtime_contract(
+        contract = server._resolve_runtime_contract_for_family(
             "EURUSD",
+            "oco_first_touch",
             datetime(2025, 8, 1, tzinfo=timezone.utc),
         )
         assert contract.model_month == "2025-07"
-        assert contract.cache_key == "EURUSD|2025-07"
+        assert contract.cache_key == "EURUSD|2025-07|oco_first_touch"
     finally:
         server._config.governance_mode = original_mode
         server._config.governance_missing_month_policy = original_policy
@@ -205,20 +212,22 @@ def test_resolve_runtime_contract_historical_switches_at_month_boundary() -> Non
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-08")] = _mk_entry("EURUSD", "2025-08")
-        hist._entries[("EURUSD", "2025-09")] = _mk_entry("EURUSD", "2025-09")
+        hist._entries[("EURUSD", "2025-08", "oco_first_touch")] = _mk_entry("EURUSD", "2025-08")
+        hist._entries[("EURUSD", "2025-09", "oco_first_touch")] = _mk_entry("EURUSD", "2025-09")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
         server._config.governance_missing_month_policy = "error"
         server._config.force_model_month = ""
 
-        aug = server._resolve_runtime_contract(
+        aug = server._resolve_runtime_contract_for_family(
             "EURUSD",
+            "oco_first_touch",
             datetime(2025, 8, 31, 23, 59, 59, tzinfo=timezone.utc),
         )
-        sep = server._resolve_runtime_contract(
+        sep = server._resolve_runtime_contract_for_family(
             "EURUSD",
+            "oco_first_touch",
             datetime(2025, 9, 1, 0, 0, 0, tzinfo=timezone.utc),
         )
         assert aug.model_month == "2025-08"
@@ -240,7 +249,7 @@ def test_resolve_runtime_contract_rejects_invalid_force_month_format() -> None:
 
     try:
         hist = HistoricalCandidateRegistry()
-        hist._entries[("EURUSD", "2025-08")] = _mk_entry("EURUSD", "2025-08")
+        hist._entries[("EURUSD", "2025-08", "oco_first_touch")] = _mk_entry("EURUSD", "2025-08")
         server._historical_registry = hist
         server._registry = None
         server._config.governance_mode = "historical_auto"
