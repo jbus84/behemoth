@@ -296,7 +296,7 @@ def test_symbol_local_family_set_excludes_cross_symbol_families() -> None:
     assert "lead_lag" not in wfo.SYMBOL_LOCAL_WFO_FAMILIES
 
 
-def test_registry_event_builder_uses_family_protocol_for_pullback() -> None:
+def test_registry_event_builder_uses_family_protocol_for_pullback(tmp_path) -> None:
     import numpy as np
     import pandas as pd
 
@@ -366,6 +366,9 @@ def test_registry_event_builder_uses_family_protocol_for_pullback() -> None:
             q_fit={},
             cands=cands,
             max_events_per_candidate=10,
+            bar_ticks=100,
+            dataset_dir=tmp_path,
+            horizons=[1],
         )
 
         assert not events.empty
