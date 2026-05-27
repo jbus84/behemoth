@@ -240,8 +240,8 @@ class TestModelRegistryCacheFallback:
 
 class TestLoadModelsMultiFamily:
     def test_load_models_skips_when_no_families(self, monkeypatch) -> None:
-        from src.behemoth.core.registry import CandidateRegistry
         from src.behemoth.api import server
+        from src.behemoth.core.registry import CandidateRegistry
 
         empty_reg = CandidateRegistry()
         monkeypatch.setattr(server, "_registry", empty_reg)

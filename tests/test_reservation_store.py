@@ -1,4 +1,3 @@
-import pytest
 from src.behemoth.runtime.reservation_store import ReservationStore
 from src.behemoth.runtime.state_store import InMemoryStateStore
 
@@ -7,7 +6,7 @@ class TestReservationStoreFamily:
     def test_create_reservation_with_family(self):
         store = InMemoryStateStore()
         rs = ReservationStore(store)
-        rid = rs.create_account_risk_reservation(
+        rs.create_account_risk_reservation(
             symbol="EURUSD",
             candidate_uid="directional|eurusd|100|h4|k1",
             reserved_loss_ccy=100.0,
