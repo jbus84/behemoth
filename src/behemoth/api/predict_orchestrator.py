@@ -306,16 +306,10 @@ class PredictionOrchestrator:
         all_candidates: list[Any] = []
         first_contract: Any = None
         for family in families:
-            try:
-                family_contract = self._catalog.resolve_contract(sym, close_ts, family=family)
-                all_candidates.extend(family_contract.candidates)
-                if first_contract is None:
-                    first_contract = family_contract
-            except (LookupError, KeyError) as exc:
-                logger.warning(
-                    "Aggregate contract: skipped %s family %s: %s", sym, family, exc
-                )
-                continue
+            family_contract = self._catalog.resolve_contract(sym, close_ts, family=family)
+            all_candidates.extend(family_contract.candidates)
+            if first_contract is None:
+                first_contract = family_contract
 
         if not all_candidates or first_contract is None:
             raise KeyError(f"No historical contracts resolved for {sym}")

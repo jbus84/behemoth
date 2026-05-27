@@ -167,7 +167,7 @@ class CandidateCatalog:
             raise LookupError(f"No candidates registered for {symbol}")
         # Use the first family's bundle_paths as the "primary" contract metadata.
         # Per-family dispatch happens downstream in server.py.
-        first_family = all_candidates[0].family or "unknown"
+        first_family = all_candidates[0].family
         bundle_paths = self._live_registry.get_bundle_paths(symbol, first_family)
         if not bundle_paths:
             raise LookupError(f"No bundle paths registered for {symbol}")

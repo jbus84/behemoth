@@ -1359,6 +1359,20 @@ def _require_family(cand: Any) -> str:
     return family
 
 
+def _requested_historical_month_or_422(close_ts: datetime) -> str:
+    """Return exact historical month requested by runtime configuration."""
+    month_str = str(_config.force_model_month or "").strip()
+    if month_str:
+        requested_month = _normalize_model_month(month_str)
+        if requested_month is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={month_str!r}; expected YYYY-MM",
+            )
+        return requested_month
+    return close_ts.strftime("%Y-%m")
+
+
 def _regime_cmp(value: float, threshold: float, *, op: str) -> bool:
     if not (math.isfinite(float(value)) and math.isfinite(float(threshold))):
         return True
@@ -3136,13 +3150,32 @@ async def predict_warmup(req: WarmupRequest) -> dict:
     run_id = req.run_id or "warmup"
 
     close_ts_now = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
-    contract = _resolve_runtime_contract(sym, close_ts_now)
-    if not contract.candidates:
+
+    # Discover candidates: aggregate in live mode, per-family in historical mode
+    if _is_historical_mode():
+        if _historical_registry is None:
+            raise HTTPException(status_code=503, detail="Historical registry not loaded")
+        month = _requested_historical_month_or_422(close_ts_now)
+        families = _historical_registry.families_for_symbol_month(sym, month)
+        if not families:
+            raise HTTPException(
+                status_code=422,
+                detail=f"No historical families for {sym} month {month}",
+            )
+        all_candidates: list[Any] = []
+        for family in families:
+            family_contract = _resolve_runtime_contract_for_family(sym, family, close_ts_now)
+            all_candidates.extend(family_contract.candidates)
+        contract_candidates = all_candidates
+    else:
+        contract = _resolve_runtime_contract(sym, close_ts_now)
+        contract_candidates = list(contract.candidates)
+    if not contract_candidates:
         raise HTTPException(status_code=422, detail=f"No candidates for {sym}")
 
     warmup_needed = _state.warmup_bars
     bars_by_ticks: dict[int, pd.DataFrame] = {}
-    for cand in contract.candidates:
+    for cand in contract_candidates:
         bar_ticks = int(cand.bar_ticks)
         if bar_ticks in bars_by_ticks:
             continue
@@ -3170,7 +3203,7 @@ async def predict_warmup(req: WarmupRequest) -> dict:
 
     # Group candidates by family and dispatch per-family model/threshold
     by_family: dict[str, list[Any]] = {}
-    for cand in contract.candidates:
+    for cand in contract_candidates:
         fam = _require_family(cand)
         by_family.setdefault(fam, []).append(cand)
 
@@ -3343,7 +3376,7 @@ async def open_trade(req: TradeOpenRequest):
             if scan["broker_pos_id"] is None:
                 _barrier_manager.set_broker_pos_id(scan["scan_id"], req.broker_pos_id)
                 break
-    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family or "unknown", status="OPEN").inc()
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family, status="OPEN").inc()
     out = {"status": "ok", "internal_trade_id": internal_id}
     _append_http_trace(
         endpoint="/trades/open",
@@ -3428,11 +3461,33 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
     if train_pred_dir is not None:
         for sym in symbols:
             try:
-                contract = _resolve_runtime_contract(sym, now_ts)
-                if not contract.candidates:
+                # Discover candidates per-family in historical mode
+                if _is_historical_mode():
+                    if _historical_registry is None:
+                        phase1_events[sym] = 0
+                        continue
+                    month = _requested_historical_month_or_422(now_ts)
+                    families = _historical_registry.families_for_symbol_month(sym, month)
+                    if not families:
+                        phase1_events[sym] = 0
+                        continue
+                    all_candidates: list[Any] = []
+                    first_model_month: str = ""
+                    for family in families:
+                        family_contract = _resolve_runtime_contract_for_family(sym, family, now_ts)
+                        all_candidates.extend(family_contract.candidates)
+                        if not first_model_month:
+                            first_model_month = family_contract.model_month
+                    contract_candidates = all_candidates
+                    month_tag = first_model_month or month
+                else:
+                    contract = _resolve_runtime_contract(sym, now_ts)
+                    contract_candidates = list(contract.candidates)
+                    month_tag = contract.model_month
+
+                if not contract_candidates:
                     phase1_events[sym] = 0
                     continue
-                month_tag = contract.model_month
                 pred_path = train_pred_dir / f"{sym}_train_predictions_{month_tag}.parquet"
                 if not pred_path.exists():
                     logger.warning(
@@ -3441,7 +3496,7 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                     phase1_events[sym] = 0
                     continue
                 total_for_sym = 0
-                for cand in contract.candidates:
+                for cand in contract_candidates:
                     family = _require_family(cand)
                     canonical_uid = (
                         f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
@@ -3505,39 +3560,45 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
             events_by_symbol[sym] = 0
             continue
 
-        # Resolve live model contract — uses identical canonical_uid format as /predict
-        try:
-            contract = _resolve_runtime_contract(sym, now_ts)
-        except HTTPException as exc:
-            logger.warning(
-                "seed_audit_history: cannot resolve contract for %s: %s", sym, exc.detail
-            )
-            events_by_symbol[sym] = 0
-            continue
-        if not contract.candidates:
-            events_by_symbol[sym] = 0
-            continue
-        try:
-            model, thr_cfg = _ensure_model_and_threshold(contract)
-        except HTTPException as exc:
-            logger.warning(
-                "seed_audit_history: cannot load model for %s: %s", sym, exc.detail
-            )
-            events_by_symbol[sym] = 0
-            continue
-        if model is None:
-            events_by_symbol[sym] = 0
-            continue
+        # Discover candidates per-family in historical mode
+        if _is_historical_mode():
+            if _historical_registry is None:
+                events_by_symbol[sym] = 0
+                continue
+            month = _requested_historical_month_or_422(now_ts)
+            families = _historical_registry.families_for_symbol_month(sym, month)
+            if not families:
+                events_by_symbol[sym] = 0
+                continue
+            all_candidates = []
+            for family in families:
+                family_contract = _resolve_runtime_contract_for_family(sym, family, now_ts)
+                all_candidates.extend(family_contract.candidates)
+            contract_candidates = all_candidates
+        else:
+            try:
+                contract = _resolve_runtime_contract(sym, now_ts)
+            except HTTPException as exc:
+                logger.warning(
+                    "seed_audit_history: cannot resolve contract for %s: %s", sym, exc.detail
+                )
+                events_by_symbol[sym] = 0
+                continue
+            if not contract.candidates:
+                events_by_symbol[sym] = 0
+                continue
+            contract_candidates = list(contract.candidates)
 
-        static_thr = float(thr_cfg.get("threshold_exec", 0.5))
-        bar_ticks = int(contract.candidates[0].bar_ticks)
-        if len({c.bar_ticks for c in contract.candidates}) != 1:
+        # Determine uniform bar_ticks across all candidates
+        bar_ticks_set = {int(c.bar_ticks) for c in contract_candidates}
+        if len(bar_ticks_set) != 1:
             logger.warning(
                 "seed_audit_history: mixed bar_ticks for %s — skipping (only uniform bar_ticks supported)",
                 sym,
             )
             events_by_symbol[sym] = 0
             continue
+        bar_ticks = bar_ticks_set.pop()
 
         # Isolated replay — never writes to live tick_bars
         replay_state = StateManager(
@@ -3566,69 +3627,90 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
             # Convert bars to DataFrame for vectorized processing
             bars_df = pd.DataFrame([b.model_dump() for b in bars])
 
-            for cand in contract.candidates:
-                # ── Vectorized Feature Computation ──
-                # Process the entire history of bars in one pass of rolling windows
-                features_df = compute_feature_matrix_from_bars(
-                    bars_df,
-                    symbol=sym,
-                    bar_ticks=bar_ticks,
-                    horizon=cand.horizon,
-                    barrier_pips=cand.barrier_pips,
-                    cfg=FeatureConfig(
-                        vol_window=_config.vol_window,
-                        cost_window=_config.cost_window,
-                    ),
-                )
-                if features_df is None or features_df.empty:
+            # Group candidates by family and dispatch per-family model/threshold
+            by_family: dict[str, list[Any]] = {}
+            for cand in contract_candidates:
+                fam = _require_family(cand)
+                by_family.setdefault(fam, []).append(cand)
+
+            for family, family_cands in by_family.items():
+                # Resolve per-family contract and load model/threshold
+                family_contract = _resolve_runtime_contract_for_family(sym, family, now_ts)
+                try:
+                    model, thr_cfg = _ensure_model_and_threshold(family_contract)
+                except HTTPException as exc:
+                    logger.warning(
+                        "seed_audit_history: cannot load model for %s family %s: %s",
+                        sym, family, exc.detail,
+                    )
                     continue
-
-                # Identify rows with sufficient history (no NaNs in features)
-                valid_mask = features_df.notna().all(axis=1)
-                valid_features = features_df[valid_mask]
-                if valid_features.empty:
+                if model is None:
+                    logger.warning(
+                        "seed_audit_history: no model for %s family %s", sym, family
+                    )
                     continue
+                static_thr = float(thr_cfg.get("threshold_exec", 0.5))
+                model_month = family_contract.model_month
 
-                # ── Batch Inference ──
-                # Match ModelFeatures schema order for CatBoost input
-                X = valid_features[[
-                    "cost_est_pips", "range_pips", "ret1_pips", "ret_z", "ret_abs_z",
-                    "vel_cost_units_h1", "vel_abs_cost_units_h1", "spread_z", "tick_rate_z",
-                    "hour_utc", "hl_first", "hl_first_mean_24", "hl_pos_frac_mean_24",
-                    "bar_ticks", "horizon", "barrier_pips"
-                ]].values
+                for cand in family_cands:
+                    # ── Vectorized Feature Computation ──
+                    features_df = compute_feature_matrix_from_bars(
+                        bars_df,
+                        symbol=sym,
+                        bar_ticks=bar_ticks,
+                        horizon=cand.horizon,
+                        barrier_pips=cand.barrier_pips,
+                        cfg=FeatureConfig(
+                            vol_window=_config.vol_window,
+                            cost_window=_config.cost_window,
+                        ),
+                    )
+                    if features_df is None or features_df.empty:
+                        continue
 
-                family = _require_family(cand)
+                    # Identify rows with sufficient history (no NaNs in features)
+                    valid_mask = features_df.notna().all(axis=1)
+                    valid_features = features_df[valid_mask]
+                    if valid_features.empty:
+                        continue
 
-                # Metadata-level inference: release GIL during bulk CatBoost scoring if possible
-                with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
-                    pred_probs = model.predict_proba(X)[:, 1]
+                    # ── Batch Inference ──
+                    X = valid_features[[
+                        "cost_est_pips", "range_pips", "ret1_pips", "ret_z", "ret_abs_z",
+                        "vel_cost_units_h1", "vel_abs_cost_units_h1", "spread_z", "tick_rate_z",
+                        "hour_utc", "hl_first", "hl_first_mean_24", "hl_pos_frac_mean_24",
+                        "bar_ticks", "horizon", "barrier_pips"
+                    ]].values
 
-                # ── Batch Logging to DuckDB ──
-                canonical_uid = (
-                    f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
-                )
-                valid_bars = bars_df.loc[valid_features.index]
-                events_batch = []
+                    # Metadata-level inference: release GIL during bulk CatBoost scoring if possible
+                    with METRIC_INFERENCE_LATENCY.labels(symbol=sym, family=family).time():
+                        pred_probs = model.predict_proba(X)[:, 1]
 
-                for i in range(len(valid_features)):
-                    row_feat = valid_features.iloc[i]
-                    # Serialize the features into the JSON format expected by audit_logs
-                    feat_obj = ModelFeatures(**row_feat.to_dict())
+                    # ── Batch Logging to DuckDB ──
+                    canonical_uid = (
+                        f"{family}|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                    )
+                    valid_bars = bars_df.loc[valid_features.index]
+                    events_batch = []
 
-                    events_batch.append((
-                        valid_bars.iloc[i]["close_ts"],
-                        sym,
-                        canonical_uid,
-                        float(pred_probs[i]),
-                        static_thr,
-                        feat_obj.model_dump_json(),
-                        contract.model_month,
-                        req.run_id,
-                    ))
+                    for i in range(len(valid_features)):
+                        row_feat = valid_features.iloc[i]
+                        # Serialize the features into the JSON format expected by audit_logs
+                        feat_obj = ModelFeatures(**row_feat.to_dict())
 
-                _state.log_audit_event_batch(events_batch)
-                n_written += len(events_batch)
+                        events_batch.append((
+                            valid_bars.iloc[i]["close_ts"],
+                            sym,
+                            canonical_uid,
+                            float(pred_probs[i]),
+                            static_thr,
+                            feat_obj.model_dump_json(),
+                            model_month,
+                            req.run_id,
+                        ))
+
+                    _state.log_audit_event_batch(events_batch)
+                    n_written += len(events_batch)
         finally:
             replay_state.close()
 
@@ -3705,7 +3787,7 @@ async def update_trade(req: TradeUpdateRequest):
             reason=f"trade_{req.status.value.lower()}",
         )
 
-    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family or "unknown", status=req.status.value).inc()
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, family=req.family, status=req.status.value).inc()
     if req.pnl_pips is not None:
         # Note: We need a way to look up the symbol from broker_pos_id if we want granular metrics here.
         # For now, we update a global or handle it in the background worker.

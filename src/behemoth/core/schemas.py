@@ -372,12 +372,9 @@ class TradeOpenRequest(BaseModel):
     entry_price: float
     entry_ts: datetime
     horizon: int
+    family: str = Field(..., min_length=1)
     reservation_id: str | None = None
     run_id: str | None = None
-    family: str | None = Field(
-        default=None,
-        description="Mining family provenance for the trade.",
-    )
 
 
 class TradeTouchRequest(BaseModel):
@@ -400,16 +397,13 @@ class TradeUpdateRequest(BaseModel):
     symbol: str
     broker_pos_id: str
     status: TradeStatus
+    family: str = Field(..., min_length=1)
     exit_price: float | None = None
     exit_ts: datetime | None = None
     pnl_pips: float | None = None
     run_id: str | None = None
     close_reason: str | None = None
     commission_ccy: float | None = None
-    family: str | None = Field(
-        default=None,
-        description="Mining family provenance for the trade.",
-    )
 
 
 class AccountRiskSnapshotRequest(BaseModel):

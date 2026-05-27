@@ -146,12 +146,18 @@ class CandidateRegistry:
     def get_cap_pips(self, symbol: str, family: str) -> float:
         """Return the locked production cap for a symbol/family pair."""
         sym = symbol.upper()
-        return self._caps_by_symbol_family.get((sym, family), 1.2)
+        key = (sym, family)
+        if key not in self._caps_by_symbol_family:
+            raise KeyError(f"No cap_pips binding for {sym} family {family}")
+        return self._caps_by_symbol_family[key]
 
     def get_bundle_paths(self, symbol: str, family: str) -> BundlePaths | None:  # type: ignore
         """Return frozen bundle paths for a symbol/family pair."""
         sym = symbol.upper()
-        return self._bundle_paths_by_symbol_family.get((sym, family))
+        key = (sym, family)
+        if key not in self._bundle_paths_by_symbol_family:
+            raise KeyError(f"No bundle paths binding for {sym} family {family}")
+        return self._bundle_paths_by_symbol_family[key]
 
     def all_candidates(self) -> list[CandidateSpec]:
         """Return all candidates across all symbols."""
