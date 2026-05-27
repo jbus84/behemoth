@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -14,6 +15,16 @@ from src.behemoth.ops.process_graph import (
     validate_stage_graph,
 )
 from src.behemoth.ops.process_registry import load_stage_registry
+
+
+def _load_refresh_context_module():
+    path = Path("scripts/refresh_context_from_graphify.py")
+    spec = importlib.util.spec_from_file_location("refresh_context_from_graphify", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _write_registry(path: Path) -> None:
@@ -115,6 +126,27 @@ def test_build_stage_graph_filters_graphify_to_declared_scope(tmp_path: Path) ->
     assert all(".worktrees" not in path for path in node_paths)
     assert all(not path.startswith("data/") for path in node_paths)
     assert graph["scope"]["stage_id"] == "stage14"
+
+
+def test_context_refresh_ignores_docs_and_generated_graph_nodes(tmp_path: Path) -> None:
+    module = _load_refresh_context_module()
+    graph = {
+        "nodes": [
+            {"id": "api", "label": "server.py", "source_file": str(tmp_path / "src/behemoth/api/server.py")},
+            {"id": "runtime", "label": "state.py", "source_file": str(tmp_path / "src/behemoth/runtime/state.py")},
+            {"id": "docs", "label": "old docs", "source_file": str(tmp_path / "docs/analysis/stale.md")},
+            {"id": "site", "label": "built docs", "source_file": str(tmp_path / "site/index.html")},
+            {"id": "graph", "label": "old graph", "source_file": str(tmp_path / "graphify-out/graph.json")},
+        ],
+        "links": [
+            {"source": "api", "target": "runtime"},
+            {"source": "api", "target": "docs"},
+            {"source": "docs", "target": "site"},
+            {"source": "site", "target": "graph"},
+        ],
+    }
+
+    assert module.extract_god_nodes(graph) == [("server.py", 1), ("state.py", 1)]
 
 
 def test_build_stage_graph_fails_when_scoped_graph_exceeds_budget(tmp_path: Path) -> None:

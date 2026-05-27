@@ -4,6 +4,63 @@
 import json
 from pathlib import Path
 
+CONTEXT_ALLOW_PREFIXES = (
+    "configs/",
+    "scripts/",
+    "src/",
+    "tests/",
+    "Makefile",
+    "mkdocs.yml",
+    "pyproject.toml",
+)
+CONTEXT_DENY_PREFIXES = (
+    ".git/",
+    ".venv/",
+    ".worktrees/",
+    "data/",
+    "docs/",
+    "graphify-out/",
+    "site/",
+)
+
+
+def _normalise_node_path(node: dict) -> str:
+    raw = str(node.get("source_file") or node.get("id") or node.get("label") or "")
+    path = Path(raw)
+    if path.is_absolute():
+        try:
+            raw = path.relative_to(Path.cwd()).as_posix()
+        except ValueError:
+            for marker in (
+                "configs",
+                "data",
+                "docs",
+                "graphify-out",
+                "scripts",
+                "site",
+                "src",
+                "tests",
+            ):
+                if marker in path.parts:
+                    raw = "/".join(path.parts[path.parts.index(marker) :])
+                    break
+            else:
+                raw = path.as_posix()
+    return raw.removeprefix("./")
+
+
+def include_context_node(node: dict) -> bool:
+    """Return whether a raw Graphify node belongs in CONTEXT.md refreshes."""
+    path = _normalise_node_path(node)
+    if not path or path.endswith(".min.js") or path.startswith("lunr"):
+        return False
+    parts = path.split("/")
+    if "graphify-out" in parts:
+        return False
+    if any(path.startswith(prefix) for prefix in CONTEXT_DENY_PREFIXES):
+        return False
+    return any(path == prefix or path.startswith(prefix) for prefix in CONTEXT_ALLOW_PREFIXES)
+
 
 def extract_god_nodes(graph_report: dict) -> list[tuple[str, int]]:
     """Extract god nodes (most connected) from graphify report."""
@@ -19,20 +76,20 @@ def extract_god_nodes(graph_report: dict) -> list[tuple[str, int]]:
     nodes = graph_report["nodes"]
     links = graph_report["links"]
 
-    # Count edges per node (skip obvious non-core nodes like JS libraries)
+    # Count edges per node, scoped to active source/config/test paths.
     degree = {}
+    included_ids = set()
     for node in nodes:
         node_id = node["id"]
-        # Skip JS files and other noise
-        if node_id.endswith(".min.js") or node_id.startswith("lunr"):
+        if not include_context_node(node):
             continue
         degree[node_id] = 0
+        included_ids.add(node_id)
 
     for link in links:
         src, tgt = link.get("source"), link.get("target")
-        if src in degree:
+        if src in included_ids and tgt in included_ids:
             degree[src] += 1
-        if tgt in degree:
             degree[tgt] += 1
 
     # Sort by degree and get node labels
