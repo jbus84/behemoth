@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from src.behemoth.governance.stage_contracts import render_stage_io_contract  # noqa: E402
 from src.behemoth.ops.process_graph import (  # noqa: E402
     build_stage_graph,
     render_stage_capsule_markdown,
@@ -63,8 +64,12 @@ def main() -> None:
     for stage_id in sorted(registry.stages):
         stage = registry.require_stage(stage_id)
         graph = build_stage_graph(stage, repo_root=REPO_ROOT, graphify_json=args.graphify_json)
+        md = render_stage_capsule_markdown(stage, graph)
+        contract_md = render_stage_io_contract(stage_id)
+        if contract_md:
+            md += "\n\n" + contract_md
         (args.docs_dir / f"{stage_id}.md").write_text(
-            render_stage_capsule_markdown(stage, graph),
+            md,
             encoding="utf-8",
         )
         (args.graph_dir / f"{stage_id}_graph.json").write_text(
