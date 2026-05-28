@@ -914,9 +914,6 @@ def test_build_summary_covers_all_libraries():
         "dollar_residual", "dispersion_rank", "lead_lag",
     }
 
-
-import json
-
 def test_mining_emits_stage02_manifest(tmp_path: Path) -> None:
     from behemoth.governance.stage_contracts import MINING_OUTPUT_LIBRARIES
     from behemoth.governance.stage_contracts import build_mining_output_manifest
