@@ -19,6 +19,18 @@ def client():
         yield c
 
 
+def _make_contract(candidates):
+    return SimpleNamespace(
+        candidates=candidates,
+        model_month="2025-01",
+        cap_pips=1.2,
+        cache_key="test",
+        bundle_paths=mock.MagicMock(),
+        source="live",
+        lock_path=None,
+    )
+
+
 def test_predict_blocks_on_rolling_threshold_gap_in_live_mode(client):
     # Setup mocks
     cand = mock.MagicMock()
@@ -64,18 +76,20 @@ def test_predict_blocks_on_rolling_threshold_gap_in_live_mode(client):
     try:
         with (
             mock.patch.object(
+                server._orchestrator._catalog,
+                "resolve_contract",
+                return_value=_make_contract([cand]),
+            ),
+            mock.patch.object(
                 server,
-                "_resolve_runtime_contract",
-                return_value=SimpleNamespace(
-                    candidates=[cand],
-                    model_month="2025-01",
-                    cap_pips=1.2,
-                ),
+                "_resolve_runtime_contract_for_family",
+                return_value=_make_contract([cand]),
             ),
             mock.patch.object(
                 server, "_ensure_model_and_threshold", return_value=(dummy_model, thr_cfg)
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "bar_count", return_value=100),
             mock.patch.object(server._state, "compute_features", return_value=feat),
             mock.patch.object(server._state, "compute_regime_quantiles", return_value={}),
             mock.patch.object(
@@ -151,18 +165,20 @@ def test_predict_blocks_on_expired_schedule_in_live_mode(client):
     try:
         with (
             mock.patch.object(
+                server._orchestrator._catalog,
+                "resolve_contract",
+                return_value=_make_contract([cand]),
+            ),
+            mock.patch.object(
                 server,
-                "_resolve_runtime_contract",
-                return_value=SimpleNamespace(
-                    candidates=[cand],
-                    model_month="2025-01",
-                    cap_pips=1.2,
-                ),
+                "_resolve_runtime_contract_for_family",
+                return_value=_make_contract([cand]),
             ),
             mock.patch.object(
                 server, "_ensure_model_and_threshold", return_value=(dummy_model, thr_cfg)
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "bar_count", return_value=100),
             mock.patch.object(server._state, "compute_features", return_value=feat),
             mock.patch.object(server._state, "compute_regime_quantiles", return_value={}),
             mock.patch.object(
@@ -231,18 +247,20 @@ def test_predict_blocks_without_rolling_config_in_research_mode(client):
     try:
         with (
             mock.patch.object(
+                server._orchestrator._catalog,
+                "resolve_contract",
+                return_value=_make_contract([cand]),
+            ),
+            mock.patch.object(
                 server,
-                "_resolve_runtime_contract",
-                return_value=SimpleNamespace(
-                    candidates=[cand],
-                    model_month="2025-01",
-                    cap_pips=1.2,
-                ),
+                "_resolve_runtime_contract_for_family",
+                return_value=_make_contract([cand]),
             ),
             mock.patch.object(
                 server, "_ensure_model_and_threshold", return_value=(dummy_model, thr_cfg)
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "bar_count", return_value=100),
             mock.patch.object(server._state, "compute_features", return_value=feat),
             mock.patch.object(server._state, "compute_regime_quantiles", return_value={}),
             mock.patch.object(
