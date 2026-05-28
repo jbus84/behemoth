@@ -913,3 +913,18 @@ def test_build_summary_covers_all_libraries():
         "directional", "oco", "oco_asymmetric", "no_touch",
         "dollar_residual", "dispersion_rank", "lead_lag",
     }
+
+
+import json
+
+def test_mining_emits_stage02_manifest(tmp_path: Path) -> None:
+    from behemoth.governance.stage_contracts import MINING_OUTPUT_LIBRARIES
+    from behemoth.governance.stage_contracts import build_mining_output_manifest
+
+    manifest = build_mining_output_manifest(symbol="EURUSD")
+    assert manifest["stage"] == "stage02"
+    assert set(manifest["output_files"].keys()) == set(MINING_OUTPUT_LIBRARIES)
+    assert "library_families" in manifest
+    assert manifest["library_families"]["directional"] == [
+        "directional", "directional_inverse", "directional_run", "double_touch", "pullback"
+    ]

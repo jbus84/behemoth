@@ -57,6 +57,7 @@ from scripts.mining_family import (  # noqa: E402  # sys.path bootstrap above
     resolve_families,
 )
 from behemoth.governance.stage_contracts import (  # noqa: E402
+    build_mining_output_manifest,
     CANDIDATE_FILENAME_TEMPLATE,
     MINING_LIBRARY_FAMILIES,
     MINING_OUTPUT_LIBRARIES,
@@ -1552,6 +1553,14 @@ def main() -> None:
     s_path = out_dir / SUMMARY_FILENAME_TEMPLATE.format(symbol=symbol)
     summary.to_csv(s_path, index=False)
     print(f"wrote: {s_path}", flush=True)
+
+    import json
+
+    manifest_path = out_dir / f"{symbol}_stage02_manifest.json"
+    manifest = build_mining_output_manifest(symbol=symbol)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote: {manifest_path}", flush=True)
+
     print(f"wrote: {fills_path}", flush=True)
 
     report_out = Path(str(cfg["report_out"]))
