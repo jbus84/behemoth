@@ -4,7 +4,7 @@ dataset_dir: data/analysis/tick_velocity
 # Tick universes and forecast horizons
 bar_ticks_grid: "100,1000,2000,5000,10000"
 horizons: "1,3,6"
-barrier_grid_pips: "1,3,8"
+barrier_grid_pips: "4,10,20"
 
 # Strict causal split
 train_years: "2022,2023,2024"
