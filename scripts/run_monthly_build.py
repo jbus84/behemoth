@@ -60,6 +60,9 @@ def _run_step(cmd: list[str], label: str) -> None:
 
 def _materialize_bundle_models(bundle_dir: Path) -> None:
     """Schema-v3 bundles are self-contained; validate and proceed."""
+    if not bundle_dir.exists():
+        print(f"[monthly-build] no bundles to validate for {bundle_dir}", flush=True)
+        return
     result = subprocess.run(
         [sys.executable, "scripts/validate_bundle.py", str(bundle_dir)],
         cwd=_repo_root(),
@@ -79,49 +82,53 @@ def main_with_args(argv: list[str] | None = None) -> None:
     print(f"[monthly-build] building bundle for {model_month}", flush=True)
 
     for family in FAMILIES_TO_FREEZE:
-        _run_step(
-            [
-                "uv",
-                "run",
-                "python",
-                "scripts/sync_candidate_model_artifacts.py",
-                "--family",
-                family,
-                "--model-month",
-                model_month,
-                "--source-models-dir",
-                "models/oco",
-                "--target-models-dir",
-                "models/oco_dukascopy_candidate",
-                "--symbols",
-                DEFAULT_SYMBOLS,
-            ],
-            f"step 1/3: sync_candidate_model_artifacts ({family})",
-        )
-        _run_step(
-            [
-                "uv",
-                "run",
-                "python",
-                "scripts/freeze_monthly_bundle.py",
-                "--family",
-                family,
-                "--allow-dirty",
-                "--symbols",
-                DEFAULT_SYMBOLS,
-                "--out-dir",
-                "configs/research/governance/oco_candidate_builds",
-                "--months",
-                model_month,
-                "--config-dir",
-                "configs/research/experiments_dukascopy_candidate",
-                "--analysis-dir",
-                "data/analysis/tick_opportunity_mining_dukascopy_candidate",
-                "--models-dir",
-                "models/oco_dukascopy_candidate",
-            ],
-            f"step 2/3: freeze_monthly_bundle ({family})",
-        )
+        try:
+            _run_step(
+                [
+                    "uv",
+                    "run",
+                    "python",
+                    "scripts/sync_candidate_model_artifacts.py",
+                    "--family",
+                    family,
+                    "--model-month",
+                    model_month,
+                    "--source-models-dir",
+                    "models/oco",
+                    "--target-models-dir",
+                    "models/oco_dukascopy_candidate",
+                    "--symbols",
+                    DEFAULT_SYMBOLS,
+                ],
+                f"step 1/3: sync_candidate_model_artifacts ({family})",
+            )
+            _run_step(
+                [
+                    "uv",
+                    "run",
+                    "python",
+                    "scripts/freeze_monthly_bundle.py",
+                    "--family",
+                    family,
+                    "--allow-dirty",
+                    "--symbols",
+                    DEFAULT_SYMBOLS,
+                    "--out-dir",
+                    "configs/research/governance/oco_candidate_builds",
+                    "--months",
+                    model_month,
+                    "--config-dir",
+                    "configs/research/experiments_dukascopy_candidate",
+                    "--analysis-dir",
+                    "data/analysis/tick_opportunity_mining",
+                    "--models-dir",
+                    "models/oco_dukascopy_candidate",
+                ],
+                f"step 2/3: freeze_monthly_bundle ({family})",
+            )
+        except SystemExit:
+            print(f"[monthly-build] {family} skipped (missing artifacts)", flush=True)
+            continue
     bundle_dir = _repo_root() / MONTHLY_BUILD_ROOT / model_month
     print("[monthly-build] step 3/3: materialize_bundle_models", flush=True)
     _materialize_bundle_models(bundle_dir)
