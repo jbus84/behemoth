@@ -11,7 +11,7 @@ Producers and consumers import from here rather than restating facts.
 
 from __future__ import annotations
 
-import json
+from typing import Any
 
 # === Stage 02 (Opportunity Mining) -> Stage 03 (Monthly WFO) ===
 
@@ -118,7 +118,7 @@ CANDIDATE_REQUIRED_COLUMNS: list[str] = [
 
 # === Stage I/O Contracts ===
 
-STAGE02_CONTRACT: dict[str, any] = {
+STAGE02_CONTRACT: dict[str, Any] = {
     "stage_id": "stage02",
     "produced_by": None,
     "input_patterns": [
@@ -135,7 +135,7 @@ STAGE02_CONTRACT: dict[str, any] = {
     ],
 }
 
-STAGE03_CONTRACT: dict[str, any] = {
+STAGE03_CONTRACT: dict[str, Any] = {
     "stage_id": "stage03",
     "produced_by": "stage02",
     "input_patterns": [
@@ -149,7 +149,7 @@ STAGE03_CONTRACT: dict[str, any] = {
 }
 
 
-def build_mining_output_manifest(*, symbol: str) -> dict[str, any]:
+def build_mining_output_manifest(*, symbol: str) -> dict[str, Any]:
     """Return a JSON-serialisable manifest describing the Stage 02 outputs."""
     return {
         "stage": "stage02",
