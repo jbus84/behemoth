@@ -884,3 +884,32 @@ def test_mining_script_runs_as_direct_file_invocation(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert "ModuleNotFoundError" not in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_build_summary_covers_all_libraries():
+    import pandas as pd
+    from scripts.run_tick_opportunity_mining import _build_summary
+
+    def _make_df(lib: str) -> pd.DataFrame:
+        return pd.DataFrame({
+            "selection_pass": [True],
+            "mean_gross_pips_test": [1.0],
+            "random_baseline_z": [0.5],
+        }).assign(library=lib)
+
+    dfs = {
+        "directional": _make_df("directional"),
+        "oco": _make_df("oco"),
+        "oco_asymmetric": _make_df("oco_asymmetric"),
+        "no_touch": _make_df("no_touch"),
+        "dollar_residual": _make_df("dollar_residual"),
+        "dispersion_rank": _make_df("dispersion_rank"),
+        "lead_lag": _make_df("lead_lag"),
+    }
+    summary = _build_summary(dfs)
+    assert len(summary) == 7
+    libs = set(summary["library"].tolist())
+    assert libs == {
+        "directional", "oco", "oco_asymmetric", "no_touch",
+        "dollar_residual", "dispersion_rank", "lead_lag",
+    }

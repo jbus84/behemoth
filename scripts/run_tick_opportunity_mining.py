@@ -922,15 +922,12 @@ def _stamp_candidate_contract(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _build_summary(
-    directional: pd.DataFrame, oco: pd.DataFrame, no_touch: pd.DataFrame
+    library_dfs: dict[str, pd.DataFrame],
 ) -> pd.DataFrame:
     frames = []
-    if not directional.empty:
-        frames.append(directional.assign(library="directional"))
-    if not oco.empty:
-        frames.append(oco.assign(library="oco"))
-    if not no_touch.empty:
-        frames.append(no_touch.assign(library="no_touch"))
+    for lib, df in library_dfs.items():
+        if not df.empty:
+            frames.append(df.assign(library=lib))
     summary_rows: list[dict[str, Any]] = []
     if frames:
         all_df = pd.concat(frames, ignore_index=True)
@@ -1499,7 +1496,15 @@ def run(
     if not lead_lag.empty:
         lead_lag = _assign_quality_tier(lead_lag, library="directional")
         lead_lag = _stamp_candidate_contract(lead_lag)
-    summary = _build_summary(directional, oco, no_touch)
+    summary = _build_summary({
+        "directional": directional,
+        "oco": oco,
+        "oco_asymmetric": oco_asymmetric,
+        "no_touch": no_touch,
+        "dollar_residual": dollar_residual,
+        "dispersion_rank": dispersion_rank,
+        "lead_lag": lead_lag,
+    })
     return (
         directional, oco, oco_asymmetric, no_touch,
         dollar_residual, dispersion_rank, lead_lag, summary, all_fills,
