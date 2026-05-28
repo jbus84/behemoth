@@ -888,6 +888,7 @@ def test_mining_script_runs_as_direct_file_invocation(tmp_path: Path) -> None:
 
 def test_build_summary_covers_all_libraries():
     import pandas as pd
+
     from scripts.run_tick_opportunity_mining import _build_summary
 
     def _make_df(lib: str) -> pd.DataFrame:
@@ -915,8 +916,10 @@ def test_build_summary_covers_all_libraries():
     }
 
 def test_mining_emits_stage02_manifest(tmp_path: Path) -> None:
-    from behemoth.governance.stage_contracts import MINING_OUTPUT_LIBRARIES
-    from behemoth.governance.stage_contracts import build_mining_output_manifest
+    from behemoth.governance.stage_contracts import (
+        MINING_OUTPUT_LIBRARIES,
+        build_mining_output_manifest,
+    )
 
     manifest = build_mining_output_manifest(symbol="EURUSD")
     assert manifest["stage"] == "stage02"

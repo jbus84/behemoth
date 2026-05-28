@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-import pytest
-
 
 class TestManifestExists:
     def test_can_import_stage_contracts(self):
         from behemoth.governance.stage_contracts import (
-            CANDIDATE_FILENAME_TEMPLATE,
-            FAMILY_TO_LIBRARY,
             MINING_LIBRARY_FAMILIES,
             MINING_OUTPUT_LIBRARIES,
-            QUALITY_TIER_LIBRARY,
-            CANDIDATE_REQUIRED_COLUMNS,
         )
 
         assert isinstance(MINING_LIBRARY_FAMILIES, dict)
@@ -27,7 +21,7 @@ class TestMiningAlignsWithManifest:
             "directional", "oco", "oco_asymmetric", "no_touch",
             "dollar_residual", "dispersion_rank", "lead_lag",
         ]
-        assert MINING_OUTPUT_LIBRARIES == expected
+        assert expected == MINING_OUTPUT_LIBRARIES
 
 
 class TestManifestInvariants:
@@ -56,7 +50,7 @@ class TestManifestInvariants:
         )
 
         all_families = set(FAMILY_TO_LIBRARY.keys())
-        assert LOCAL_FAMILIES | CROSS_SYMBOL_FAMILIES == all_families
+        assert all_families == LOCAL_FAMILIES | CROSS_SYMBOL_FAMILIES
         assert not (LOCAL_FAMILIES & CROSS_SYMBOL_FAMILIES)
 
     def test_mining_output_libraries_match_keys(self):
@@ -65,7 +59,7 @@ class TestManifestInvariants:
             MINING_OUTPUT_LIBRARIES,
         )
 
-        assert MINING_OUTPUT_LIBRARIES == list(MINING_LIBRARY_FAMILIES.keys())
+        assert list(MINING_LIBRARY_FAMILIES.keys()) == MINING_OUTPUT_LIBRARIES
 
     def test_required_columns_include_wfo_consumed_columns(self):
         from behemoth.governance.stage_contracts import CANDIDATE_REQUIRED_COLUMNS

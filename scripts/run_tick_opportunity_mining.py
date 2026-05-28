@@ -47,6 +47,14 @@ _SRC_ROOT = _REPO_ROOT / "src"
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
+from behemoth.governance.stage_contracts import (  # noqa: E402
+    CANDIDATE_FILENAME_TEMPLATE,
+    MINING_LIBRARY_FAMILIES,
+    MINING_OUTPUT_LIBRARIES,
+    QUALITY_TIER_LIBRARY,
+    SUMMARY_FILENAME_TEMPLATE,
+    build_mining_output_manifest,
+)
 from scripts.candidate_fills import (  # noqa: E402  # sys.path bootstrap above
     candidate_id,
     expand_fills,
@@ -55,14 +63,6 @@ from scripts.mining_family import (  # noqa: E402  # sys.path bootstrap above
     FAMILY_REGISTRY,
     _cached_float_col,
     resolve_families,
-)
-from behemoth.governance.stage_contracts import (  # noqa: E402
-    build_mining_output_manifest,
-    CANDIDATE_FILENAME_TEMPLATE,
-    MINING_LIBRARY_FAMILIES,
-    MINING_OUTPUT_LIBRARIES,
-    QUALITY_TIER_LIBRARY,
-    SUMMARY_FILENAME_TEMPLATE,
 )
 from scripts.mining_random_baseline import (  # noqa: E402  # sys.path bootstrap
     random_entry_baseline,
