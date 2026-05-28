@@ -52,6 +52,13 @@ from scripts.mining_family import (  # noqa: E402  # sys.path bootstrap above
     _cached_float_col,
     resolve_families,
 )
+from behemoth.governance.stage_contracts import (  # noqa: E402
+    CANDIDATE_FILENAME_TEMPLATE,
+    MINING_LIBRARY_FAMILIES,
+    MINING_OUTPUT_LIBRARIES,
+    QUALITY_TIER_LIBRARY,
+    SUMMARY_FILENAME_TEMPLATE,
+)
 from scripts.mining_random_baseline import (  # noqa: E402  # sys.path bootstrap
     random_entry_baseline,
 )
@@ -1462,49 +1469,26 @@ def run(
             "Run `make rebuild-all MONTHS=...` to build Stage 0 data."
         )
 
-    directional = pd.DataFrame(
-        per_family_rows.get("directional", [])
-        + per_family_rows.get("directional_inverse", [])
-        + per_family_rows.get("directional_run", [])
-        + per_family_rows.get("double_touch", [])
-        + per_family_rows.get("pullback", [])
-    )
-    oco = pd.DataFrame(per_family_rows.get("oco_first_touch", []))
-    oco_asymmetric = pd.DataFrame(per_family_rows.get("oco_asymmetric", []))
-    no_touch = pd.DataFrame(per_family_rows.get("no_touch", []))
-    dollar_residual = pd.DataFrame(per_family_rows.get("dollar_residual", []))
-    dispersion_rank = pd.DataFrame(per_family_rows.get("dispersion_rank", []))
-    lead_lag = pd.DataFrame(per_family_rows.get("lead_lag", []))
-    if not directional.empty:
-        directional = _assign_quality_tier(directional, library="directional")
-        directional = _stamp_candidate_contract(directional)
-    if not oco.empty:
-        oco = _assign_quality_tier(oco, library="oco")
-        oco = _stamp_candidate_contract(oco)
-    if not oco_asymmetric.empty:
-        oco_asymmetric = _assign_quality_tier(oco_asymmetric, library="oco")
-        oco_asymmetric = _stamp_candidate_contract(oco_asymmetric)
-    if not no_touch.empty:
-        no_touch = _assign_quality_tier(no_touch, library="no_touch")
-        no_touch = _stamp_candidate_contract(no_touch)
-    if not dollar_residual.empty:
-        dollar_residual = _assign_quality_tier(dollar_residual, library="directional")
-        dollar_residual = _stamp_candidate_contract(dollar_residual)
-    if not dispersion_rank.empty:
-        dispersion_rank = _assign_quality_tier(dispersion_rank, library="directional")
-        dispersion_rank = _stamp_candidate_contract(dispersion_rank)
-    if not lead_lag.empty:
-        lead_lag = _assign_quality_tier(lead_lag, library="directional")
-        lead_lag = _stamp_candidate_contract(lead_lag)
-    summary = _build_summary({
-        "directional": directional,
-        "oco": oco,
-        "oco_asymmetric": oco_asymmetric,
-        "no_touch": no_touch,
-        "dollar_residual": dollar_residual,
-        "dispersion_rank": dispersion_rank,
-        "lead_lag": lead_lag,
-    })
+    library_dfs: dict[str, pd.DataFrame] = {}
+    for lib, families in MINING_LIBRARY_FAMILIES.items():
+        rows = []
+        for fam in families:
+            rows.extend(per_family_rows.get(fam, []))
+        df = pd.DataFrame(rows)
+        if not df.empty:
+            tier_lib = QUALITY_TIER_LIBRARY[lib]
+            df = _assign_quality_tier(df, library=tier_lib)
+            df = _stamp_candidate_contract(df)
+        library_dfs[lib] = df
+
+    directional = library_dfs["directional"]
+    oco = library_dfs["oco"]
+    oco_asymmetric = library_dfs["oco_asymmetric"]
+    no_touch = library_dfs["no_touch"]
+    dollar_residual = library_dfs["dollar_residual"]
+    dispersion_rank = library_dfs["dispersion_rank"]
+    lead_lag = library_dfs["lead_lag"]
+    summary = _build_summary(library_dfs)
     return (
         directional, oco, oco_asymmetric, no_touch,
         dollar_residual, dispersion_rank, lead_lag, summary, all_fills,
@@ -1546,29 +1530,14 @@ def main() -> None:
         ) = run(cfg, fills_writer=fills_writer)
     fills_path = fills_writer.path
 
-    d_path = out_dir / f"{symbol}_directional_candidates.csv"
-    o_path = out_dir / f"{symbol}_oco_candidates.csv"
-    oa_path = out_dir / f"{symbol}_oco_asymmetric_candidates.csv"
-    nt_path = out_dir / f"{symbol}_no_touch_candidates.csv"
-    dr_path = out_dir / f"{symbol}_dollar_residual_candidates.csv"
-    dx_path = out_dir / f"{symbol}_dispersion_rank_candidates.csv"
-    ll_path = out_dir / f"{symbol}_lead_lag_candidates.csv"
-    s_path = out_dir / f"{symbol}_candidate_summary.csv"
-    directional.to_csv(d_path, index=False)
-    oco.to_csv(o_path, index=False)
-    oco_asymmetric.to_csv(oa_path, index=False)
-    no_touch.to_csv(nt_path, index=False)
-    dollar_residual.to_csv(dr_path, index=False)
-    dispersion_rank.to_csv(dx_path, index=False)
-    lead_lag.to_csv(ll_path, index=False)
+    for lib in MINING_OUTPUT_LIBRARIES:
+        fname = CANDIDATE_FILENAME_TEMPLATE.format(symbol=symbol, library=lib)
+        path = out_dir / fname
+        library_dfs[lib].to_csv(path, index=False)
+        print(f"wrote: {path}", flush=True)
+
+    s_path = out_dir / SUMMARY_FILENAME_TEMPLATE.format(symbol=symbol)
     summary.to_csv(s_path, index=False)
-    print(f"wrote: {d_path}", flush=True)
-    print(f"wrote: {o_path}", flush=True)
-    print(f"wrote: {oa_path}", flush=True)
-    print(f"wrote: {nt_path}", flush=True)
-    print(f"wrote: {dr_path}", flush=True)
-    print(f"wrote: {dx_path}", flush=True)
-    print(f"wrote: {ll_path}", flush=True)
     print(f"wrote: {s_path}", flush=True)
     print(f"wrote: {fills_path}", flush=True)
 
