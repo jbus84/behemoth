@@ -152,14 +152,12 @@ class TestComputeRequiredWarmupTicks:
     @pytest.mark.requires_models
     def test_falls_back_when_no_candidates_found(self, tmp_path: Path) -> None:
         # No parquet files written
-        assert (
+        with pytest.raises(RuntimeError, match="No locked candidates"):
             compute_required_warmup_ticks(
                 symbols=["EURUSD"],
                 locked_predictions_dir=tmp_path,
                 model_month="2026-04",
             )
-            == 30_000
-        )
 
     def test_auto_sentinel_value(self) -> None:
         # The sentinel that argparse defaults to must be a non-positive integer

@@ -99,14 +99,15 @@ def test_build_events_filters_requested_family_before_candidate_cap(tmp_path):
             }
         )
 
-    def fake_build_directional_events(**kwargs):
+    def fake_build_registry_family_events(**kwargs):
         seen["families"] = kwargs["cands"]["family"].tolist()
         return pd.DataFrame()
 
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(wfo, "_prepare_frame", fake_prepare_frame)
     monkeypatch.setattr(wfo, "_quantiles", lambda df: {})
-    monkeypatch.setattr(wfo, "_build_directional_events", fake_build_directional_events)
+    monkeypatch.setattr(wfo, "_attach_directional_side_columns", lambda df, **kw: df)
+    monkeypatch.setattr(wfo, "_build_registry_family_events", fake_build_registry_family_events)
     try:
         wfo._build_events_for_library(
             library="directional",
