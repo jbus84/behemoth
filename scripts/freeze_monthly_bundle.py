@@ -210,6 +210,8 @@ def _default_paths(
         "state_schedule": _pick_first_existing(
             analysis_dir / "reduced_core_rolling" / f"{s}_{fam}_reduced_state_schedule.csv",
             analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_reduced_state_schedule.csv",
+            analysis_dir / f"{fam}_rolling" / f"{s}_{fam}_state_schedule.csv",
+            analysis_dir / f"{fam}_rolling_{sl}" / f"{s}_{fam}_state_schedule.csv",
             *(
                 [
                     analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_state_schedule.csv",
@@ -238,6 +240,8 @@ def _default_paths(
         "reduced_summary": _pick_first_existing(
             analysis_dir / "reduced_core_rolling" / f"{s}_{fam}_reduced_summary.csv",
             analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_reduced_summary.csv",
+            analysis_dir / f"{fam}_rolling" / f"{s}_{fam}_summary.csv",
+            analysis_dir / f"{fam}_rolling_{sl}" / f"{s}_{fam}_summary.csv",
             *(
                 [
                     analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_summary.csv",
@@ -250,6 +254,8 @@ def _default_paths(
         "reduced_monthly": _pick_first_existing(
             analysis_dir / "reduced_core_rolling" / f"{s}_{fam}_reduced_monthly.csv",
             analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_reduced_monthly.csv",
+            analysis_dir / f"{fam}_rolling" / f"{s}_{fam}_monthly.csv",
+            analysis_dir / f"{fam}_rolling_{sl}" / f"{s}_{fam}_monthly.csv",
             *(
                 [
                     analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_monthly.csv",
@@ -276,6 +282,7 @@ def _default_paths(
         "tick_fill_caps": _pick_first_existing(
             analysis_dir / "stop_limit_tickfill_fullcap" / f"{s}_stop_limit_tickfill_caps.csv",
             analysis_dir / "stop_limit_tickfill" / f"{s}_stop_limit_tickfill_caps.csv",
+            analysis_dir / f"stop_limit_tickfill_{fam}" / f"{s}_stop_limit_tickfill_caps.csv",
         ),
     }
 
@@ -342,7 +349,10 @@ def _pick_optimal_cap(caps_csv: Path, default: float = 1.2, hard_limit: float = 
 
 
 def _state_universe_for_month(path: Path, symbol: str, month: str) -> tuple[pd.DataFrame, str]:
-    d = pd.read_csv(path)
+    try:
+        d = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        d = pd.DataFrame()
     if d.empty:
         raise ValueError(f"empty state schedule: {path}")
     if "test_month" not in d.columns:
@@ -523,229 +533,237 @@ def run(
     index_rows: list[dict[str, Any]] = []
 
     for sym in symbols:
-        paths = _default_paths(sym, config_dir=config_dir, analysis_dir=analysis_dir, family=family)
-        for key, p in paths.items():
-            if key == "reduced_monthly":
-                continue
-            if not p.exists():
-                raise FileNotFoundError(p)
-        model_pairs = _model_month_pairs(sym, models_dir=models_dir, family=family)
-        state_schedule = pd.read_csv(paths["state_schedule"])
-        sched_months = sorted(state_schedule["test_month"].dropna().astype(str).unique().tolist())
-        reduced_month_status = _read_reduced_monthly_status(paths["reduced_monthly"], sym)
-        available = sorted(
-            list(set(model_pairs.keys()) & (set(sched_months) | set(reduced_month_status.keys())))
-        )
-        _prune_stale_symbol_month_files(out_dir=out_dir, symbol=sym, available_months=available, family=family)
-        month_list = _filter_months(
-            months=available,
-            explicit_months=months,
-            start_month=start_month,
-            end_month=end_month,
-        )
+        try:
+            paths = _default_paths(sym, config_dir=config_dir, analysis_dir=analysis_dir, family=family)
+            for key, p in paths.items():
+                if key == "reduced_monthly":
+                    continue
+                if not p.exists():
+                    raise FileNotFoundError(p)
+            model_pairs = _model_month_pairs(sym, models_dir=models_dir, family=family)
+            state_schedule = pd.read_csv(paths["state_schedule"])
+            sched_months = sorted(state_schedule["test_month"].dropna().astype(str).unique().tolist())
+            reduced_month_status = _read_reduced_monthly_status(paths["reduced_monthly"], sym)
+            available = sorted(
+                list(set(model_pairs.keys()) & (set(sched_months) | set(reduced_month_status.keys())))
+            )
+            _prune_stale_symbol_month_files(out_dir=out_dir, symbol=sym, available_months=available, family=family)
+            month_list = _filter_months(
+                months=available,
+                explicit_months=months,
+                start_month=start_month,
+                end_month=end_month,
+            )
 
-        wfo_cfg = _load_yaml(paths["wfo_config"])
-        red_cfg = _load_yaml(paths["reduced_config"])
-        tick_ok = _read_tick_exact_ok(paths["tick_exact_summary"])
-        cap_ok = _read_capacity_ok(paths["reduced_summary"])
-        cap_pips = _pick_optimal_cap(
-            paths["tick_fill_caps"],
-            default=float(wfo_cfg.get("production_cap_pips", 1.2)),
-            hard_limit=1.2,
-        )
+            wfo_cfg = _load_yaml(paths["wfo_config"])
+            red_cfg = _load_yaml(paths["reduced_config"])
+            tick_ok = _read_tick_exact_ok(paths["tick_exact_summary"])
+            cap_ok = _read_capacity_ok(paths["reduced_summary"])
+            cap_pips = _pick_optimal_cap(
+                paths["tick_fill_caps"],
+                default=float(wfo_cfg.get("production_cap_pips", 1.2)),
+                hard_limit=1.2,
+            )
+        except Exception as exc:
+            print(f"skipped {sym} for {family}: {exc}", flush=True)
+            continue
 
         for month in month_list:
-            model_cbm, model_thr = model_pairs[month]
-            _sync_threshold_json_runtime_fields(model_thr, wfo_cfg)
-            model_export_dir = model_cbm.parent
-            train_pred = model_export_dir / f"{str(sym).upper()}_train_predictions_{month}.parquet"
-            month_status = (
-                str(reduced_month_status.get(month, "ok" if month in sched_months else ""))
-                .strip()
-                .lower()
-            )
-            historical_deployable = month_status in {"", "ok"}
-            non_deployable_reason = "" if historical_deployable else month_status
-            month_dir = out_dir / month
-            month_dir.mkdir(parents=True, exist_ok=True)
-            states_out = month_dir / f"{str(sym).lower()}_{family}_allowed_states.csv"
-            if historical_deployable:
-                states, states_sha = _state_universe_for_month(paths["state_schedule"], sym, month)
-                states.to_csv(states_out, index=False)
-                frozen_pred_out = (
-                    month_dir / f"{str(sym).lower()}_{family}_locked_predictions.parquet"
-                )
-                frozen_pred_path, frozen_pred_sha = _freeze_month_predictions(
-                    source_predictions=paths["predictions"],
-                    symbol=sym,
-                    family=family,
-                    month=month,
-                    states=states,
-                    out_path=frozen_pred_out,
-                )
-                frozen_pred_path_txt = str(frozen_pred_path)
-            else:
-                states, states_sha = _empty_state_universe()
-                states.to_csv(states_out, index=False)
-                frozen_pred_path_txt = ""
-
-            # model_valid_through is the last day of the deployment month
-            # (the month after the training-data-end model_month). It was
-            # previously derived from the model's threshold_schedule, but that
-            # schedule is dead config — live serving no longer consults it —
-            # so the derived value mislabelled each model as expiring a month
-            # before it is actually deployed.
-            model_valid_through = _model_valid_through(str(month))
-
-            # Build v3 manifest with bundle-relative paths.
-            fmt = {
-                "symbol_lower": str(sym).lower(),
-                "symbol_upper": str(sym).upper(),
-                "month": str(month),
-            }
-            artifacts: dict[str, dict[str, str]] = {}
-            provenance: dict[str, dict[str, str]] = {}
-            repo_root = _repo_root().resolve()
-            month_dir = month_dir.resolve()
-
-            # Map of v2_key -> source path for family-layout-driven copy.
-            file_map: dict[str, Path | None] = {
-                "predictions": frozen_pred_out if frozen_pred_path_txt else None,
-                "allowed_states_csv": states_out,
-                "model_cbm": model_cbm,
-                "model_threshold_json": model_thr,
-                "wfo_config": paths["wfo_config"],
-                "reduced_config": paths["reduced_config"],
-                "reduced_summary": paths["reduced_summary"],
-                "tick_exact_summary": paths["tick_exact_summary"],
-            }
-
-            for spec in bundle_layout_for(family):
-                source = file_map.get(spec.v2_key)
-                if source is None or not source.exists():
-                    if spec.required and historical_deployable:
-                        raise FileNotFoundError(f"required artifact {spec.v2_key}: {source}")
-                    continue
-                target_rel = spec.target_relpath_template.format(**fmt)
-                target_abs = month_dir / target_rel
-                target_abs.parent.mkdir(parents=True, exist_ok=True)
-                if source.resolve() != target_abs.resolve():
-                    shutil.copy2(source, target_abs)
-                sha = sha256_file(target_abs)
-                artifacts[spec.v2_key] = {"path": target_rel, "sha256": sha}
-                try:
-                    source.resolve().relative_to(month_dir)
-                except ValueError:
-                    try:
-                        origin_rel = source.resolve().relative_to(repo_root).as_posix()
-                    except ValueError:
-                        origin_rel = str(source.resolve())
-                    provenance[spec.v2_key] = {"origin": origin_rel, "origin_sha256": sha}
-
-            # Record origin for source predictions (always outside bundle)
             try:
-                src_pred_rel = paths["predictions"].resolve().relative_to(repo_root).as_posix()
-            except ValueError:
-                src_pred_rel = str(paths["predictions"].resolve())
-            provenance["predictions"] = {
-                "origin": src_pred_rel,
-                "origin_sha256": _sha256(paths["predictions"]),
-            }
+                model_cbm, model_thr = model_pairs[month]
+                _sync_threshold_json_runtime_fields(model_thr, wfo_cfg)
+                model_export_dir = model_cbm.parent
+                train_pred = model_export_dir / f"{str(sym).upper()}_train_predictions_{month}.parquet"
+                month_status = (
+                    str(reduced_month_status.get(month, "ok" if month in sched_months else ""))
+                    .strip()
+                    .lower()
+                )
+                historical_deployable = month_status in {"", "ok"}
+                non_deployable_reason = "" if historical_deployable else month_status
+                month_dir = out_dir / month
+                month_dir.mkdir(parents=True, exist_ok=True)
+                states_out = month_dir / f"{str(sym).lower()}_{family}_allowed_states.csv"
+                if historical_deployable:
+                    states, states_sha = _state_universe_for_month(paths["state_schedule"], sym, month)
+                    states.to_csv(states_out, index=False)
+                    frozen_pred_out = (
+                        month_dir / f"{str(sym).lower()}_{family}_locked_predictions.parquet"
+                    )
+                    frozen_pred_path, frozen_pred_sha = _freeze_month_predictions(
+                        source_predictions=paths["predictions"],
+                        symbol=sym,
+                        family=family,
+                        month=month,
+                        states=states,
+                        out_path=frozen_pred_out,
+                    )
+                    frozen_pred_path_txt = str(frozen_pred_path)
+                else:
+                    states, states_sha = _empty_state_universe()
+                    states.to_csv(states_out, index=False)
+                    frozen_pred_path_txt = ""
 
-            # Record origin for train predictions if present
-            if train_pred.exists():
-                try:
-                    train_pred_rel = train_pred.resolve().relative_to(repo_root).as_posix()
-                except ValueError:
-                    train_pred_rel = str(train_pred.resolve())
-                provenance["train_predictions"] = {
-                    "origin": train_pred_rel,
-                    "origin_sha256": _sha256(train_pred),
-                }
+                # model_valid_through is the last day of the deployment month
+                # (the month after the training-data-end model_month). It was
+                # previously derived from the model's threshold_schedule, but that
+                # schedule is dead config — live serving no longer consults it —
+                # so the derived value mislabelled each model as expiring a month
+                # before it is actually deployed.
+                model_valid_through = _model_valid_through(str(month))
 
-            deployability = {
-                "live_deployable": historical_deployable and (tick_ok is True) and (cap_ok is True),
-                "tick_exact_overall_pass": tick_ok,
-                "capacity_overall_pass": cap_ok,
-                "model_month": str(month),
-                "model_valid_through": model_valid_through,
-            }
-
-            scope = _cross_symbol_scope_for_family(family)
-            bundle_block: dict[str, Any] = {
-                "month": str(month),
-                "dir_relpath": str(_repo_relative_or_abs(month_dir, repo_root)),
-                "family": family,
-            }
-            if scope:
-                bundle_block["cross_symbol_scope"] = scope
-
-            manifest: dict[str, Any] = {
-                "schema_version": 3,
-                "frozen_at_utc": datetime.now(timezone.utc).isoformat(),
-                "symbol": str(sym).upper(),
-                "git": git_snapshot,
-                "bundle": bundle_block,
-                "artifacts": artifacts,
-                "provenance": provenance,
-                "deployability": deployability,
-                "locked_runtime": {
-                    "locked_quantile": float(red_cfg.get("locked_quantile", 0.9)),
-                    "selection_mode": str(red_cfg.get("selection_mode", "auto")),
-                    "family_keep": str(red_cfg.get("family_keep", "")),
-                    "barrier_keep": str(red_cfg.get("barrier_keep", "")),
-                    "horizon_keep": str(red_cfg.get("horizon_keep", "")),
-                    "threshold_mode": str(wfo_cfg.get("threshold_mode", "")),
-                    "rolling_threshold_days": int(wfo_cfg.get("rolling_threshold_days", 0)),
-                    "rolling_threshold_min_history": int(
-                        wfo_cfg.get("rolling_threshold_min_history", 0)
-                    ),
-                    "execution_quantile": float(wfo_cfg.get("execution_quantile", 0.9)),
-                    "production_cap_pips": float(cap_pips),
-                    "oco_hold_mode": str(wfo_cfg.get("oco_hold_mode", "")),
-                    "oco_include_no_touch": bool(wfo_cfg.get("oco_include_no_touch", True)),
-                },
-                "state_universe": {
-                    "count": int(len(states)),
-                    "sha256": str(states_sha),
-                    "rows": json.loads(states.to_json(orient="records")),
-                },
-                "retrain_policy": {
-                    "mode": "calendar_window",
-                    "cadence_days": int(cadence_days),
-                    "anchor_day_utc": int(anchor_day_utc),
-                    "window_days": int(window_days),
-                },
-                "historical_backtest": {
-                    "mode": "month_locked",
-                    "target_month": str(month),
-                    "deployable": bool(historical_deployable),
-                    "non_deployable_reason": non_deployable_reason,
-                },
-            }
-            lock_out = month_dir / lock_filename(sym, family)
-            lock_out.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
-
-            out_paths.extend([lock_out, states_out])
-            if frozen_pred_path_txt:
-                out_paths.append(Path(frozen_pred_path_txt))
-            index_rows.append(
-                {
-                    "symbol": str(sym).upper(),
+                # Build v3 manifest with bundle-relative paths.
+                fmt = {
+                    "symbol_lower": str(sym).lower(),
+                    "symbol_upper": str(sym).upper(),
                     "month": str(month),
-                    "lock_path": str(lock_out),
-                    "allowed_states_path": str(states_out),
-                    "model_cbm_path": str(model_cbm),
-                    "threshold_json_path": str(model_thr),
-                    "candidates_count": int(len(states)),
-                    "production_cap_pips": float(cap_pips),
-                    "live_deployable": bool(
-                        historical_deployable and (tick_ok is True) and (cap_ok is True)
-                    ),
                 }
-            )
-            print(f"wrote: {lock_out}")
-            print(f"wrote: {states_out}")
+                artifacts: dict[str, dict[str, str]] = {}
+                provenance: dict[str, dict[str, str]] = {}
+                repo_root = _repo_root().resolve()
+                month_dir = month_dir.resolve()
+
+                # Map of v2_key -> source path for family-layout-driven copy.
+                file_map: dict[str, Path | None] = {
+                    "predictions": frozen_pred_out if frozen_pred_path_txt else None,
+                    "allowed_states_csv": states_out,
+                    "model_cbm": model_cbm,
+                    "model_threshold_json": model_thr,
+                    "wfo_config": paths["wfo_config"],
+                    "reduced_config": paths["reduced_config"],
+                    "reduced_summary": paths["reduced_summary"],
+                    "tick_exact_summary": paths["tick_exact_summary"],
+                }
+
+                for spec in bundle_layout_for(family):
+                    source = file_map.get(spec.v2_key)
+                    if source is None or not source.exists():
+                        if spec.required and historical_deployable:
+                            raise FileNotFoundError(f"required artifact {spec.v2_key}: {source}")
+                        continue
+                    target_rel = spec.target_relpath_template.format(**fmt)
+                    target_abs = month_dir / target_rel
+                    target_abs.parent.mkdir(parents=True, exist_ok=True)
+                    if source.resolve() != target_abs.resolve():
+                        shutil.copy2(source, target_abs)
+                    sha = sha256_file(target_abs)
+                    artifacts[spec.v2_key] = {"path": target_rel, "sha256": sha}
+                    try:
+                        source.resolve().relative_to(month_dir)
+                    except ValueError:
+                        try:
+                            origin_rel = source.resolve().relative_to(repo_root).as_posix()
+                        except ValueError:
+                            origin_rel = str(source.resolve())
+                        provenance[spec.v2_key] = {"origin": origin_rel, "origin_sha256": sha}
+
+                # Record origin for source predictions (always outside bundle)
+                try:
+                    src_pred_rel = paths["predictions"].resolve().relative_to(repo_root).as_posix()
+                except ValueError:
+                    src_pred_rel = str(paths["predictions"].resolve())
+                provenance["predictions"] = {
+                    "origin": src_pred_rel,
+                    "origin_sha256": _sha256(paths["predictions"]),
+                }
+
+                # Record origin for train predictions if present
+                if train_pred.exists():
+                    try:
+                        train_pred_rel = train_pred.resolve().relative_to(repo_root).as_posix()
+                    except ValueError:
+                        train_pred_rel = str(train_pred.resolve())
+                    provenance["train_predictions"] = {
+                        "origin": train_pred_rel,
+                        "origin_sha256": _sha256(train_pred),
+                    }
+
+                deployability = {
+                    "live_deployable": historical_deployable and (tick_ok is True) and (cap_ok is True),
+                    "tick_exact_overall_pass": tick_ok,
+                    "capacity_overall_pass": cap_ok,
+                    "model_month": str(month),
+                    "model_valid_through": model_valid_through,
+                }
+
+                scope = _cross_symbol_scope_for_family(family)
+                bundle_block: dict[str, Any] = {
+                    "month": str(month),
+                    "dir_relpath": str(_repo_relative_or_abs(month_dir, repo_root)),
+                    "family": family,
+                }
+                if scope:
+                    bundle_block["cross_symbol_scope"] = scope
+
+                manifest: dict[str, Any] = {
+                    "schema_version": 3,
+                    "frozen_at_utc": datetime.now(timezone.utc).isoformat(),
+                    "symbol": str(sym).upper(),
+                    "git": git_snapshot,
+                    "bundle": bundle_block,
+                    "artifacts": artifacts,
+                    "provenance": provenance,
+                    "deployability": deployability,
+                    "locked_runtime": {
+                        "locked_quantile": float(red_cfg.get("locked_quantile", 0.9)),
+                        "selection_mode": str(red_cfg.get("selection_mode", "auto")),
+                        "family_keep": str(red_cfg.get("family_keep", "")),
+                        "barrier_keep": str(red_cfg.get("barrier_keep", "")),
+                        "horizon_keep": str(red_cfg.get("horizon_keep", "")),
+                        "threshold_mode": str(wfo_cfg.get("threshold_mode", "")),
+                        "rolling_threshold_days": int(wfo_cfg.get("rolling_threshold_days", 0)),
+                        "rolling_threshold_min_history": int(
+                            wfo_cfg.get("rolling_threshold_min_history", 0)
+                        ),
+                        "execution_quantile": float(wfo_cfg.get("execution_quantile", 0.9)),
+                        "production_cap_pips": float(cap_pips),
+                        "oco_hold_mode": str(wfo_cfg.get("oco_hold_mode", "")),
+                        "oco_include_no_touch": bool(wfo_cfg.get("oco_include_no_touch", True)),
+                    },
+                    "state_universe": {
+                        "count": int(len(states)),
+                        "sha256": str(states_sha),
+                        "rows": json.loads(states.to_json(orient="records")),
+                    },
+                    "retrain_policy": {
+                        "mode": "calendar_window",
+                        "cadence_days": int(cadence_days),
+                        "anchor_day_utc": int(anchor_day_utc),
+                        "window_days": int(window_days),
+                    },
+                    "historical_backtest": {
+                        "mode": "month_locked",
+                        "target_month": str(month),
+                        "deployable": bool(historical_deployable),
+                        "non_deployable_reason": non_deployable_reason,
+                    },
+                }
+                lock_out = month_dir / lock_filename(sym, family)
+                lock_out.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+                out_paths.extend([lock_out, states_out])
+                if frozen_pred_path_txt:
+                    out_paths.append(Path(frozen_pred_path_txt))
+                index_rows.append(
+                    {
+                        "symbol": str(sym).upper(),
+                        "month": str(month),
+                        "lock_path": str(lock_out),
+                        "allowed_states_path": str(states_out),
+                        "model_cbm_path": str(model_cbm),
+                        "threshold_json_path": str(model_thr),
+                        "candidates_count": int(len(states)),
+                        "production_cap_pips": float(cap_pips),
+                        "live_deployable": bool(
+                            historical_deployable and (tick_ok is True) and (cap_ok is True)
+                        ),
+                    }
+                )
+                print(f"wrote: {lock_out}")
+                print(f"wrote: {states_out}")
+            except Exception as exc:
+                print(f"skipped {sym} {month} for {family}: {exc}", flush=True)
+                continue
 
     if index_rows:
         index_df = pd.DataFrame(index_rows).sort_values(["symbol", "month"]).reset_index(drop=True)
