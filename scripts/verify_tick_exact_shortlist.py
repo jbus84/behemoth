@@ -44,7 +44,17 @@ except ModuleNotFoundError:
 
 
 _OCO_FAMILIES: set[str] = {"oco_first_touch", "oco_asymmetric"}
-_DIRECTIONAL_FAMILIES: set[str] = {"directional", "directional_inverse", "directional_run"}
+# All families in the `directional` candidate library (see stage_contracts.
+# MINING_LIBRARY_FAMILIES["directional"]). double_touch and pullback were
+# previously omitted, so they fell through to the oco branch and wrote
+# colliding `<symbol>_oco_tick_exact_*` outputs.
+_DIRECTIONAL_FAMILIES: set[str] = {
+    "directional",
+    "directional_inverse",
+    "directional_run",
+    "double_touch",
+    "pullback",
+}
 
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
@@ -85,34 +95,45 @@ def _family_slug(family: str | None) -> str:
     return "oco"
 
 
+
+
 def _derive_symbol_defaults(symbol: str, *, family: str | None = None) -> dict[str, str]:
     s = str(symbol).upper().strip()
     sl = s.lower()
     fam = _family_slug(family)
+    rc = "data/analysis/tick_opportunity_mining/reduced_core"
     if fam == "directional":
+        # The directional candidate library expands to 5 families. Output verdict
+        # artifacts MUST be keyed by the real family, or they overwrite one another
+        # (ADR 0004 failure mode 4). Inputs are family-named too (per-family WFO
+        # dir + reduced-core schedule).
+        d = str(family or "directional").strip().lower()
         return {
-            "pred_path": f"data/analysis/tick_opportunity_mining/wfo_m3to1_directional_fullcap/{s}_directional_monthly_predictions.parquet",
-            "shortlist_state_csv": f"data/analysis/tick_opportunity_mining/directional_rolling/{s}_directional_state_schedule.csv",
-            "out_summary_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_directional_tick_exact_summary.csv",
-            "out_monthly_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_directional_tick_exact_monthly.csv",
-            "out_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_directional_tick_exact_state.csv",
-            "report_out": f"docs/analysis/{sl}_directional_tick_exact_shortlist_report.md",
+            "pred_path": f"data/analysis/tick_opportunity_mining/wfo_m3to1_{d}_fullcap/{s}_{d}_monthly_predictions.parquet",
+            "shortlist_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_{d}_reduced_state_schedule.csv",
+            "out_summary_csv": f"{rc}/{s}_{d}_tick_exact_summary.csv",
+            "out_monthly_csv": f"{rc}/{s}_{d}_tick_exact_monthly.csv",
+            "out_state_csv": f"{rc}/{s}_{d}_tick_exact_state.csv",
+            "report_out": f"docs/analysis/{sl}_{d}_tick_exact_shortlist_report.md",
         }
     if fam == "oco_asymmetric":
         return {
             "pred_path": f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s}_oco_asymmetric_monthly_predictions.parquet",
             "shortlist_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_asymmetric_reduced_states.csv",
-            "out_summary_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_asymmetric_tick_exact_summary.csv",
-            "out_monthly_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_asymmetric_tick_exact_monthly.csv",
-            "out_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_asymmetric_tick_exact_state.csv",
+            "out_summary_csv": f"{rc}/{s}_oco_asymmetric_tick_exact_summary.csv",
+            "out_monthly_csv": f"{rc}/{s}_oco_asymmetric_tick_exact_monthly.csv",
+            "out_state_csv": f"{rc}/{s}_oco_asymmetric_tick_exact_state.csv",
             "report_out": f"docs/analysis/{sl}_oco_asymmetric_tick_exact_shortlist_report.md",
         }
+    # oco_first_touch: its established artifact slug is `oco` across the OCO
+    # governance stack. Unchanged here; full canonicalisation to oco_first_touch
+    # is a separate migration.
     return {
         "pred_path": f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet",
         "shortlist_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv",
-        "out_summary_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_summary.csv",
-        "out_monthly_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_monthly.csv",
-        "out_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_state.csv",
+        "out_summary_csv": f"{rc}/{s}_oco_tick_exact_summary.csv",
+        "out_monthly_csv": f"{rc}/{s}_oco_tick_exact_monthly.csv",
+        "out_state_csv": f"{rc}/{s}_oco_tick_exact_state.csv",
         "report_out": f"docs/analysis/{sl}_oco_tick_exact_shortlist_report.md",
     }
 

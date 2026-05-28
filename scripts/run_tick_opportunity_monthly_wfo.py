@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,23 @@ try:
     from catboost import CatBoostClassifier
 except Exception:
     CatBoostClassifier = None  # type: ignore[assignment]
+
+# Put the repo root on sys.path so the `scripts.*` imports below resolve when
+# this file is run directly, not only when imported as a package under pytest.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+_SRC_ROOT = _REPO_ROOT / "src"
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+from behemoth.governance.stage_contracts import (  # noqa: E402
+    CANDIDATE_FILENAME_TEMPLATE,
+    CROSS_SYMBOL_FAMILIES,
+    FAMILY_TO_LIBRARY,
+    LOCAL_FAMILIES,
+)
 
 try:
     from scripts.build_tick_opportunity_ml_dataset import (
@@ -55,17 +73,8 @@ except ModuleNotFoundError:
     )
 
 
-SYMBOL_LOCAL_WFO_FAMILIES: set[str] = {
-    "oco_first_touch",
-    "oco_asymmetric",
-    "directional",
-    "directional_inverse",
-    "directional_run",
-    "double_touch",
-    "pullback",
-    "no_touch",
-}
-CROSS_SYMBOL_WFO_FAMILIES: set[str] = {"dollar_residual", "dispersion_rank", "lead_lag"}
+SYMBOL_LOCAL_WFO_FAMILIES: set[str] = LOCAL_FAMILIES
+CROSS_SYMBOL_WFO_FAMILIES: set[str] = CROSS_SYMBOL_FAMILIES
 
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
@@ -96,19 +105,7 @@ DEFAULTS: dict[str, Any] = {
     "report_out": "docs/analysis/eurusd_tick_opportunity_monthly_wfo_report.md",
 }
 
-_FAMILY_CANDIDATE_LIBRARY: dict[str, str] = {
-    "directional": "directional",
-    "directional_inverse": "directional",
-    "directional_run": "directional",
-    "double_touch": "directional",
-    "pullback": "directional",
-    "oco_first_touch": "oco",
-    "oco_asymmetric": "oco_asymmetric",
-    "no_touch": "no_touch",
-    "dollar_residual": "dollar_residual",
-    "dispersion_rank": "dispersion_rank",
-    "lead_lag": "lead_lag",
-}
+_FAMILY_CANDIDATE_LIBRARY: dict[str, str] = FAMILY_TO_LIBRARY
 _SUPPORTED_WFO_REPLAY_FAMILIES: set[str] = SYMBOL_LOCAL_WFO_FAMILIES | CROSS_SYMBOL_WFO_FAMILIES
 
 
@@ -435,7 +432,7 @@ def _build_events_for_library(
     _ensure_wfo_replay_supported(families)
     if lib not in {"directional", "oco"} | SYMBOL_LOCAL_WFO_FAMILIES | CROSS_SYMBOL_WFO_FAMILIES:
         raise ValueError(f"bad library: {library}")
-    c_path = candidate_dir / f"{symbol}_{lib}_candidates.csv"
+    c_path = candidate_dir / CANDIDATE_FILENAME_TEMPLATE.format(symbol=symbol, library=lib)
     if not c_path.exists():
         return pd.DataFrame()
     try:
@@ -1192,10 +1189,14 @@ def main() -> None:
         ev_path = out_dir / f"{symbol}_{lib}_events_eval{eval_year}.parquet"
         ev.to_parquet(ev_path, index=False)
         print(f"wrote: {ev_path}")
+        # Real runs name outputs by the families present in the events. Empty
+        # runs must use the *requested* families (from the config), not the
+        # library name — otherwise a legitimately-empty directional_inverse run
+        # would write `<symbol>_directional_...` and collide with directional.
         families = (
             sorted(ev["family"].dropna().astype(str).unique().tolist())
             if "family" in ev.columns and not ev.empty
-            else [lib]
+            else (list(requested_families) if requested_families else [lib])
         )
         for family in families:
             ev_family = (

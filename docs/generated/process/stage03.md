@@ -33,3 +33,23 @@ Performs Monthly WFO Model Fit and Threshold Fit, producing causally scored pred
 ## Tests
 
 - `tests/test_monthly_wfo_threshold_causality.py`
+
+
+## Stage 03 I/O Contract
+
+**Produced by:** `stage02`
+
+**Artifact key:** `(symbol, family)`
+
+**Input artifacts:**
+- `data/analysis/tick_opportunity_mining/{symbol}_directional_candidates.csv`
+- `data/analysis/tick_opportunity_mining/{symbol}_oco_candidates.csv`
+- `data/analysis/tick_opportunity_mining/{symbol}_oco_asymmetric_candidates.csv`
+- `data/analysis/tick_opportunity_mining/{symbol}_no_touch_candidates.csv`
+- `data/analysis/tick_opportunity_mining/{symbol}_dollar_residual_candidates.csv`
+- `data/analysis/tick_opportunity_mining/{symbol}_dispersion_rank_candidates.csv`
+- `data/analysis/tick_opportunity_mining/{symbol}_lead_lag_candidates.csv`
+
+**Output artifacts:**
+- `data/analysis/tick_opportunity_mining/wfo_m3to1_{family}_fullcap/{symbol}_{family}_monthly_predictions.parquet`
+- `data/analysis/tick_opportunity_mining/wfo_m3to1_{family}_fullcap/{symbol}_{family}_monthly_metrics.csv`
