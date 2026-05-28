@@ -3,6 +3,7 @@ candidate_csv: data/analysis/tick_opportunity_mining/USDCAD_directional_candidat
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_directional_fullcap/USDCAD_directional_monthly_predictions.parquet
 
 family_keep: directional
+barrier_keep: ''
 horizon_keep: "5,6"
 locked_quantile: 0.9
 

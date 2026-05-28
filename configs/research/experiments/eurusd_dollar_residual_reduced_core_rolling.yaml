@@ -3,6 +3,7 @@ candidate_csv: data/analysis/tick_opportunity_mining/EURUSD_dollar_residual_cand
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_dollar_residual_fullcap/EURUSD_dollar_residual_monthly_predictions.parquet
 
 family_keep: dollar_residual
+barrier_keep: ''
 horizon_keep: "5,6"
 locked_quantile: 0.9
 

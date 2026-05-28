@@ -3,6 +3,7 @@ candidate_csv: data/analysis/tick_opportunity_mining/USDJPY_oco_asymmetric_candi
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_oco_asymmetric_fullcap/USDJPY_oco_asymmetric_monthly_predictions.parquet
 
 family_keep: oco_asymmetric
+barrier_keep: ''
 horizon_keep: "5,6"
 locked_quantile: 0.9
 

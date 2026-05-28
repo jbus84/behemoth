@@ -3,6 +3,7 @@ candidate_csv: data/analysis/tick_opportunity_mining/AUDUSD_no_touch_candidates.
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_no_touch_fullcap/AUDUSD_no_touch_monthly_predictions.parquet
 
 family_keep: no_touch
+barrier_keep: ''
 horizon_keep: "5,6"
 locked_quantile: 0.9
 

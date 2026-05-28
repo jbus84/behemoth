@@ -1,8 +1,9 @@
 symbol: USDCAD
-candidate_csv: data/analysis/tick_opportunity_mining/USDCAD_double_touch_candidates.csv
+candidate_csv: data/analysis/tick_opportunity_mining/USDCAD_directional_candidates.csv
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_double_touch_fullcap/USDCAD_double_touch_monthly_predictions.parquet
 
 family_keep: double_touch
+barrier_keep: ''
 horizon_keep: "5,6"
 locked_quantile: 0.9
 

@@ -3,6 +3,7 @@ candidate_csv: data/analysis/tick_opportunity_mining/GBPUSD_lead_lag_candidates.
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_lead_lag_fullcap/GBPUSD_lead_lag_monthly_predictions.parquet
 
 family_keep: lead_lag
+barrier_keep: ''
 horizon_keep: "5,6"
 locked_quantile: 0.9
 
