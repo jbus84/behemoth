@@ -510,7 +510,6 @@ def _recompute_directional(
         }
 
     finite_pos = np.flatnonzero(finite)
-    i_finite = i[finite_pos]
     map_pos_finite = map_pos[finite_pos]
 
     if family == "directional_inverse":
