@@ -1534,6 +1534,15 @@ def main() -> None:
         ) = run(cfg, fills_writer=fills_writer)
     fills_path = fills_writer.path
 
+    library_dfs = {
+        "directional": directional,
+        "oco": oco,
+        "oco_asymmetric": oco_asymmetric,
+        "no_touch": no_touch,
+        "dollar_residual": dollar_residual,
+        "dispersion_rank": dispersion_rank,
+        "lead_lag": lead_lag,
+    }
     for lib in MINING_OUTPUT_LIBRARIES:
         fname = CANDIDATE_FILENAME_TEMPLATE.format(symbol=symbol, library=lib)
         path = out_dir / fname
