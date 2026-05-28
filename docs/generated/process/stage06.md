@@ -31,3 +31,19 @@ Replays the Shortlist at exact tick granularity to verify selected opportunities
 ## Tests
 
 - `tests/test_oco_leakage_label_integrity.py`
+
+
+## Stage 06 I/O Contract
+
+**Produced by:** `stage05`
+
+**Artifact key:** `(symbol, family)`
+
+**Input artifacts:**
+- `data/analysis/tick_opportunity_mining/wfo_m3to1_{family}_fullcap/{symbol}_{family}_monthly_predictions.parquet`
+- `data/analysis/tick_opportunity_mining/reduced_core_rolling/{symbol}_{family}_reduced_state_schedule.csv`
+
+**Output artifacts:**
+- `data/analysis/tick_opportunity_mining/reduced_core/{symbol}_{family}_tick_exact_summary.csv`
+- `data/analysis/tick_opportunity_mining/reduced_core/{symbol}_{family}_tick_exact_monthly.csv`
+- `data/analysis/tick_opportunity_mining/reduced_core/{symbol}_{family}_tick_exact_state.csv`

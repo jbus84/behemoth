@@ -103,3 +103,61 @@ class TestManifestInvariants:
         from behemoth.governance.stage_contracts import render_stage_io_contract
 
         assert render_stage_io_contract("stage99") == ""
+
+
+class TestArtifactKeys:
+    def test_verdict_bearing_stages_are_family_keyed(self):
+        """Stage 3 predictions and Stage 5/6 verdict artifacts must be keyed by
+        (symbol, family) so per-family results never collide. Only the Stage 2
+        candidate CSVs (which aggregate a whole library) may be library-keyed.
+        Regression for ADR 0004 failure mode 4 (tick-exact verdict collision)."""
+        from behemoth.governance.stage_contracts import ARTIFACT_KEY
+
+        assert ARTIFACT_KEY["stage02_candidates"] == "(symbol, library)"
+        assert ARTIFACT_KEY["stage03_predictions"] == "(symbol, family)"
+        assert ARTIFACT_KEY["stage05_reduced_core"] == "(symbol, family)"
+        assert ARTIFACT_KEY["stage06_tick_exact"] == "(symbol, family)"
+
+    def test_stage03_outputs_are_family_keyed_not_library(self):
+        from behemoth.governance.stage_contracts import STAGE03_CONTRACT
+
+        for pat in STAGE03_CONTRACT["output_patterns"]:
+            assert "{family}" in pat and "{library}" not in pat, pat
+            # the directory must not carry a symbol suffix (wfo_m3to1_<family>_fullcap)
+            assert "_fullcap_{symbol}" not in pat, pat
+
+    def test_tick_exact_summary_path_is_family_keyed(self):
+        """Two families that share the directional candidate library must resolve
+        to distinct tick-exact summary files for the same symbol."""
+        from behemoth.governance.stage_contracts import tick_exact_summary_path
+
+        p_dir = tick_exact_summary_path(symbol="EURUSD", family="directional")
+        p_inv = tick_exact_summary_path(symbol="EURUSD", family="directional_inverse")
+        assert p_dir.endswith("EURUSD_directional_tick_exact_summary.csv")
+        assert p_inv.endswith("EURUSD_directional_inverse_tick_exact_summary.csv")
+        assert p_dir != p_inv
+
+    def test_tick_exact_directional_set_matches_manifest(self):
+        """The tick-exact script's directional-library family set must equal the
+        manifest's, or families like double_touch fall through to the oco branch
+        and write colliding `<symbol>_oco_tick_exact_*` outputs."""
+        from behemoth.governance.stage_contracts import MINING_LIBRARY_FAMILIES
+        from scripts.verify_tick_exact_shortlist import _DIRECTIONAL_FAMILIES
+
+        assert set(MINING_LIBRARY_FAMILIES["directional"]) == _DIRECTIONAL_FAMILIES
+
+    def test_verify_tick_exact_defaults_match_manifest_and_dont_collide(self):
+        """The tick-exact script's derived output paths must be family-keyed and
+        agree with the manifest helper (single source of truth)."""
+        from behemoth.governance.stage_contracts import tick_exact_summary_path
+        from scripts.verify_tick_exact_shortlist import _derive_symbol_defaults
+
+        for fam in ("directional", "directional_inverse", "double_touch", "pullback"):
+            d = _derive_symbol_defaults("EURUSD", family=fam)
+            assert d["out_summary_csv"] == tick_exact_summary_path(symbol="EURUSD", family=fam)
+        # the five directional-library families must not collide
+        summaries = {
+            _derive_symbol_defaults("EURUSD", family=f)["out_summary_csv"]
+            for f in ("directional", "directional_inverse", "directional_run", "double_touch", "pullback")
+        }
+        assert len(summaries) == 5

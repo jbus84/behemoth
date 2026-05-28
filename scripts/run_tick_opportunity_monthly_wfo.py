@@ -1189,10 +1189,14 @@ def main() -> None:
         ev_path = out_dir / f"{symbol}_{lib}_events_eval{eval_year}.parquet"
         ev.to_parquet(ev_path, index=False)
         print(f"wrote: {ev_path}")
+        # Real runs name outputs by the families present in the events. Empty
+        # runs must use the *requested* families (from the config), not the
+        # library name — otherwise a legitimately-empty directional_inverse run
+        # would write `<symbol>_directional_...` and collide with directional.
         families = (
             sorted(ev["family"].dropna().astype(str).unique().tolist())
             if "family" in ev.columns and not ev.empty
-            else [lib]
+            else (list(requested_families) if requested_families else [lib])
         )
         for family in families:
             ev_family = (

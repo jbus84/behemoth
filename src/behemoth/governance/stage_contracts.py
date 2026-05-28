@@ -135,16 +135,68 @@ STAGE02_CONTRACT: dict[str, Any] = {
     ],
 }
 
+# === Artifact keys ===
+# Whether each stage's primary artifact is uniquely identified by (symbol, family)
+# or (symbol, library). Verdict-bearing artifacts (Stage 5 schedules, Stage 6
+# tick-exact summaries) and per-family WFO predictions MUST be family-keyed so
+# per-family results never collide; only artifacts that genuinely aggregate a
+# whole library (the Stage 2 candidate CSVs) may be library-keyed. See ADR 0004.
+ARTIFACT_KEY: dict[str, str] = {
+    "stage02_candidates": "(symbol, library)",
+    "stage03_predictions": "(symbol, family)",
+    "stage05_reduced_core": "(symbol, family)",
+    "stage06_tick_exact": "(symbol, family)",
+}
+
+# Stage 3 WFO writes one per-family directory; real and legitimately-empty runs
+# both use the family name (no library-named fallback). Directory has no symbol
+# suffix.
+WFO_PREDICTION_TEMPLATE: str = (
+    "data/analysis/tick_opportunity_mining/wfo_m3to1_{family}_fullcap/"
+    "{symbol}_{family}_monthly_predictions.parquet"
+)
+TICK_EXACT_SUMMARY_TEMPLATE: str = (
+    "data/analysis/tick_opportunity_mining/reduced_core/"
+    "{symbol}_{family}_tick_exact_summary.csv"
+)
+
+
+def tick_exact_summary_path(*, symbol: str, family: str) -> str:
+    """Canonical family-keyed Stage 6 tick-exact summary path (never library-keyed).
+
+    Note: oco_first_touch currently emits under its established `oco` artifact
+    slug across the OCO governance stack; canonicalising it to `oco_first_touch`
+    is a separate migration. Every other family already conforms to this template.
+    """
+    return TICK_EXACT_SUMMARY_TEMPLATE.format(symbol=str(symbol).upper(), family=family)
+
+
 STAGE03_CONTRACT: dict[str, Any] = {
     "stage_id": "stage03",
     "produced_by": "stage02",
+    "artifact_key": ARTIFACT_KEY["stage03_predictions"],
     "input_patterns": [
         f"data/analysis/tick_opportunity_mining/{CANDIDATE_FILENAME_TEMPLATE.format(symbol='{symbol}', library=lib)}"
         for lib in MINING_OUTPUT_LIBRARIES
     ],
     "output_patterns": [
-        "data/analysis/tick_opportunity_mining/wfo_m3to1_{library}_fullcap_{symbol}/{symbol}_{library}_monthly_predictions.parquet",
-        "data/analysis/tick_opportunity_mining/wfo_m3to1_{library}_fullcap_{symbol}/{symbol}_{library}_monthly_metrics.csv",
+        WFO_PREDICTION_TEMPLATE,
+        "data/analysis/tick_opportunity_mining/wfo_m3to1_{family}_fullcap/{symbol}_{family}_monthly_metrics.csv",
+    ],
+}
+
+STAGE06_CONTRACT: dict[str, Any] = {
+    "stage_id": "stage06",
+    "produced_by": "stage05",
+    "artifact_key": ARTIFACT_KEY["stage06_tick_exact"],
+    "input_patterns": [
+        WFO_PREDICTION_TEMPLATE,
+        "data/analysis/tick_opportunity_mining/reduced_core_rolling/{symbol}_{family}_reduced_state_schedule.csv",
+    ],
+    "output_patterns": [
+        TICK_EXACT_SUMMARY_TEMPLATE,
+        "data/analysis/tick_opportunity_mining/reduced_core/{symbol}_{family}_tick_exact_monthly.csv",
+        "data/analysis/tick_opportunity_mining/reduced_core/{symbol}_{family}_tick_exact_state.csv",
     ],
 }
 
@@ -169,19 +221,22 @@ def render_stage_io_contract(stage_id: str) -> str:
     Called by scripts/build_process_stage_docs.py to inject contract
     metadata into generated stage capsules.
     """
-    if stage_id == "stage02":
-        contract = STAGE02_CONTRACT
-        title = "Stage 02 I/O Contract"
-    elif stage_id == "stage03":
-        contract = STAGE03_CONTRACT
-        title = "Stage 03 I/O Contract"
-    else:
+    contracts = {
+        "stage02": (STAGE02_CONTRACT, "Stage 02 I/O Contract"),
+        "stage03": (STAGE03_CONTRACT, "Stage 03 I/O Contract"),
+        "stage06": (STAGE06_CONTRACT, "Stage 06 I/O Contract"),
+    }
+    if stage_id not in contracts:
         return ""
+    contract, title = contracts[stage_id]
 
     lines = [f"## {title}", ""]
 
     if contract.get("produced_by"):
         lines.append(f"**Produced by:** `{contract['produced_by']}`")
+        lines.append("")
+    if contract.get("artifact_key"):
+        lines.append(f"**Artifact key:** `{contract['artifact_key']}`")
         lines.append("")
 
     lines.append("**Input artifacts:**")
