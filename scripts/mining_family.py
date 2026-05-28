@@ -153,6 +153,32 @@ def _frame_fingerprint(frame: pd.DataFrame) -> int:
     return fp
 
 
+def _freeze_params(params: dict[str, Any]) -> tuple[tuple[str, Any], ...]:
+    """Build a hashable cache key from a `_precompute` params dict.
+
+    The WFO replay path injects list-valued entries into ``params`` — e.g.
+    ``params["horizons"]`` set in
+    ``run_tick_opportunity_monthly_wfo.py::_build_registry_family_events`` — so
+    a raw ``tuple(sorted(params.items()))`` cannot be hashed for the
+    ``_precompute`` cache lookup (``TypeError: unhashable type: 'list'``).
+    Convert list/dict/set values to hashable equivalents. Scalar-only params
+    produce the same key as the previous ``tuple(sorted(params.items()))``, so
+    cache hit/miss behaviour is unchanged except that it no longer crashes."""
+
+    def _freeze(value: Any) -> Any:
+        if isinstance(value, (list, tuple)):
+            return tuple(_freeze(v) for v in value)
+        if isinstance(value, dict):
+            return tuple((k, _freeze(v)) for k, v in sorted(value.items()))
+        if isinstance(value, (set, frozenset)):
+            return frozenset(_freeze(v) for v in value)
+        return value
+
+    return tuple(
+        (k, _freeze(v)) for k, v in sorted(params.items(), key=lambda kv: kv[0])
+    )
+
+
 def _gross_at_entries_via_i0(
     i0: np.ndarray, gross: np.ndarray, entries: np.ndarray
 ) -> np.ndarray:
@@ -361,7 +387,7 @@ class OcoFirstTouchFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
 
-        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        key = (_frame_fingerprint(frame), _freeze_params(params))
         if key in self._cache:
             return self._cache[key]
         try:
@@ -468,7 +494,7 @@ class DoubleTouchFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _double_touch_precompute
 
-        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        key = (_frame_fingerprint(frame), _freeze_params(params))
         if key in self._cache:
             return self._cache[key]
         try:
@@ -590,7 +616,7 @@ class PullbackFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _pullback_precompute
 
-        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        key = (_frame_fingerprint(frame), _freeze_params(params))
         if key in self._cache:
             return self._cache[key]
         try:
@@ -694,7 +720,7 @@ class NoTouchFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
 
-        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        key = (_frame_fingerprint(frame), _freeze_params(params))
         if key in self._cache:
             return self._cache[key]
         try:
@@ -782,7 +808,7 @@ class OcoAsymmetricFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_asymmetric_precompute
 
-        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        key = (_frame_fingerprint(frame), _freeze_params(params))
         if key in self._cache:
             return self._cache[key]
         down = float(params["down_pips"])

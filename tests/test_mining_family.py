@@ -804,6 +804,67 @@ def test_oco_asymmetric_precompute_is_cached():
     np.testing.assert_array_equal(gross1, gross2)
 
 
+def test_freeze_params_hashable_with_list_values():
+    """Regression: the WFO replay path injects a list-valued ``horizons`` into
+    params (run_tick_opportunity_monthly_wfo.py::_build_registry_family_events),
+    which made the shared ``_precompute`` cache key
+    ``tuple(sorted(params.items()))`` raise ``TypeError: unhashable type:
+    'list'``. ``_freeze_params`` must yield a hashable, deterministic key. This
+    covers all five families that key their cache on the full params dict."""
+    from scripts.mining_family import _freeze_params
+
+    params = {
+        "symbol": "EURUSD",
+        "horizon": 4,
+        "down_pips": 3.0,
+        "rr": 1.0,
+        "horizons": [1, 2, 4],
+    }
+    key = _freeze_params(params)
+    # Previously raised TypeError: unhashable type: 'list'
+    assert isinstance(hash(key), int)
+    # Deterministic and order-independent over the params dict.
+    assert _freeze_params({"horizons": [1, 2], "symbol": "EURUSD"}) == _freeze_params(
+        {"symbol": "EURUSD", "horizons": [1, 2]}
+    )
+    # Scalar-only params yield the same key as the previous implementation,
+    # so cache hit/miss behaviour is preserved.
+    scalar = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0}
+    assert _freeze_params(scalar) == tuple(sorted(scalar.items()))
+
+
+def test_oco_asymmetric_precompute_tolerates_list_valued_params():
+    """End-to-end repro of the WFO replay crash: ``entry_indices`` is called
+    with a list-valued ``horizons`` param. Must not raise, and the cache key
+    must stay stable across calls."""
+    from scripts.mining_family import OcoAsymmetricFamily
+
+    fam = OcoAsymmetricFamily()
+    rng = np.random.default_rng(11)
+    n = 300
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    # Mirrors the WFO replay: scalar params plus the injected list `horizons`.
+    params = {
+        "symbol": "EURUSD",
+        "horizon": 4,
+        "down_pips": 3.0,
+        "rr": 1.0,
+        "horizons": [1, 2, 4],
+    }
+    entries = fam.entry_indices(frame, allmask, params)
+    entries_again = fam.entry_indices(frame, allmask, params)
+    np.testing.assert_array_equal(entries, entries_again)
+    assert len(fam._cache) == 1
+
+
 def test_oco_asymmetric_no_false_edge_on_driftless_data():
     from scripts.mining_random_baseline import random_entry_baseline
 
