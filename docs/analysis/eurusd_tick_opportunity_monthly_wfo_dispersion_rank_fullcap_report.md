@@ -1,13 +1,14 @@
-# USDCHF Tick Opportunity Monthly WFO (3M->1M)
+# EURUSD Tick Opportunity Monthly WFO (3M->1M)
 
 ## Setup
-- library: `oco`
+- library: `dispersion_rank`
+- families: `dispersion_rank`
 - train_years_for_state_fit: `2022,2023,2024`
 - eval_window: `2025-01` .. `2026-03`
 - min_candidate_train_count: `2000`
 - max_candidates_per_library: `300`
 - rolling_train_months: `3`
-- oco_include_no_touch: `True`
+- oco_include_no_touch: `False`
 - threshold_mode: `rolling_days`
 - rolling_threshold_days: `20`
 - rolling_threshold_min_history: `300`
