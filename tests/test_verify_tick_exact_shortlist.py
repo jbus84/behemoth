@@ -541,3 +541,49 @@ def test_recompute_barrier_path_maps_events_to_engine_gross(monkeypatch) -> None
     assert out["expected_gross_pips"][0] == pytest.approx(3.5, abs=1e-9)
     assert out["expected_decided"][0]
     assert out["map_ok"][0]
+
+
+def test_recompute_barrier_path_handles_non_zero_based_event_index(monkeypatch) -> None:
+    """The caller passes events sliced from the `d` frame, whose index is NOT
+    0-based. The returned arrays are positional (length len(events)); indexing
+    them with a raw index label (e.g. 188) on a short leg raised IndexError.
+    Regression: a single event carrying a large index label must still map."""
+    import scripts.verify_tick_exact_shortlist as vmod
+
+    frame = pd.DataFrame(
+        {
+            "close_ts": pd.to_datetime(
+                ["2025-01-01 00:00:00", "2025-01-01 01:00:00"], utc=True
+            ),
+            "close_bid": [1.10, 1.10],
+            "low_bid": [1.10, 1.10],
+            "high_ask": [1.10, 1.10],
+            "close_ask": [1.10, 1.10],
+        }
+    )
+    # One event, but its pandas index label is 188 (as in a real `d` slice) —
+    # far larger than len(events)==1.
+    events = pd.DataFrame(
+        {
+            "close_ts": pd.to_datetime(["2025-01-01 01:00:00"], utc=True),
+            "state_id": ["double_touch__high_abs_vel_q70__up_a10_b2_wA10_wB10_h1"],
+            "target_gross_pips": [2.0],
+        },
+        index=[188],
+    )
+
+    def fake_engine(frame, **kwargs):
+        return {
+            "i0": np.array([0, 1], dtype=np.int64),
+            "gross": np.array([np.nan, 2.0], dtype=float),
+            "decided": np.array([False, True]),
+        }
+
+    monkeypatch.setattr(vmod, "_double_touch_precompute", fake_engine)
+    out = vmod._recompute_barrier_path(
+        frame=frame, events=events, family="double_touch", symbol="EURUSD"
+    )
+    # Positional array of length 1; must not raise and must map the event.
+    assert len(out["expected_gross_pips"]) == 1
+    assert out["expected_gross_pips"][0] == pytest.approx(2.0, abs=1e-9)
+    assert out["expected_decided"][0]
