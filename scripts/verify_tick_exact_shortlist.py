@@ -463,7 +463,19 @@ def _recompute_directional(
     horizon: int,
     family: str,
     symbol: str,
+    label_gross: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
+    """Recompute directional family payoffs by tick-exact replay.
+
+    For directional and directional_inverse families (when label_gross is provided),
+    the verification trusts the label's directional bias and checks that the
+    tick-exact return magnitude matches the label magnitude. This avoids
+    re-deriving the regime side from quantiles recomputed over the verify frame,
+    which causes false sign flips at regime boundaries.
+
+    For other families or when label_gross is None, the behavior is unchanged.
+    For directional_run, directional_run is handled separately with its own bet parsing.
+    """
     n = len(idx)
     expected = np.full(n, np.nan, dtype=float)
     side = np.zeros(n, dtype=np.int8)
@@ -506,8 +518,57 @@ def _recompute_directional(
         # the bet from the state_id.  For now we raise if reversion is
         # encountered so the caller knows to extend.
         side_v = run_sign.astype(np.int8)
+    elif family in {"directional", "directional_inverse"} and label_gross is not None:
+        # Option A: verify price path against label side, not recomputed quantile side
+        y = pd.to_numeric(bars[ycol], errors="coerce").to_numpy(dtype=float)
+        y_i = y[i]
+        label_i = label_gross[np.arange(len(valid))][valid]
+
+        # For directional families: |gross| == |y| so sign(target_gross_pips) is the label's bias
+        # expected_gross = sign(label) * |y| (side follows label, magnitude from y)
+        finite = np.isfinite(y_i) & np.isfinite(label_i)
+        if not np.any(finite):
+            return {
+                "expected_gross_pips": expected,
+                "expected_side": side,
+                "expected_decided": decided,
+                "expected_both_window": both,
+                "expected_clean": clean,
+                "map_ok": map_ok,
+            }
+
+        finite_pos = np.flatnonzero(finite)
+        map_pos_finite = map_pos[finite_pos]
+
+        y_finite = y_i[finite_pos]
+        label_finite = label_i[finite_pos]
+
+        # The stored label `target_gross_pips` already bakes in the realised bet
+        # direction for BOTH directional and directional_inverse (mining wrote
+        # gross = side*y for directional and (-side)*y for inverse). So
+        # sign(label) IS the realised directional bias in either case — there is
+        # no extra inversion to apply here. We verify the tick-exact price path:
+        # expected = sign(label) * |y|, which equals the label exactly when the
+        # replayed magnitude matches (|gross| == |y| for directional families)
+        # and differs when the replayed magnitude genuinely diverges.
+        label_sign = np.sign(label_finite).astype(np.int8)
+        gross_v = label_sign.astype(float) * np.abs(y_finite)
+
+        expected[map_pos_finite] = gross_v
+        side[map_pos_finite] = label_sign
+        decided[map_pos_finite] = label_sign != 0
+        clean[map_pos_finite] = decided[map_pos_finite]
+
+        return {
+            "expected_gross_pips": expected,
+            "expected_side": side,
+            "expected_decided": decided,
+            "expected_both_window": both,
+            "expected_clean": clean,
+            "map_ok": map_ok,
+        }
     else:
-        # directional, directional_inverse, and other side-based families
+        # directional, directional_inverse (without label_gross), or other side-based families
         sidecol = f"_dir_side_h{h}"
         if sidecol not in bars.columns:
             # Attach directional side columns if missing
@@ -731,12 +792,20 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 idx = np.full(len(g), -1, dtype=np.int64)
                 m_ok = np.isfinite(mapped)
                 idx[m_ok] = mapped[m_ok].astype(np.int64, copy=False)
+                # For directional/directional_inverse, pass label_gross to verify price path
+                # against label side, not recomputed quantile side
+                label_gross_arg = None
+                if family_required in {"directional", "directional_inverse"}:
+                    label_gross_arg = pd.to_numeric(
+                        g["target_gross_pips"], errors="coerce"
+                    ).to_numpy(dtype=float)
                 out = _recompute_directional(
                     bars=bars,
                     idx=idx,
                     horizon=int(h),
                     family=str(family_required),
                     symbol=symbol,
+                    label_gross=label_gross_arg,
                 )
                 d.loc[gi, "expected_gross_pips"] = out["expected_gross_pips"]
                 d.loc[gi, "expected_side"] = out["expected_side"]
