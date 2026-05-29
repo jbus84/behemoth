@@ -30,14 +30,18 @@ except ModuleNotFoundError:
 try:
     from scripts.run_tick_opportunity_mining import (
         _attach_directional_side_columns,
+        _double_touch_precompute,
         _prepare_frame,
+        _pullback_precompute,
         _quantiles,
         read_explicit_bar_parquet,
     )
 except ModuleNotFoundError:
     from run_tick_opportunity_mining import (  # type: ignore
         _attach_directional_side_columns,
+        _double_touch_precompute,
         _prepare_frame,
+        _pullback_precompute,
         _quantiles,
         read_explicit_bar_parquet,
     )
@@ -55,6 +59,16 @@ _DIRECTIONAL_FAMILIES: set[str] = {
     "double_touch",
     "pullback",
 }
+# Barrier/path families that require dedicated engine replay
+_BARRIER_PATH_FAMILIES: set[str] = {"double_touch", "pullback"}
+
+# State-id parameter regexes for barrier-path families. Anchored at the END so a
+# regime segment containing underscores (e.g. low_cost_q30, high_abs_vel_q70,
+# low_cost_q30_and_high_range_q70) does not break the parse.
+# Format: double_touch__{regime}__{up|down}_a{a}_b{b}_wA{wa}_wB{wb}_h{h2}
+_DOUBLE_TOUCH_STATE_RX = re.compile(r"__(up|down)_a([0-9.]+)_b([0-9.]+)_wA(\d+)_wB(\d+)_h(\d+)$")
+# Format: pullback__{regime}__{up|down}_M{m}_R{r}_wI{wi}_wP{wp}_wR{wr}_h{h2}
+_PULLBACK_STATE_RX = re.compile(r"__(up|down)_M([0-9.]+)_R([0-9.]+)_wI(\d+)_wP(\d+)_wR(\d+)_h(\d+)$")
 
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
@@ -286,6 +300,137 @@ def _select_events(d: pd.DataFrame, *, q: float, mode: str) -> pd.DataFrame:
         if m == "exec_flag" or (m == "auto" and not x.empty):
             return x
     return _select_month_q(d, q=q)
+
+
+def _recompute_barrier_path(
+    *,
+    frame: pd.DataFrame,
+    events: pd.DataFrame,
+    family: str,
+    symbol: str,
+) -> dict[str, np.ndarray]:
+    """Recompute barrier/path family payoffs by engine replay on velocity frame.
+
+    For double_touch and pullback families, this runs the dedicated barrier-path
+    engines (_double_touch_precompute, _pullback_precompute) on the velocity frame,
+    parses state_id params to extract engine hyperparameters, and maps each event's
+    expected gross from the engine's i0 output.
+
+    Returns arrays aligned to events row order with keys: expected_gross_pips,
+    expected_side, expected_decided, expected_both_window, expected_clean, map_ok.
+    Events that don't parse/don't map get NaN gross, decided=False, map_ok=False.
+    """
+    n_events = len(events)
+    expected_gross = np.full(n_events, np.nan, dtype=float)
+    expected_side = np.zeros(n_events, dtype=np.int8)
+    expected_decided = np.zeros(n_events, dtype=bool)
+    expected_both_window = np.zeros(n_events, dtype=bool)
+    expected_clean = np.zeros(n_events, dtype=bool)
+    map_ok = np.zeros(n_events, dtype=bool)
+
+    # Build index map from frame close_ts to frame row index
+    idx_map = pd.Series(np.arange(len(frame), dtype=np.int64), index=frame["close_ts"])
+    idx_map = idx_map[~idx_map.index.duplicated(keep="first")]
+
+    # Parse state_id per event and group by state_id
+    for state_id_val, g in events.groupby("state_id", sort=False):
+        state_id_str = str(state_id_val)
+        gi = g.index.to_numpy(dtype=np.int64)
+
+        if family == "double_touch":
+            m = _DOUBLE_TOUCH_STATE_RX.search(state_id_str)
+            if not m:
+                continue  # Malformed state_id, leave as NaN/False
+            sweep_dir = m.group(1)
+            a_pips = float(m.group(2))
+            b_pips = float(m.group(3))
+            wA = int(m.group(4))
+            wB = int(m.group(5))
+            h2 = int(m.group(6))
+
+            try:
+                out = _double_touch_precompute(
+                    frame,
+                    symbol=symbol,
+                    sweep_dir=sweep_dir,
+                    a_pips=a_pips,
+                    b_pips=b_pips,
+                    window_A=wA,
+                    window_B=wB,
+                    h2=h2,
+                )
+            except Exception:
+                continue  # Engine failed, leave as NaN/False
+        elif family == "pullback":
+            m = _PULLBACK_STATE_RX.search(state_id_str)
+            if not m:
+                continue  # Malformed state_id, leave as NaN/False
+            impulse_dir = m.group(1)
+            m_pips = float(m.group(2))
+            r_frac = float(m.group(3))
+            wI = int(m.group(4))
+            wP = int(m.group(5))
+            wR = int(m.group(6))
+            h = int(m.group(7))
+
+            try:
+                out = _pullback_precompute(
+                    frame,
+                    symbol=symbol,
+                    impulse_dir=impulse_dir,
+                    m_pips=m_pips,
+                    r_frac=r_frac,
+                    window_I=wI,
+                    window_P=wP,
+                    window_R=wR,
+                    h=h,
+                )
+            except Exception:
+                continue  # Engine failed, leave as NaN/False
+        else:
+            continue  # Unknown family
+
+        if not out or "i0" not in out:
+            continue  # Engine returned empty result (frame too short)
+
+        # Build i0 -> gross mapping
+        i0_arr = out["i0"].astype(np.int64)
+        gross_arr = out["gross"].astype(float)
+        i0_to_gross = {int(a): b for a, b in zip(i0_arr, gross_arr)}
+
+        # Map each event in this state_id group to its bar index. Keep the
+        # tz-aware Series (do NOT use .values, which strips tz and makes the
+        # reindex against the tz-aware frame index return all-NaN).
+        bar_indices = idx_map.reindex(g["close_ts"]).to_numpy(dtype=float)
+
+        for event_row_idx, bar_idx_val in zip(gi, bar_indices):
+            if not np.isfinite(bar_idx_val):
+                continue  # Event didn't map to frame
+            bar_idx = int(bar_idx_val)
+            if bar_idx not in i0_to_gross:
+                continue  # Bar index not in engine i0 output
+
+            gross_val = i0_to_gross[bar_idx]
+            if not np.isfinite(gross_val):
+                expected_decided[event_row_idx] = False
+                map_ok[event_row_idx] = True
+                continue
+
+            # Finite gross: store it and mark decided
+            expected_gross[event_row_idx] = gross_val
+            expected_side[event_row_idx] = int(np.sign(gross_val)) if gross_val != 0.0 else 0
+            expected_decided[event_row_idx] = True
+            expected_clean[event_row_idx] = True
+            map_ok[event_row_idx] = True
+
+    return {
+        "expected_gross_pips": expected_gross,
+        "expected_side": expected_side,
+        "expected_decided": expected_decided,
+        "expected_both_window": expected_both_window,
+        "expected_clean": expected_clean,
+        "map_ok": map_ok,
+    }
 
 
 def _recompute_first_touch(
@@ -783,7 +928,29 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         if not path.exists():
             raise FileNotFoundError(path)
         bt_index = gb.index
-        if family_required in _DIRECTIONAL_FAMILIES:
+        if family_required in _BARRIER_PATH_FAMILIES:
+            # Load OHLC velocity frame for barrier-path engine replay
+            bars = read_explicit_bar_parquet(
+                path,
+                columns=["close_ts", "close_bid", "low_bid", "high_ask", "close_ask"],
+                required=["close_ts", "close_bid", "low_bid", "high_ask", "close_ask"],
+            )
+            bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
+            bars = bars.dropna(subset=["close_ts"]).sort_values("close_ts").reset_index(drop=True)
+            # Recompute barrier-path payoffs for entire bar_ticks group
+            out = _recompute_barrier_path(
+                frame=bars,
+                events=gb,
+                family=str(family_required),
+                symbol=symbol,
+            )
+            d.loc[gb.index, "expected_gross_pips"] = out["expected_gross_pips"]
+            d.loc[gb.index, "expected_side"] = out["expected_side"]
+            d.loc[gb.index, "expected_decided"] = out["expected_decided"]
+            d.loc[gb.index, "expected_both_window"] = out["expected_both_window"]
+            d.loc[gb.index, "expected_clean"] = out["expected_clean"]
+            d.loc[gb.index, "map_ok"] = out["map_ok"]
+        elif family_required in _DIRECTIONAL_FAMILIES:
             horizons_needed = sorted(gb["horizon"].unique().astype(int))
             bars = _prepare_frame(path, symbol=symbol, horizons=horizons_needed)
             bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
