@@ -320,6 +320,12 @@ def _recompute_barrier_path(
     expected_side, expected_decided, expected_both_window, expected_clean, map_ok.
     Events that don't parse/don't map get NaN gross, decided=False, map_ok=False.
     """
+    # Work positionally: the returned arrays are length-len(events) and are
+    # assigned back by the caller in row order. Reset to a RangeIndex so the
+    # per-group `g.index` values are POSITIONS into the arrays below, not the
+    # caller's (arbitrary, non-0-based) `d` index labels — indexing a positional
+    # array with a label like 188 on a 100-row leg raised IndexError.
+    events = events.reset_index(drop=True)
     n_events = len(events)
     expected_gross = np.full(n_events, np.nan, dtype=float)
     expected_side = np.zeros(n_events, dtype=np.int8)
