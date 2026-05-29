@@ -425,3 +425,119 @@ def test_recompute_directional_run_uses_label_side_for_reversion() -> None:
     # Side follows the label (short), so expected == label, not +4.4 (continuation).
     assert out["expected_gross_pips"][0] == pytest.approx(-4.4, abs=1e-9)
     assert out["expected_decided"][0]
+
+
+def test_recompute_barrier_path_parses_double_touch_state_id() -> None:
+    """Verify _recompute_barrier_path correctly parses double_touch state_id params.
+
+    This test verifies that the state_id regex correctly extracts sweep_dir,
+    a_pips, b_pips, window_A, window_B, h2 from the canonical state_id format.
+    """
+    from scripts.verify_tick_exact_shortlist import _DOUBLE_TOUCH_STATE_RX
+
+    # Event with double_touch state_id encoding sweep_dir=up, a=10, b=5, wA=20, wB=20, h=10
+    state_id = "double_touch__london__up_a10_b5_wA20_wB20_h10"
+
+    # Verify the regex parsed the state_id correctly
+    m = _DOUBLE_TOUCH_STATE_RX.search(state_id)
+    assert m is not None
+    assert m.group(1) == "up"  # sweep_dir
+    assert float(m.group(2)) == 10.0  # a_pips
+    assert float(m.group(3)) == 5.0  # b_pips
+    assert int(m.group(4)) == 20  # wA
+    assert int(m.group(5)) == 20  # wB
+    assert int(m.group(6)) == 10  # h2
+
+    # Also test with decimal values (e.g., from :g formatting)
+    state_id_decimal = "double_touch__london__down_a15.5_b2.3_wA10_wB10_h5"
+    m2 = _DOUBLE_TOUCH_STATE_RX.search(state_id_decimal)
+    assert m2 is not None
+    assert m2.group(1) == "down"
+    assert float(m2.group(2)) == 15.5
+    assert float(m2.group(3)) == 2.3
+
+
+def test_recompute_barrier_path_parses_pullback_state_id() -> None:
+    """Verify _recompute_barrier_path correctly parses pullback state_id params."""
+    from scripts.verify_tick_exact_shortlist import _PULLBACK_STATE_RX
+
+    # Event with pullback state_id: impulse_dir=down, M=25, R=0.618, wI=15, wP=15, wR=15, h=20
+    state_id = "pullback__london__down_M25_R0.618_wI15_wP15_wR15_h20"
+
+    # Verify the regex parsed the state_id correctly
+    m = _PULLBACK_STATE_RX.search(state_id)
+    assert m is not None
+    assert m.group(1) == "down"  # impulse_dir
+    assert float(m.group(2)) == 25.0  # m_pips
+    assert float(m.group(3)) == 0.618  # r_frac
+    assert int(m.group(4)) == 15  # wI
+    assert int(m.group(5)) == 15  # wP
+    assert int(m.group(6)) == 15  # wR
+    assert int(m.group(7)) == 20  # h
+
+    # Also test with decimal M values
+    state_id_decimal = "pullback__london__up_M10.5_R0.382_wI10_wP10_wR10_h15"
+    m2 = _PULLBACK_STATE_RX.search(state_id_decimal)
+    assert m2 is not None
+    assert m2.group(1) == "up"
+    assert float(m2.group(2)) == 10.5
+    assert float(m2.group(3)) == 0.382
+
+
+def test_double_touch_state_rx_matches_underscore_regimes() -> None:
+    """Regime segments contain underscores (low_cost_q30, high_abs_vel_q70, …);
+    the regex must still parse the trailing params. Regression for a prefix-based
+    regex that only matched single-token regimes like 'london'."""
+    from scripts.verify_tick_exact_shortlist import _DOUBLE_TOUCH_STATE_RX, _PULLBACK_STATE_RX
+
+    m = _DOUBLE_TOUCH_STATE_RX.search(
+        "double_touch__low_cost_q30_and_high_range_q70__up_a10_b2_wA10_wB10_h3"
+    )
+    assert m is not None and m.group(1) == "up" and int(m.group(6)) == 3
+    m2 = _PULLBACK_STATE_RX.search(
+        "pullback__low_cost_q30_and_high_range_q70__down_M2_R0.382_wI10_wP10_wR10_h1"
+    )
+    assert m2 is not None and m2.group(1) == "down" and float(m2.group(3)) == 0.382
+
+
+def test_recompute_barrier_path_maps_events_to_engine_gross(monkeypatch) -> None:
+    """End-to-end mapping guard: an event whose close_ts matches a frame bar must
+    receive the engine's gross for that bar index. Regression for the tz-stripping
+    `.values` bug that made every event fail to map (all-NaN)."""
+    import scripts.verify_tick_exact_shortlist as vmod
+
+    frame = pd.DataFrame(
+        {
+            "close_ts": pd.to_datetime(
+                ["2025-01-01 00:00:00", "2025-01-01 01:00:00", "2025-01-01 02:00:00"],
+                utc=True,
+            ),
+            "close_bid": [1.10, 1.10, 1.10],
+            "low_bid": [1.10, 1.10, 1.10],
+            "high_ask": [1.10, 1.10, 1.10],
+            "close_ask": [1.10, 1.10, 1.10],
+        }
+    )
+    # Event maps to frame bar index 1; engine returns gross 3.5 for i0==1.
+    events = pd.DataFrame(
+        {
+            "close_ts": pd.to_datetime(["2025-01-01 01:00:00"], utc=True),
+            "state_id": ["double_touch__low_cost_q30__up_a10_b2_wA10_wB10_h1"],
+            "target_gross_pips": [3.5],
+        }
+    )
+
+    def fake_engine(frame, **kwargs):
+        return {
+            "i0": np.array([0, 1, 2], dtype=np.int64),
+            "gross": np.array([np.nan, 3.5, np.nan], dtype=float),
+            "decided": np.array([False, True, False]),
+        }
+
+    monkeypatch.setattr(vmod, "_double_touch_precompute", fake_engine)
+    out = vmod._recompute_barrier_path(
+        frame=frame, events=events, family="double_touch", symbol="EURUSD"
+    )
+    assert out["expected_gross_pips"][0] == pytest.approx(3.5, abs=1e-9)
+    assert out["expected_decided"][0]
+    assert out["map_ok"][0]
