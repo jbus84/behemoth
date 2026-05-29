@@ -354,19 +354,20 @@ def _recompute_barrier_path(
             wB = int(m.group(5))
             h2 = int(m.group(6))
 
-            try:
-                out = _double_touch_precompute(
-                    frame,
-                    symbol=symbol,
-                    sweep_dir=sweep_dir,
-                    a_pips=a_pips,
-                    b_pips=b_pips,
-                    window_A=wA,
-                    window_B=wB,
-                    h2=h2,
-                )
-            except Exception:
-                continue  # Engine failed, leave as NaN/False
+            # No broad except: a genuine engine failure must surface (fail loud)
+            # rather than silently leaving NaN gross -> false NO_GO. The only
+            # legitimate skip is a too-short frame, which the engine signals by
+            # returning {} (handled below).
+            out = _double_touch_precompute(
+                frame,
+                symbol=symbol,
+                sweep_dir=sweep_dir,
+                a_pips=a_pips,
+                b_pips=b_pips,
+                window_A=wA,
+                window_B=wB,
+                h2=h2,
+            )
         elif family == "pullback":
             m = _PULLBACK_STATE_RX.search(state_id_str)
             if not m:
@@ -379,20 +380,17 @@ def _recompute_barrier_path(
             wR = int(m.group(6))
             h = int(m.group(7))
 
-            try:
-                out = _pullback_precompute(
-                    frame,
-                    symbol=symbol,
-                    impulse_dir=impulse_dir,
-                    m_pips=m_pips,
-                    r_frac=r_frac,
-                    window_I=wI,
-                    window_P=wP,
-                    window_R=wR,
-                    h=h,
-                )
-            except Exception:
-                continue  # Engine failed, leave as NaN/False
+            out = _pullback_precompute(
+                frame,
+                symbol=symbol,
+                impulse_dir=impulse_dir,
+                m_pips=m_pips,
+                r_frac=r_frac,
+                window_I=wI,
+                window_P=wP,
+                window_R=wR,
+                h=h,
+            )
         else:
             continue  # Unknown family
 
