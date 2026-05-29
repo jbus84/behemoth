@@ -388,3 +388,40 @@ def test_recompute_directional_inverse_uses_label_sign_without_extra_inversion()
     # Must equal the label (-2.6), NOT +2.6 (which an extra inversion would give).
     assert out["expected_gross_pips"][0] == pytest.approx(-2.6, abs=1e-9)
     assert out["expected_decided"][0]
+
+
+def test_recompute_directional_run_uses_label_side_for_reversion() -> None:
+    """directional_run reversion bets must verify via the label side.
+
+    The legacy path hardcoded continuation (+run_sign), so reversion-bet
+    candidates mismatched every row (~0%). With label_gross provided, the side
+    follows the label, so a reversion event (label sign opposite the recent run)
+    verifies. Regression guard for the directional_run catastrophic-FAIL case.
+    """
+    from scripts.verify_tick_exact_shortlist import _recompute_directional
+
+    horizon = 1
+    bars = pd.DataFrame(
+        {
+            "close_ts": pd.to_datetime(
+                ["2025-01-01 00:00:00", "2025-01-01 01:00:00"], utc=True
+            ),
+            "ret1_pips": [3.0, 1.0],  # recent up-run → continuation would bet long
+            f"y_fwd_pips_h{horizon}": [4.4, np.nan],
+        }
+    )
+    idx = np.array([0], dtype=np.int64)
+    label_gross = np.array([-4.4], dtype=float)  # reversion bet (short) despite up-run
+
+    out = _recompute_directional(
+        bars=bars,
+        idx=idx,
+        horizon=horizon,
+        family="directional_run",
+        symbol="EURUSD",
+        label_gross=label_gross,
+    )
+
+    # Side follows the label (short), so expected == label, not +4.4 (continuation).
+    assert out["expected_gross_pips"][0] == pytest.approx(-4.4, abs=1e-9)
+    assert out["expected_decided"][0]

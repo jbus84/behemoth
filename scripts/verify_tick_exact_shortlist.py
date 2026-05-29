@@ -467,14 +467,19 @@ def _recompute_directional(
 ) -> dict[str, np.ndarray]:
     """Recompute directional family payoffs by tick-exact replay.
 
-    For directional and directional_inverse families (when label_gross is provided),
-    the verification trusts the label's directional bias and checks that the
-    tick-exact return magnitude matches the label magnitude. This avoids
-    re-deriving the regime side from quantiles recomputed over the verify frame,
-    which causes false sign flips at regime boundaries.
+    For the forward-return directional families — directional, directional_inverse
+    and directional_run — (when label_gross is provided) the verification trusts
+    the label's directional bias and checks that the tick-exact return magnitude
+    matches the label magnitude (|gross| == |y_fwd| for these families). This
+    avoids re-deriving the side at verify time: for directional/inverse the side
+    came from quantiles recomputed over the verify frame (≠ the per-fold mining
+    quantiles), and for directional_run the side depends on the continuation vs
+    reversion bet — both flip on boundary/reversion events and cause false FAILs.
+    Using sign(label) sidesteps all of it and verifies the price path.
 
-    For other families or when label_gross is None, the behavior is unchanged.
-    For directional_run, directional_run is handled separately with its own bet parsing.
+    For directional_run with label_gross is None, the legacy continuation-only
+    run_sign path is used as a fallback. Barrier/path families (double_touch,
+    pullback) do NOT have a side×y_fwd payoff and are not handled here.
     """
     n = len(idx)
     expected = np.full(n, np.nan, dtype=float)
@@ -502,7 +507,7 @@ def _recompute_directional(
     h = int(horizon)
     ycol = f"y_fwd_pips_h{h}"
 
-    if family == "directional_run":
+    if family == "directional_run" and label_gross is None:
         from scripts.run_tick_opportunity_mining import _run_length
 
         run_len, run_sign = _run_length(bars)
@@ -518,7 +523,7 @@ def _recompute_directional(
         # the bet from the state_id.  For now we raise if reversion is
         # encountered so the caller knows to extend.
         side_v = run_sign.astype(np.int8)
-    elif family in {"directional", "directional_inverse"} and label_gross is not None:
+    elif family in {"directional", "directional_inverse", "directional_run"} and label_gross is not None:
         # Option A: verify price path against label side, not recomputed quantile side
         y = pd.to_numeric(bars[ycol], errors="coerce").to_numpy(dtype=float)
         y_i = y[i]
@@ -795,7 +800,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 # For directional/directional_inverse, pass label_gross to verify price path
                 # against label side, not recomputed quantile side
                 label_gross_arg = None
-                if family_required in {"directional", "directional_inverse"}:
+                if family_required in {"directional", "directional_inverse", "directional_run"}:
                     label_gross_arg = pd.to_numeric(
                         g["target_gross_pips"], errors="coerce"
                     ).to_numpy(dtype=float)
