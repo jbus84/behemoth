@@ -214,10 +214,10 @@ def _default_paths(
             analysis_dir / f"{fam}_rolling_{sl}" / f"{s}_{fam}_state_schedule.csv",
             *(
                 [
-                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_state_schedule.csv",
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_first_touch_reduced_state_schedule.csv",
                     analysis_dir
                     / f"reduced_core_rolling_{sl}"
-                    / f"{s}_oco_reduced_state_schedule.csv",
+                    / f"{s}_oco_first_touch_reduced_state_schedule.csv",
                 ]
                 if oco_legacy
                 else []
@@ -229,9 +229,9 @@ def _default_paths(
             analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_{fam}_tick_exact_summary.csv",
             *(
                 [
-                    analysis_dir / "reduced_core" / f"{s}_oco_tick_exact_summary.csv",
-                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_tick_exact_summary.csv",
-                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_tick_exact_summary.csv",
+                    analysis_dir / "reduced_core" / f"{s}_oco_first_touch_tick_exact_summary.csv",
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_first_touch_tick_exact_summary.csv",
+                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_first_touch_tick_exact_summary.csv",
                 ]
                 if oco_legacy
                 else []
@@ -244,8 +244,8 @@ def _default_paths(
             analysis_dir / f"{fam}_rolling_{sl}" / f"{s}_{fam}_summary.csv",
             *(
                 [
-                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_summary.csv",
-                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_summary.csv",
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_first_touch_reduced_summary.csv",
+                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_first_touch_reduced_summary.csv",
                 ]
                 if oco_legacy
                 else []
@@ -258,8 +258,8 @@ def _default_paths(
             analysis_dir / f"{fam}_rolling_{sl}" / f"{s}_{fam}_monthly.csv",
             *(
                 [
-                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_monthly.csv",
-                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_monthly.csv",
+                    analysis_dir / "reduced_core_rolling" / f"{s}_oco_first_touch_reduced_monthly.csv",
+                    analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_first_touch_reduced_monthly.csv",
                 ]
                 if oco_legacy
                 else []
@@ -270,10 +270,10 @@ def _default_paths(
             analysis_dir / f"{_wfo_dir_name(fam)}_{sl}" / f"{s}_{fam}_monthly_predictions.parquet",
             *(
                 [
-                    analysis_dir / "wfo_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
+                    analysis_dir / "wfo_m3to1_oco_fullcap" / f"{s}_oco_first_touch_monthly_predictions.parquet",
                     analysis_dir
                     / f"wfo_m3to1_oco_fullcap_{sl}"
-                    / f"{s}_oco_monthly_predictions.parquet",
+                    / f"{s}_oco_first_touch_monthly_predictions.parquet",
                 ]
                 if oco_legacy
                 else []

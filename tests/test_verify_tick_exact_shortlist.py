@@ -49,12 +49,12 @@ def test_resolve_shortlist_prefers_symbol_schedule_over_default(monkeypatch, tmp
     monkeypatch.chdir(tmp_path)
     schedule = (
         tmp_path
-        / "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv"
+        / "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_first_touch_reduced_state_schedule.csv"
     )
     schedule.parent.mkdir(parents=True, exist_ok=True)
     schedule.write_text("symbol,test_month,bar_ticks,horizon,state_id\n", encoding="utf-8")
     picked = _resolve_shortlist_state_csv(
-        "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
+        "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_reduced_states.csv",
         symbol="USDCHF",
     )
     assert picked.resolve() == schedule.resolve()
@@ -87,21 +87,21 @@ def test_merge_config_derives_symbol_specific_outputs_when_not_explicit() -> Non
     )
 
     assert cfg["pred_path"].endswith(
-        "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/GBPUSD_oco_monthly_predictions.parquet"
+        "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/GBPUSD_oco_first_touch_monthly_predictions.parquet"
     )
     assert cfg["shortlist_state_csv"].endswith(
-        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_reduced_states.csv"
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_first_touch_reduced_states.csv"
     )
     assert cfg["out_summary_csv"].endswith(
-        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_tick_exact_summary.csv"
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_first_touch_tick_exact_summary.csv"
     )
     assert cfg["out_monthly_csv"].endswith(
-        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_tick_exact_monthly.csv"
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_first_touch_tick_exact_monthly.csv"
     )
     assert cfg["out_state_csv"].endswith(
-        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_tick_exact_state.csv"
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_first_touch_tick_exact_state.csv"
     )
-    assert cfg["report_out"].endswith("docs/analysis/gbpusd_oco_tick_exact_shortlist_report.md")
+    assert cfg["report_out"].endswith("docs/analysis/gbpusd_oco_first_touch_tick_exact_shortlist_report.md")
 
 
 def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkeypatch) -> None:
@@ -137,7 +137,7 @@ def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkey
         ]
     ).to_parquet(velocity_path, index=False)
 
-    shortlist_state_csv = tmp_path / "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv"
+    shortlist_state_csv = tmp_path / "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_reduced_states.csv"
     shortlist_state_csv.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(
         [

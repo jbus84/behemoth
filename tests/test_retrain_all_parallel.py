@@ -27,8 +27,8 @@ def test_collect_outcomes_orders_results_and_summarises(tmp_path):
     REBUILD_SYMBOLS order with the right outcome per symbol."""
     ad = tmp_path / "analysis"
     (ad / "reduced_core_rolling").mkdir(parents=True)
-    _stub_schedule(ad / "reduced_core_rolling" / "EURUSD_oco_reduced_state_schedule.csv", 3)
-    _stub_schedule(ad / "reduced_core_rolling" / "GBPUSD_oco_reduced_state_schedule.csv", 0)
+    _stub_schedule(ad / "reduced_core_rolling" / "EURUSD_oco_first_touch_reduced_state_schedule.csv", 3)
+    _stub_schedule(ad / "reduced_core_rolling" / "GBPUSD_oco_first_touch_reduced_state_schedule.csv", 0)
     # USDJPY: no schedule file at all
 
     results = [
@@ -49,8 +49,8 @@ def test_orchestrator_isolates_worker_failure(tmp_path):
     """One worker failing must not cancel siblings; final exit is 1."""
     ad = tmp_path / "analysis"
     (ad / "reduced_core_rolling").mkdir(parents=True)
-    _stub_schedule(ad / "reduced_core_rolling" / "EURUSD_oco_reduced_state_schedule.csv", 1)
-    _stub_schedule(ad / "reduced_core_rolling" / "GBPUSD_oco_reduced_state_schedule.csv", 1)
+    _stub_schedule(ad / "reduced_core_rolling" / "EURUSD_oco_first_touch_reduced_state_schedule.csv", 1)
+    _stub_schedule(ad / "reduced_core_rolling" / "GBPUSD_oco_first_touch_reduced_state_schedule.csv", 1)
 
     def fake_run_worker(symbol: str, *, eval_end_month, log_dir, stream_to_stdout=False):
         if symbol == "GBPUSD":
@@ -85,7 +85,7 @@ def test_orchestrator_isolates_run_worker_crash(tmp_path):
     ad = tmp_path / "analysis"
     (ad / "reduced_core_rolling").mkdir(parents=True)
     pd_df = pd.DataFrame({"state_id": ["s0"]})
-    pd_df.to_csv(ad / "reduced_core_rolling" / "EURUSD_oco_reduced_state_schedule.csv", index=False)
+    pd_df.to_csv(ad / "reduced_core_rolling" / "EURUSD_oco_first_touch_reduced_state_schedule.csv", index=False)
 
     def fake_run_worker(symbol, *, eval_end_month, log_dir, stream_to_stdout=False):
         if symbol == "GBPUSD":

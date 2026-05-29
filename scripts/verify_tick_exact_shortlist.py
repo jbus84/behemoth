@@ -59,8 +59,8 @@ _DIRECTIONAL_FAMILIES: set[str] = {
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
     "dataset_dir": "data/analysis/tick_velocity",
-    "pred_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
-    "shortlist_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
+    "pred_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_first_touch_monthly_predictions.parquet",
+    "shortlist_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_reduced_states.csv",
     "locked_quantile": 0.9,
     "selection_mode": "auto",  # auto|exec_flag|monthly_quantile
     "family_required": "oco_first_touch",
@@ -70,10 +70,10 @@ DEFAULTS: dict[str, Any] = {
     "abs_tol_pips": 1e-9,
     "min_exact_match_rate": 0.999,
     "min_pos_label_match_rate": 0.999,
-    "out_summary_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_summary.csv",
-    "out_monthly_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_monthly.csv",
-    "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_state.csv",
-    "report_out": "docs/analysis/eurusd_oco_tick_exact_shortlist_report.md",
+    "out_summary_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_tick_exact_summary.csv",
+    "out_monthly_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_tick_exact_monthly.csv",
+    "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_tick_exact_state.csv",
+    "report_out": "docs/analysis/eurusd_oco_first_touch_tick_exact_shortlist_report.md",
 }
 
 
@@ -125,16 +125,15 @@ def _derive_symbol_defaults(symbol: str, *, family: str | None = None) -> dict[s
             "out_state_csv": f"{rc}/{s}_oco_asymmetric_tick_exact_state.csv",
             "report_out": f"docs/analysis/{sl}_oco_asymmetric_tick_exact_shortlist_report.md",
         }
-    # oco_first_touch: its established artifact slug is `oco` across the OCO
-    # governance stack. Unchanged here; full canonicalisation to oco_first_touch
-    # is a separate migration.
+    # oco_first_touch: outputs are family-keyed; inputs are family-keyed too since
+    # WFO and reduced-core now write oco_first_touch filenames.
     return {
-        "pred_path": f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet",
-        "shortlist_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv",
-        "out_summary_csv": f"{rc}/{s}_oco_tick_exact_summary.csv",
-        "out_monthly_csv": f"{rc}/{s}_oco_tick_exact_monthly.csv",
-        "out_state_csv": f"{rc}/{s}_oco_tick_exact_state.csv",
-        "report_out": f"docs/analysis/{sl}_oco_tick_exact_shortlist_report.md",
+        "pred_path": f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s}_oco_first_touch_monthly_predictions.parquet",
+        "shortlist_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_first_touch_reduced_states.csv",
+        "out_summary_csv": f"{rc}/{s}_oco_first_touch_tick_exact_summary.csv",
+        "out_monthly_csv": f"{rc}/{s}_oco_first_touch_tick_exact_monthly.csv",
+        "out_state_csv": f"{rc}/{s}_oco_first_touch_tick_exact_state.csv",
+        "report_out": f"docs/analysis/{sl}_oco_first_touch_tick_exact_shortlist_report.md",
     }
 
 
@@ -243,10 +242,10 @@ def _default_shortlist_candidates(symbol: str, *, family: str | None = None) -> 
         ]
     return [
         Path(
-            f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"
+            f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_first_touch_reduced_state_schedule.csv"
         ),
         Path(f"configs/research/governance/oco/{sl}_oco_allowed_states.csv"),
-        Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv"),
+        Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_first_touch_reduced_states.csv"),
     ]
 
 

@@ -1046,7 +1046,7 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 analysis_root / f"{str(symbol).lower()}_governance_predeploy.json"
             )
         events_eval = _glob_latest(
-            str(analysis_root / "wfo_*" / f"{symbol}_oco_events_eval*.parquet")
+            str(analysis_root / "wfo_*" / f"{symbol}_oco_first_touch_events_eval*.parquet")
         )
         contexts.append(
             {
@@ -1071,13 +1071,13 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 "timezone_contract_csv": analysis_root / f"{symbol}_stage1_timezone_contract.csv",
                 "candidate_csv": analysis_root / f"{symbol}_oco_candidates.csv",
                 "reduced_summary_csv": reduced_summary,
-                "reduced_monthly_csv": reduced_dir / f"{symbol}_oco_reduced_monthly.csv",
-                "reduced_churn_csv": reduced_dir / f"{symbol}_oco_reduced_state_churn.csv",
+                "reduced_monthly_csv": reduced_dir / f"{symbol}_oco_first_touch_reduced_monthly.csv",
+                "reduced_churn_csv": reduced_dir / f"{symbol}_oco_first_touch_reduced_state_churn.csv",
                 "reduced_state_schedule_csv": reduced_dir
-                / f"{symbol}_oco_reduced_state_schedule.csv",
+                / f"{symbol}_oco_first_touch_reduced_state_schedule.csv",
                 "tick_exact_summary_csv": tick_exact_summary,
-                "tick_exact_monthly_csv": reduced_dir / f"{symbol}_oco_tick_exact_monthly.csv",
-                "tick_exact_replay_csv": reduced_dir / f"{symbol}_oco_tick_exact_replay_bundle.csv",
+                "tick_exact_monthly_csv": reduced_dir / f"{symbol}_oco_first_touch_tick_exact_monthly.csv",
+                "tick_exact_replay_csv": reduced_dir / f"{symbol}_oco_first_touch_tick_exact_replay_bundle.csv",
                 "robustness_summary_csv": robustness_summary,
                 "robustness_null_csv": robustness_summary.parent
                 / f"{symbol}_oco_robustness_null_tests.csv",

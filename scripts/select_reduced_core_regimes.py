@@ -28,7 +28,7 @@ except Exception:
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
     "candidate_csv": "data/analysis/tick_opportunity_mining/EURUSD_oco_candidates.csv",
-    "pred_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
+    "pred_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_first_touch_monthly_predictions.parquet",
     "family_keep": "oco_first_touch",
     "barrier_keep": "2,3",
     "horizon_keep": "5,6",
@@ -59,12 +59,12 @@ DEFAULTS: dict[str, Any] = {
     "max_top_state_share": 0.35,
     "max_state_hhi": 0.25,
     "enforce_state_stability_gates": False,
-    "out_state_schedule_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv",
-    "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
-    "out_monthly_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv",
-    "out_summary_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv",
+    "out_state_schedule_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_first_touch_reduced_state_schedule.csv",
+    "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_reduced_states.csv",
+    "out_monthly_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_first_touch_reduced_monthly.csv",
+    "out_summary_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_first_touch_reduced_summary.csv",
     "out_state_churn_csv": "",
-    "report_out": "docs/analysis/eurusd_oco_reduced_core_rolling_report.md",
+    "report_out": "docs/analysis/eurusd_oco_first_touch_reduced_core_rolling_report.md",
 }
 
 
@@ -195,14 +195,14 @@ def _default_out_state_csv(symbol: str) -> Path:
     s = str(symbol).upper().strip()
     if s == "EURUSD":
         return Path(
-            "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv"
+            "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_reduced_states.csv"
         )
     if s == "GBPUSD":
         return Path(
-            "data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_reduced_states.csv"
+            "data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_first_touch_reduced_states.csv"
         )
     return Path(
-        f"data/analysis/tick_opportunity_mining/reduced_core_{s.lower()}/{s}_oco_reduced_states.csv"
+        f"data/analysis/tick_opportunity_mining/reduced_core_{s.lower()}/{s}_oco_first_touch_reduced_states.csv"
     )
 
 
@@ -316,7 +316,7 @@ def _write_no_trade_outputs(
             out_sched.name.replace("_state_schedule.csv", "_states.csv")
         )
     else:
-        out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
+        out_state = out_sched.with_name(f"{symbol}_oco_first_touch_reduced_states.csv")
     out_month = Path(str(cfg["out_monthly_csv"]))
     out_sum = Path(str(cfg["out_summary_csv"]))
     out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()
@@ -405,7 +405,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 out_sched.name.replace("_state_schedule.csv", "_states.csv")
             )
         else:
-            out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
+            out_state = out_sched.with_name(f"{symbol}_oco_first_touch_reduced_states.csv")
 
         out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()
         out_churn = (
@@ -1032,7 +1032,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 out_sched.name.replace("_state_schedule.csv", "_states.csv")
             )
         else:
-            out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
+            out_state = out_sched.with_name(f"{symbol}_oco_first_touch_reduced_states.csv")
     out_month = Path(str(cfg["out_monthly_csv"]))
     out_sum = Path(str(cfg["out_summary_csv"]))
     out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()

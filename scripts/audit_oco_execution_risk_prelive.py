@@ -60,10 +60,10 @@ def _default_configs() -> dict[str, SymbolConfig]:
         configs[s] = SymbolConfig(
             symbol=s,
             pred_path=Path(
-                f"data/analysis/tick_opportunity_mining/{pred_folder}/{s}_oco_monthly_predictions.parquet"
+                f"data/analysis/tick_opportunity_mining/{pred_folder}/{s}_oco_first_touch_monthly_predictions.parquet"
             ),
             monthly_path=Path(
-                f"data/analysis/tick_opportunity_mining/{red_folder}/{s}_oco_reduced_monthly.csv"
+                f"data/analysis/tick_opportunity_mining/{red_folder}/{s}_oco_first_touch_reduced_monthly.csv"
             ),
             detail_path=Path(
                 f"data/analysis/tick_opportunity_mining/{stop_folder}/{s}_stop_limit_tickfill_detail.csv"

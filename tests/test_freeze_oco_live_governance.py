@@ -10,7 +10,7 @@ def test_manifest_deploy_verdict_no_go_for_empty_universe(tmp_path, monkeypatch)
     the canonical NO_GO, with an empty state_universe."""
     from scripts.freeze_oco_live_governance import _state_universe
 
-    empty_states = tmp_path / "EURUSD_oco_reduced_states.csv"
+    empty_states = tmp_path / "EURUSD_oco_first_touch_reduced_states.csv"
     pd.DataFrame(
         columns=[
             "symbol",
@@ -58,9 +58,9 @@ def test_live_freeze_emits_schema_v3_with_family_and_bundle_relative_paths(tmp_p
     ).to_csv(states_csv, index=False)
     pred_parquet = bundle_dir / "eurusd_oco_locked_predictions.parquet"
     pred_parquet.write_bytes(b"pred")
-    tick_summary = bundle_dir / "eurusd_oco_tick_exact_summary.csv"
+    tick_summary = bundle_dir / "eurusd_oco_first_touch_tick_exact_summary.csv"
     pd.DataFrame({"overall_pass": [True]}).to_csv(tick_summary, index=False)
-    red_summary = bundle_dir / "eurusd_oco_reduced_summary.csv"
+    red_summary = bundle_dir / "eurusd_oco_first_touch_reduced_summary.csv"
     pd.DataFrame({"capacity_pass_monthly_or_annual": [True]}).to_csv(red_summary, index=False)
     caps_csv = bundle_dir / "eurusd_stop_limit_tickfill_caps.csv"
     pd.DataFrame({"cap_pips": [1.0], "mean_per_signal_full_overshoot": [0.5]}).to_csv(

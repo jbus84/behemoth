@@ -928,3 +928,5 @@ def test_mining_emits_stage02_manifest(tmp_path: Path) -> None:
     assert manifest["library_families"]["directional"] == [
         "directional", "directional_inverse", "directional_run", "double_touch", "pullback"
     ]
+    assert manifest["library_families"]["oco"] == ["oco_first_touch"]
+    assert manifest["output_files"]["oco"] == "EURUSD_oco_candidates.csv"

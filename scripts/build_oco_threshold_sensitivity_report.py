@@ -73,7 +73,7 @@ def _default_paths(symbol: str) -> SymbolPaths:
     folder = "wfo_m3to1_oco_fullcap"
 
     pred = Path(
-        f"data/analysis/tick_opportunity_mining/{folder}/{s}_oco_monthly_predictions.parquet"
+        f"data/analysis/tick_opportunity_mining/{folder}/{s}_oco_first_touch_monthly_predictions.parquet"
     )
 
     lock = Path("configs/research/governance/oco") / lock_filename(s_low, "oco_first_touch")
