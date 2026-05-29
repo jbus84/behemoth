@@ -77,7 +77,7 @@ def test_no_lock_dir_falls_back_to_monthly(tmp_path):
 
     predictions_dir = tmp_path / "preds"
     predictions_dir.mkdir()
-    monthly_parquet = predictions_dir / "EURUSD_oco_monthly_predictions.parquet"
+    monthly_parquet = predictions_dir / "EURUSD_oco_first_touch_monthly_predictions.parquet"
     monthly_parquet.touch()
 
     calls = []

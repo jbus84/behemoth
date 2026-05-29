@@ -2,7 +2,7 @@ symbol: AUDUSD
 
 # Inputs from full-cap monthly WFO
 candidate_csv: data/analysis/tick_opportunity_mining/AUDUSD_oco_candidates.csv
-pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet
+pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/AUDUSD_oco_first_touch_monthly_predictions.parquet
 
 # Reduced-core policy
 family_keep: oco_first_touch
@@ -23,6 +23,6 @@ seed: 42
 # Portfolio gate for reduced core
 capacity_floor_monthly: 3000
 
-out_state_csv: data/analysis/tick_opportunity_mining/reduced_core/AUDUSD_oco_reduced_states.csv
-out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core/AUDUSD_oco_reduced_monthly_gate.csv
+out_state_csv: data/analysis/tick_opportunity_mining/reduced_core/AUDUSD_oco_first_touch_reduced_states.csv
+out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core/AUDUSD_oco_first_touch_reduced_monthly_gate.csv
 report_out: docs/analysis/audusd_oco_reduced_core_selection_report.md

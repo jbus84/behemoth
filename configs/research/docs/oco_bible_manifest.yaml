@@ -25,8 +25,8 @@ audit:
 
 symbols:
   - symbol: EURUSD
-    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv
-    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_tick_exact_summary.csv
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_first_touch_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_first_touch_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
     mining_report_md: docs/analysis/eurusd_tick_opportunity_mining_report.md
@@ -35,8 +35,8 @@ symbols:
     tick_exact_report_md: docs/analysis/eurusd_oco_tick_exact_rolling_report.md
 
   - symbol: GBPUSD
-    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_summary.csv
-    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_tick_exact_summary.csv
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_first_touch_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_first_touch_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
     mining_report_md: docs/analysis/gbpusd_tick_opportunity_mining_report.md
@@ -47,8 +47,8 @@ symbols:
     robustness_report_md: docs/analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report.md
 
   - symbol: AUDUSD
-    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv
-    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_tick_exact_summary.csv
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_first_touch_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_first_touch_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv
     edge_velocity_csv: ""
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
@@ -59,8 +59,8 @@ symbols:
     robustness_report_md: docs/analysis/audusd_oco_monthly_wfo_robustness_fullcap_report.md
 
   - symbol: USDJPY
-    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv
-    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_tick_exact_summary.csv
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_first_touch_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_first_touch_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
     mining_report_md: docs/analysis/usdjpy_tick_opportunity_mining_report.md
@@ -69,8 +69,8 @@ symbols:
     tick_exact_report_md: docs/analysis/usdjpy_oco_tick_exact_rolling_report.md
 
   - symbol: USDCHF
-    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv
-    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_tick_exact_summary.csv
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_first_touch_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_first_touch_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/USDCHF_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
     mining_report_md: docs/analysis/usdchf_tick_opportunity_mining_report.md
@@ -80,8 +80,8 @@ symbols:
 
 
   - symbol: USDCAD
-    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv
-    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_first_touch_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_first_touch_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/USDCAD_oco_robustness_summary.csv
     edge_velocity_csv: ""
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv

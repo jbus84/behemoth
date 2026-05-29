@@ -1048,6 +1048,18 @@ def _write_report(
     report_out.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _output_artifact_slug(lib: str) -> str:
+    """Map library names to the canonical family slug used in output filenames.
+
+    The OCO WFO library only ever produces oco_first_touch events, so its
+    artifacts are written under that slug rather than the generic 'oco'.
+    """
+    key = str(lib).strip().lower()
+    if key == "oco":
+        return "oco_first_touch"
+    return key
+
+
 def _write_library_outputs(
     *,
     out_dir: Path,
@@ -1064,10 +1076,11 @@ def _write_library_outputs(
     not run, never that it ran and found nothing. Writing an empty file also
     overwrites any stale artifact from a prior run.
     """
-    m_out = out_dir / f"{symbol}_{lib}_monthly_metrics.csv"
-    t_out = out_dir / f"{symbol}_{lib}_monthly_thresholds.csv"
-    p_out = out_dir / f"{symbol}_{lib}_monthly_predictions.parquet"
-    imp_out = out_dir / f"{symbol}_{lib}_monthly_importance.csv"
+    slug = _output_artifact_slug(lib)
+    m_out = out_dir / f"{symbol}_{slug}_monthly_metrics.csv"
+    t_out = out_dir / f"{symbol}_{slug}_monthly_thresholds.csv"
+    p_out = out_dir / f"{symbol}_{slug}_monthly_predictions.parquet"
+    imp_out = out_dir / f"{symbol}_{slug}_monthly_importance.csv"
     m.to_csv(m_out, index=False)
     t.to_csv(t_out, index=False)
     p.to_parquet(p_out, index=False)
@@ -1186,7 +1199,8 @@ def main() -> None:
             oco_hold_mode=oco_hold_mode,
         )
         ev = _attach_stable_event_ids(ev)
-        ev_path = out_dir / f"{symbol}_{lib}_events_eval{eval_year}.parquet"
+        ev_slug = _output_artifact_slug(lib)
+        ev_path = out_dir / f"{symbol}_{ev_slug}_events_eval{eval_year}.parquet"
         ev.to_parquet(ev_path, index=False)
         print(f"wrote: {ev_path}")
         # Real runs name outputs by the families present in the events. Empty

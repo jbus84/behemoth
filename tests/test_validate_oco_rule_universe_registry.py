@@ -73,7 +73,7 @@ def test_rule_universe_registry_pass(tmp_path: Path) -> None:
 
     _write_registry(registry, allowed_barrier_keep=[2, 3])
     _write_lock(lock_dir / "eurusd_oco_first_touch_live_lock.json")
-    _write_reduced_states(mining_base / "reduced_core" / "EURUSD_oco_reduced_states.csv")
+    _write_reduced_states(mining_base / "reduced_core" / "EURUSD_oco_first_touch_reduced_states.csv")
 
     checks, issues = run(
         registry_yaml=registry,
@@ -99,7 +99,7 @@ def test_rule_universe_registry_flags_lock_mismatch(tmp_path: Path) -> None:
 
     _write_registry(registry, allowed_barrier_keep=[2])
     _write_lock(lock_dir / "eurusd_oco_first_touch_live_lock.json")
-    _write_reduced_states(mining_base / "reduced_core" / "EURUSD_oco_reduced_states.csv")
+    _write_reduced_states(mining_base / "reduced_core" / "EURUSD_oco_first_touch_reduced_states.csv")
 
     checks, _issues = run(
         registry_yaml=registry,
@@ -120,13 +120,13 @@ def test_reduced_states_for_symbol_paths() -> None:
     from scripts.validate_oco_rule_universe_registry import _reduced_states_for_symbol
 
     base = Path("/base")
-    assert "reduced_core/EURUSD_oco_reduced_states.csv" in str(
+    assert "reduced_core/EURUSD_oco_first_touch_reduced_states.csv" in str(
         _reduced_states_for_symbol(base, "EURUSD").as_posix()
     )
-    assert "reduced_core/AUDUSD_oco_reduced_states.csv" in str(
+    assert "reduced_core/AUDUSD_oco_first_touch_reduced_states.csv" in str(
         _reduced_states_for_symbol(base, "AUDUSD").as_posix()
     )
-    assert "reduced_core/USDCAD_oco_reduced_states.csv" in str(
+    assert "reduced_core/USDCAD_oco_first_touch_reduced_states.csv" in str(
         _reduced_states_for_symbol(base, "USDCAD").as_posix()
     )
 

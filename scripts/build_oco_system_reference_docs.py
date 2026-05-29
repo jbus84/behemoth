@@ -212,10 +212,10 @@ def _latest_by_symbol(df: pd.DataFrame, month_col: str) -> pd.DataFrame:
 
 def _reduced_core_latest_rows(data_root: Path) -> pd.DataFrame:
     patterns = [
-        "reduced_core_rolling/*_oco_reduced_monthly.csv",
-        "reduced_core_rolling_gbpusd/*_oco_reduced_monthly.csv",
-        "reduced_core_rolling_usdjpy/*_oco_reduced_monthly.csv",
-        "reduced_core_rolling_usdchf/*_oco_reduced_monthly.csv",
+        "reduced_core_rolling/*_oco_first_touch_reduced_monthly.csv",
+        "reduced_core_rolling_gbpusd/*_oco_first_touch_reduced_monthly.csv",
+        "reduced_core_rolling_usdjpy/*_oco_first_touch_reduced_monthly.csv",
+        "reduced_core_rolling_usdchf/*_oco_first_touch_reduced_monthly.csv",
     ]
     rows: list[pd.DataFrame] = []
     for pat in patterns:

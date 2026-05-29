@@ -89,6 +89,8 @@ class TestManifestInvariants:
         assert manifest["library_families"]["directional"] == [
             "directional", "directional_inverse", "directional_run", "double_touch", "pullback"
         ]
+        assert manifest["library_families"]["oco"] == ["oco_first_touch"]
+        assert manifest["output_files"]["oco"] == "EURUSD_oco_candidates.csv"
 
     def test_render_stage_io_contract_returns_markdown_for_stage02(self):
         from behemoth.governance.stage_contracts import render_stage_io_contract
@@ -161,3 +163,55 @@ class TestArtifactKeys:
             for f in ("directional", "directional_inverse", "directional_run", "double_touch", "pullback")
         }
         assert len(summaries) == 5
+
+
+class TestOcoFirstTouchSplit:
+    """Guardrails for the oco / oco_first_touch library-family split.
+
+    The mining pipeline writes one candidate CSV per *library* (e.g.
+    ``<SYM>_oco_candidates.csv``).  Inside that CSV every row carries
+    ``family == "oco_first_touch"``.  Downstream WFO, reduced-core and
+    tick-exact artifacts are keyed by *family*, but historically the OCO
+    governance stack uses the ``oco`` slug in filenames.  Renaming those
+    artifacts is a separate migration (Tasks 2-4); this class locks the
+    current manifest so nothing drifts prematurely.
+    """
+
+    def test_oco_library_contains_only_first_touch_family(self):
+        from behemoth.governance.stage_contracts import MINING_LIBRARY_FAMILIES
+
+        assert MINING_LIBRARY_FAMILIES["oco"] == ["oco_first_touch"]
+
+    def test_oco_quality_tier_library_is_oco(self):
+        from behemoth.governance.stage_contracts import QUALITY_TIER_LIBRARY
+
+        assert QUALITY_TIER_LIBRARY["oco"] == "oco"
+        assert QUALITY_TIER_LIBRARY["oco_asymmetric"] == "oco"
+
+    def test_oco_stage02_candidate_filename_unchanged(self):
+        from behemoth.governance.stage_contracts import CANDIDATE_FILENAME_TEMPLATE
+
+        fname = CANDIDATE_FILENAME_TEMPLATE.format(symbol="EURUSD", library="oco")
+        assert fname == "EURUSD_oco_candidates.csv"
+
+    def test_oco_first_touch_resolves_to_oco_library(self):
+        from behemoth.governance.stage_contracts import FAMILY_TO_LIBRARY
+
+        assert FAMILY_TO_LIBRARY["oco_first_touch"] == "oco"
+
+    def test_no_wfo_reduced_core_hardcoded_first_touch_slug(self):
+        """The stage-contract templates must not prematurely hardcode
+        ``oco_first_touch`` into WFO or reduced-core paths.  That would bake
+        rename pressure into the manifest before the downstream consumers are
+        migrated."""
+        from behemoth.governance.stage_contracts import (
+            STAGE03_CONTRACT,
+            STAGE06_CONTRACT,
+            TICK_EXACT_SUMMARY_TEMPLATE,
+            WFO_PREDICTION_TEMPLATE,
+        )
+
+        assert "oco_first_touch" not in WFO_PREDICTION_TEMPLATE
+        assert "oco_first_touch" not in TICK_EXACT_SUMMARY_TEMPLATE
+        assert "oco_first_touch" not in str(STAGE03_CONTRACT)
+        assert "oco_first_touch" not in str(STAGE06_CONTRACT)

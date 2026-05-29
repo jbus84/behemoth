@@ -223,7 +223,7 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, eva
         label="Stage 2d: OCO Fullcap WFO",
     )
 
-    pred_path = f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{symbol.upper()}_oco_monthly_predictions.parquet"
+    pred_path = f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{symbol.upper()}_oco_first_touch_monthly_predictions.parquet"
     _uv_run(
         "analyze_oco_stop_limit_tickfill.py",
         "--symbols",
@@ -258,7 +258,7 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, eva
 
 def _reduced_core_has_states(symbol: str) -> bool:
     """Check if the reduced core produced any qualifying states."""
-    schedule = TOM_DIR / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv"
+    schedule = TOM_DIR / "reduced_core_rolling" / f"{symbol}_oco_first_touch_reduced_state_schedule.csv"
     if not schedule.exists():
         return False
     text = schedule.read_text(encoding="utf-8").strip()
@@ -280,8 +280,8 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
         return
 
     # Robustness analysis
-    pred_path = f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{SYM}_oco_monthly_predictions.parquet"
-    schedule_csv = f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_reduced_state_schedule.csv"
+    pred_path = f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{SYM}_oco_first_touch_monthly_predictions.parquet"
+    schedule_csv = f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_first_touch_reduced_state_schedule.csv"
     out_summary = (
         f"data/analysis/tick_opportunity_mining/full_robustness/{SYM}_oco_robustness_summary.csv"
     )
@@ -371,15 +371,15 @@ def _patch_bible_manifest(symbol: str, *, dry_run: bool) -> None:
 
     block = f"""
   - symbol: {upper}
-    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/{upper}_oco_reduced_summary.csv
-    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/{upper}_oco_tick_exact_summary.csv
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/{upper}_oco_first_touch_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/{upper}_oco_first_touch_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/{upper}_oco_robustness_summary.csv
     edge_velocity_csv: ""
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
     mining_report_md: docs/analysis/{lower}_tick_opportunity_mining_report.md
     wfo_report_md: docs/analysis/{lower}_tick_opportunity_monthly_wfo_oco_fullcap_report.md
     reduced_core_report_md: docs/analysis/{lower}_oco_reduced_core_rolling_report.md
-    tick_exact_report_md: docs/analysis/{lower}_oco_tick_exact_rolling_report.md
+    tick_exact_report_md: docs/analysis/{lower}_oco_first_touch_tick_exact_rolling_report.md
     robustness_report_md: docs/analysis/{lower}_oco_monthly_wfo_robustness_fullcap_report.md
 """
 
@@ -417,9 +417,9 @@ def _patch_mkdocs_nav(symbol: str, *, dry_run: bool) -> None:
             f"        - Reduced Core: analysis/{lower}_oco_reduced_core_rolling_report.md"
         )
 
-    if (docs_root / f"{lower}_oco_tick_exact_rolling_report.md").exists():
+    if (docs_root / f"{lower}_oco_first_touch_tick_exact_rolling_report.md").exists():
         entries.append(
-            f"        - Tick-Exact Rolling: analysis/{lower}_oco_tick_exact_rolling_report.md"
+            f"        - Tick-Exact Rolling: analysis/{lower}_oco_first_touch_tick_exact_rolling_report.md"
         )
     if (docs_root / f"{lower}_oco_monthly_wfo_robustness_fullcap_report.md").exists():
         entries.append(

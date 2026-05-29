@@ -34,7 +34,7 @@ from src.behemoth.core.bundle_paths import lock_filename  # noqa: E402
 
 # Reduced-core backtest win rates from WFO eval 2025 (locked states only).
 # Update these from: data/analysis/tick_opportunity_mining_dukascopy_candidate/
-#                    wfo_m3to1_oco_fullcap/<SYM>_oco_events_eval2025.parquet
+#                    wfo_m3to1_oco_fullcap/<SYM>_oco_first_touch_events_eval2025.parquet
 # filtered to split='eval', bar_ticks=100, horizon=6, and the locked state_id.
 REDUCED_CORE_EXPECTED_WIN_RATE = {
     "GBPUSD": 67.6,  # oco_first_touch__ny_overlap__k2

@@ -192,7 +192,7 @@ def test_wfo_main_overwrites_stale_predictions_when_empty(tmp_path, monkeypatch)
 
     out_dir = tmp_path / "wfo_out"
     out_dir.mkdir()
-    stale = out_dir / "EURUSD_oco_monthly_predictions.parquet"
+    stale = out_dir / "EURUSD_oco_first_touch_monthly_predictions.parquet"
     pd.DataFrame({"candidate_uid": ["oco|EURUSD|100|h1|stale__all__k2"]}).to_parquet(
         stale, index=False
     )
@@ -209,10 +209,10 @@ def test_wfo_main_overwrites_stale_predictions_when_empty(tmp_path, monkeypatch)
     assert stale.exists()
     assert pd.read_parquet(stale).empty
     assert set(written) == {
-        out_dir / "EURUSD_oco_monthly_metrics.csv",
-        out_dir / "EURUSD_oco_monthly_thresholds.csv",
-        out_dir / "EURUSD_oco_monthly_predictions.parquet",
-        out_dir / "EURUSD_oco_monthly_importance.csv",
+        out_dir / "EURUSD_oco_first_touch_monthly_metrics.csv",
+        out_dir / "EURUSD_oco_first_touch_monthly_thresholds.csv",
+        out_dir / "EURUSD_oco_first_touch_monthly_predictions.parquet",
+        out_dir / "EURUSD_oco_first_touch_monthly_importance.csv",
     }
 
 

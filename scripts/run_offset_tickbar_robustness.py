@@ -206,19 +206,19 @@ def _build_velocity_for_offset(
 
 
 def _reduced_schedule_path(stage_root: Path, symbol: str) -> Path:
-    return stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv"
+    return stage_root / "reduced_core_rolling" / f"{symbol}_oco_first_touch_reduced_state_schedule.csv"
 
 
 def _reduced_summary_path(stage_root: Path, symbol: str) -> Path:
-    return stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_summary.csv"
+    return stage_root / "reduced_core_rolling" / f"{symbol}_oco_first_touch_reduced_summary.csv"
 
 
 def _reduced_monthly_path(stage_root: Path, symbol: str) -> Path:
-    return stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_monthly.csv"
+    return stage_root / "reduced_core_rolling" / f"{symbol}_oco_first_touch_reduced_monthly.csv"
 
 
 def _tick_exact_summary_path(stage_root: Path, symbol: str) -> Path:
-    return stage_root / "tick_exact" / f"{symbol}_oco_tick_exact_summary.csv"
+    return stage_root / "tick_exact" / f"{symbol}_oco_first_touch_tick_exact_summary.csv"
 
 
 def _robustness_summary_path(stage_root: Path, symbol: str) -> Path:
@@ -226,7 +226,7 @@ def _robustness_summary_path(stage_root: Path, symbol: str) -> Path:
 
 
 def _prediction_path(stage_root: Path, symbol: str) -> Path:
-    return stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet"
+    return stage_root / "wfo" / f"{symbol}_oco_first_touch_monthly_predictions.parquet"
 
 
 def _stop_limit_detail_path(stage_root: Path, symbol: str) -> Path:
@@ -776,7 +776,7 @@ def _run_symbol_offset_pipeline(
                 "--out-state-schedule-csv",
                 str(_reduced_schedule_path(stage_root, symbol)),
                 "--out-state-csv",
-                str(reduced_dir / f"{symbol}_oco_reduced_states.csv"),
+                str(reduced_dir / f"{symbol}_oco_first_touch_reduced_states.csv"),
                 "--out-monthly-csv",
                 str(_reduced_monthly_path(stage_root, symbol)),
                 "--out-summary-csv",
@@ -851,9 +851,9 @@ def _run_symbol_offset_pipeline(
             "--out-summary-csv",
             str(_tick_exact_summary_path(stage_root, symbol)),
             "--out-monthly-csv",
-            str(tick_exact_dir / f"{symbol}_oco_tick_exact_monthly.csv"),
+            str(tick_exact_dir / f"{symbol}_oco_first_touch_tick_exact_monthly.csv"),
             "--out-state-csv",
-            str(tick_exact_dir / f"{symbol}_oco_tick_exact_state.csv"),
+            str(tick_exact_dir / f"{symbol}_oco_first_touch_tick_exact_state.csv"),
             "--report-out",
             str(reports_dir / f"{symbol.lower()}_offset_{int(offset):03d}_tick_exact.md"),
         ]

@@ -20,7 +20,7 @@ except Exception:
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
     "candidate_csv": "data/analysis/tick_opportunity_mining/EURUSD_oco_candidates.csv",
-    "pred_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
+    "pred_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_first_touch_monthly_predictions.parquet",
     "family_keep": "oco_first_touch",
     "barrier_keep": "2,3",
     "horizon_keep": "5,6",
@@ -34,9 +34,9 @@ DEFAULTS: dict[str, Any] = {
     "capacity_floor_monthly": 3000,
     "bootstrap_paths": 1200,
     "seed": 42,
-    "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
-    "out_monthly_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_monthly_gate.csv",
-    "report_out": "docs/analysis/eurusd_oco_reduced_core_selection_report.md",
+    "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_reduced_states.csv",
+    "out_monthly_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_first_touch_reduced_monthly_gate.csv",
+    "report_out": "docs/analysis/eurusd_oco_first_touch_reduced_core_selection_report.md",
 }
 
 

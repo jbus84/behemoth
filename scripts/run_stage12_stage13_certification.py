@@ -150,7 +150,7 @@ def _resolve_stage12_predictions_path(
         lock_path = Path(lock_dir) / lock_filename(symbol, "oco_first_touch")
         if lock_path.exists():
             return BundlePaths.from_lock(lock_path).predictions()
-    return Path(predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet"
+    return Path(predictions_dir) / f"{symbol}_oco_first_touch_monthly_predictions.parquet"
 
 
 def _extract_model_month(path: Path, symbol: str) -> str | None:

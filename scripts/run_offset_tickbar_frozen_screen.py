@@ -428,7 +428,7 @@ def _canonical_events_path(paths: dict[str, Path], symbol: str, wfo_cfg: dict[st
     if eval_year is None:
         eval_start_month = str(wfo_cfg.get("eval_start_month", "")).strip()
         eval_year = int(eval_start_month.split("-", 1)[0]) if eval_start_month else 2025
-    return paths["wfo_out_dir"] / f"{symbol}_oco_events_eval{int(eval_year)}.parquet"
+    return paths["wfo_out_dir"] / f"{symbol}_oco_first_touch_events_eval{int(eval_year)}.parquet"
 
 
 def _with_test_month(df: pd.DataFrame, *, close_col: str = "close_ts") -> pd.DataFrame:
@@ -885,10 +885,10 @@ def _build_frozen_row(
     baseline_row: dict[str, Any] | None,
     mapping_diag: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
-    pred_path = stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet"
+    pred_path = stage_root / "wfo" / f"{symbol}_oco_first_touch_monthly_predictions.parquet"
     current_selected = _load_canonical_selected(
         pred_path,
-        stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv",
+        stage_root / "reduced_core_rolling" / f"{symbol}_oco_first_touch_reduced_state_schedule.csv",
         canonical_events,
     )
     overlap_rate = _selected_overlap_rate_by_event_id(canonical_selected, current_selected)
@@ -909,7 +909,7 @@ def _build_frozen_row(
     row0 = robust.iloc[0].to_dict()
     stop = _load_csv(stage_root / "stop_limit" / "summary.csv")
     stop_row = stop.iloc[0].to_dict() if not stop.empty else {}
-    tick = _load_csv(stage_root / "tick_exact" / f"{symbol}_oco_tick_exact_summary.csv")
+    tick = _load_csv(stage_root / "tick_exact" / f"{symbol}_oco_first_touch_tick_exact_summary.csv")
     tick_row = tick.iloc[0].to_dict() if not tick.empty else {}
 
     out = {
@@ -951,7 +951,7 @@ def _build_frozen_row(
         "failure_reason": "",
         "prediction_path": str(pred_path),
         "reduced_state_schedule_csv": str(
-            stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv"
+            stage_root / "reduced_core_rolling" / f"{symbol}_oco_first_touch_reduced_state_schedule.csv"
         ),
         "stop_limit_detail_csv": str(
             stage_root / "stop_limit" / f"{symbol}_stop_limit_tickfill_detail.csv"
@@ -1126,13 +1126,13 @@ def run(
                     events=mapped_events, manifest=manifest, wfo_cfg=wfo_cfg
                 )
                 preds.to_parquet(
-                    stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet", index=False
+                    stage_root / "wfo" / f"{symbol}_oco_first_touch_monthly_predictions.parquet", index=False
                 )
                 shutil.copy2(
                     canonical_paths["reduced_schedule_csv"],
                     stage_root
                     / "reduced_core_rolling"
-                    / f"{symbol}_oco_reduced_state_schedule.csv",
+                    / f"{symbol}_oco_first_touch_reduced_state_schedule.csv",
                 )
             except Exception as exc:
                 row = {
@@ -1152,7 +1152,7 @@ def run(
                     "--symbols",
                     symbol,
                     "--pred-paths",
-                    str(stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet"),
+                    str(stage_root / "wfo" / f"{symbol}_oco_first_touch_monthly_predictions.parquet"),
                     "--velocity-dir",
                     str(stage_root / "velocity"),
                     "--tick-root",
@@ -1170,7 +1170,7 @@ def run(
                     sys.executable,
                     str(ROOT / "scripts/analyze_oco_monthly_wfo_robustness.py"),
                     "--pred-path",
-                    str(stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet"),
+                    str(stage_root / "wfo" / f"{symbol}_oco_first_touch_monthly_predictions.parquet"),
                     "--quantiles",
                     "0.5,0.6,0.7,0.8,0.9,0.95",
                     "--bootstrap-paths",
@@ -1185,7 +1185,7 @@ def run(
                     str(
                         stage_root
                         / "reduced_core_rolling"
-                        / f"{symbol}_oco_reduced_state_schedule.csv"
+                        / f"{symbol}_oco_first_touch_reduced_state_schedule.csv"
                     ),
                     "--out-summary-csv",
                     str(stage_root / "robustness" / f"{symbol}_oco_robustness_summary.csv"),
@@ -1202,12 +1202,12 @@ def run(
                     "--dataset-dir",
                     str(stage_root / "velocity"),
                     "--pred-path",
-                    str(stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet"),
+                    str(stage_root / "wfo" / f"{symbol}_oco_first_touch_monthly_predictions.parquet"),
                     "--shortlist-state-csv",
                     str(
                         stage_root
                         / "reduced_core_rolling"
-                        / f"{symbol}_oco_reduced_state_schedule.csv"
+                        / f"{symbol}_oco_first_touch_reduced_state_schedule.csv"
                     ),
                     "--locked-quantile",
                     "0.9",
@@ -1220,11 +1220,11 @@ def run(
                     "--oco-include-no-touch",
                     "true",
                     "--out-summary-csv",
-                    str(stage_root / "tick_exact" / f"{symbol}_oco_tick_exact_summary.csv"),
+                    str(stage_root / "tick_exact" / f"{symbol}_oco_first_touch_tick_exact_summary.csv"),
                     "--out-monthly-csv",
-                    str(stage_root / "tick_exact" / f"{symbol}_oco_tick_exact_monthly.csv"),
+                    str(stage_root / "tick_exact" / f"{symbol}_oco_first_touch_tick_exact_monthly.csv"),
                     "--out-state-csv",
-                    str(stage_root / "tick_exact" / f"{symbol}_oco_tick_exact_state.csv"),
+                    str(stage_root / "tick_exact" / f"{symbol}_oco_first_touch_tick_exact_state.csv"),
                     "--report-out",
                     str(reports_dir / f"{symbol.lower()}_offset_{int(offset):03d}_tick_exact.md"),
                 ],
@@ -1264,10 +1264,10 @@ def run(
                 )
                 if int(offset) == 0:
                     current_selected = _load_canonical_selected(
-                        stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet",
+                        stage_root / "wfo" / f"{symbol}_oco_first_touch_monthly_predictions.parquet",
                         stage_root
                         / "reduced_core_rolling"
-                        / f"{symbol}_oco_reduced_state_schedule.csv",
+                        / f"{symbol}_oco_first_touch_reduced_state_schedule.csv",
                         canonical_events,
                     )
                     baseline_summary, baseline_mismatches = _build_baseline_parity(

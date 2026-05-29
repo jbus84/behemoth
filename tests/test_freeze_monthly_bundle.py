@@ -160,7 +160,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
                 "regime_desc": "all",
             }
         ]
-    ).to_csv(reduced_core_rolling / f"{symbol}_oco_reduced_state_schedule.csv", index=False)
+    ).to_csv(reduced_core_rolling / f"{symbol}_oco_first_touch_reduced_state_schedule.csv", index=False)
     pd.DataFrame(
         [
             {"symbol": symbol, "test_month": "2026-01", "states_selected": 1, "status": "ok"},
@@ -171,15 +171,15 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
                 "status": "no_gate_states",
             },
         ]
-    ).to_csv(reduced_core_rolling / f"{symbol}_oco_reduced_monthly.csv", index=False)
+    ).to_csv(reduced_core_rolling / f"{symbol}_oco_first_touch_reduced_monthly.csv", index=False)
     pd.DataFrame([{"capacity_pass_monthly_or_annual": True}]).to_csv(
-        reduced_core_rolling / f"{symbol}_oco_reduced_summary.csv", index=False
+        reduced_core_rolling / f"{symbol}_oco_first_touch_reduced_summary.csv", index=False
     )
 
     reduced_core = analysis_dir / "reduced_core"
     reduced_core.mkdir(parents=True)
     pd.DataFrame([{"overall_pass": True}]).to_csv(
-        reduced_core / f"{symbol}_oco_tick_exact_summary.csv", index=False
+        reduced_core / f"{symbol}_oco_first_touch_tick_exact_summary.csv", index=False
     )
 
     stop_limit_dir = analysis_dir / "stop_limit_tickfill_fullcap"
@@ -203,7 +203,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
                 "event_ordinal": 0,
             }
         ]
-    ).to_parquet(pred_dir / f"{symbol}_oco_monthly_predictions.parquet", index=False)
+    ).to_parquet(pred_dir / f"{symbol}_oco_first_touch_monthly_predictions.parquet", index=False)
 
     models_dir.mkdir(parents=True)
     (models_dir / f"{symbol}_model_2026-02.cbm").write_text("dummy model", encoding="utf-8")

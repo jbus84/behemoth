@@ -119,7 +119,7 @@ def collect_outcomes(
                 log_path=Path(os.devnull), elapsed_s=0.0,
             ))
             continue
-        sched = analysis_dir / "reduced_core_rolling" / f"{sym}_oco_reduced_state_schedule.csv"
+        sched = analysis_dir / "reduced_core_rolling" / f"{sym}_oco_first_touch_reduced_state_schedule.csv"
         outcome = classify_outcome(exit_code=r.exit_code, schedule_csv=sched)
         out.append(SymbolSummary(
             symbol=sym, outcome=outcome, exit_code=r.exit_code,

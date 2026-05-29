@@ -88,7 +88,7 @@ def _reduced_states_for_symbol(base: Path, symbol: str) -> Path:
 
     folder = "reduced_core" if s in ("EURUSD", "AUDUSD", "USDCAD") else f"reduced_core_{s_low}"
 
-    return base / folder / f"{s}_oco_reduced_states.csv"
+    return base / folder / f"{s}_oco_first_touch_reduced_states.csv"
 
 
 def _add_check(

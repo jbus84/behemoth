@@ -103,7 +103,7 @@ def test_rolling_core_uses_train_months_only(tmp_path: Path):
     jul_month = monthly[monthly["test_month"] == "2025-07"].iloc[0]
     assert jul_month["status"] == "ok"
     assert float(jul_month["mean_gross_pips"]) > 0.0
-    states_path = tmp_path / "EURUSD_oco_reduced_states.csv"
+    states_path = tmp_path / "EURUSD_oco_first_touch_reduced_states.csv"
     assert states_path.exists()
     states = pd.read_csv(states_path)
     assert {

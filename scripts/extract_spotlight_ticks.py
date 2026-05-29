@@ -239,7 +239,7 @@ def main() -> None:
         if lock_dir is not None:
             pred_path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
         else:
-            pred_path = predictions_dir / f"{symbol}_oco_monthly_predictions.parquet"
+            pred_path = predictions_dir / f"{symbol}_oco_first_touch_monthly_predictions.parquet"
 
         if not pred_path.exists():
             print(f"[spotlight] {symbol}: predictions file not found: {pred_path}", file=sys.stderr)

@@ -208,7 +208,7 @@ def _stage_family(name_l: str) -> str:
         return "stage04_stop_limit"
     if "_oco_reduced_core_" in name_l:
         return "stage05_reduced_core"
-    if "_oco_tick_exact_" in name_l:
+    if "_oco_first_touch_tick_exact_" in name_l:
         return "stage06_tick_exact"
     if "_oco_monthly_wfo_robustness_" in name_l:
         return "stage08_robustness"
