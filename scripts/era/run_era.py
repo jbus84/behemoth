@@ -5,10 +5,10 @@ import numpy as np
 from scripts.era.score_program import ProgramScorer, SplitData
 from scripts.era.puct import Node, puct_search
 from scripts.era.seeds import SEED_PROGRAMS, RESEARCH_IDEAS
-from scripts.era.llm import propose_program
+from scripts.era.llm import propose_program, recombine_program
 
 def run_search(splits: dict[str, SplitData], thresholds, budget, writer=propose_program,
-               ideas=None, seed: int = 0, cache_dir: str = "/tmp/era_cache"):
+               ideas=None, seed: int = 0, cache_dir: str = "/tmp/era_cache", p_recombine: float = 0.3):
     ideas = ideas or RESEARCH_IDEAS
     scorer = ProgramScorer(splits=splits, thresholds=thresholds)
     rng = random.Random(seed)
@@ -20,11 +20,35 @@ def run_search(splits: dict[str, SplitData], thresholds, budget, writer=propose_
         nd = Node(payload=src, score=s, parent=None, logs=lg)
         forest.append(nd)
 
+    all_nodes = list(forest)  # mutable list that expand can read
     def expand(parent: Node) -> Node:
-        idea = rng.choice(ideas)
-        child_src = writer(parent.payload, parent.score, parent.logs, idea, cache_dir=cache_dir)
+        # with probability p_recombine, combine two strong parents
+        if rng.random() < p_recombine and len(all_nodes) >= 2:
+            # find two distinct high-scoring nodes
+            distinct = {}
+            for nd in all_nodes:
+                key = id(nd.payload)
+                if key not in distinct or nd.score > distinct[key].score:
+                    distinct[key] = nd
+            candidates = list(distinct.values())
+            if len(candidates) >= 2:
+                candidates.sort(key=lambda n: n.score, reverse=True)
+                srcA, scoreA = candidates[0].payload, candidates[0].score
+                srcB, scoreB = candidates[1].payload, candidates[1].score
+                child_src = recombine_program(srcA, scoreA, srcB, scoreB, cache_dir=cache_dir)
+            else:
+                # fall back to mutation if not enough distinct programs
+                idea = rng.choice(ideas)
+                child_src = writer(parent.payload, parent.score, parent.logs, idea, cache_dir=cache_dir)
+        else:
+            # mutate from parent
+            idea = rng.choice(ideas)
+            child_src = writer(parent.payload, parent.score, parent.logs, idea, cache_dir=cache_dir)
+
         s, lg = scorer.score(child_src, split_for_rank)
-        return Node(payload=child_src, score=s, parent=parent, logs=lg)
+        child = Node(payload=child_src, score=s, parent=parent, logs=lg)
+        all_nodes.append(child)  # update pool for next expand calls
+        return child
 
     # PUCT selects and expands over the full forest
     nodes = puct_search(forest, expand, budget=budget, c_puct=1.0, seed=seed)

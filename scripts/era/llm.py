@@ -49,3 +49,26 @@ def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None
     src = extract_program(caller(prompt))
     cached.write_text(src)
     return src
+
+def build_recombine_prompt(srcA: str, scoreA: float, srcB: str, scoreB: float) -> str:
+    return (
+        "Combine these two dispersion residual programs by studying both and writing ONE new program.\n\n"
+        f"{_RULES}\n"
+        f"Parent A score: {scoreA}\n"
+        f"Parent A program:\n```python\n{srcA}\n```\n\n"
+        f"Parent B score: {scoreB}\n"
+        f"Parent B program:\n```python\n{srcB}\n```\n\n"
+        "Write a single new `residual(ctx)` that combines the best ideas from both.\n"
+    )
+
+def recombine_program(srcA, scoreA, srcB, scoreB, cache_dir, caller=None):
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir); cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_recombine_prompt(srcA, scoreA, srcB, scoreB)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"{key}.py"
+    if cached.exists():
+        return cached.read_text()
+    src = extract_program(caller(prompt))
+    cached.write_text(src)
+    return src
