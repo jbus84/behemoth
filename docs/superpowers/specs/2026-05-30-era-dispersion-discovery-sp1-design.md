@@ -126,6 +126,24 @@ ranking + final selection), and an **untouched held-out** block scored once at
 the end. ×3 replicates of any reported program; report the best-validation one
 and its held-out score.
 
+**Dense reward, not a gate — critical for the search.** The TaskScore is a
+*continuous* signal so PUCT always has a gradient to climb: a rough early
+program that gets *warmer* (higher net, more months positive, larger n) must
+score strictly higher than a worse one, even when neither would yet clear a
+deployment bar. `net-LB95`, month-consistency and `n` enter as **smooth
+weightings, never as hard thresholds**. We deliberately do **not** apply
+robustness cutoffs or multiple-testing corrections at the node level — doing so
+would collapse most nodes to a "fail" floor and starve the tree of guidance.
+
+**Statistical gates are end-stage only.** Benjamini–Hochberg FDR (over all
+explored nodes' validation results) and the untouched held-out block are applied
+**once, at final selection / promotion — never during the search**. This is
+faithful to ERA (validation is used to select among completed runs, not to
+regularise the search) and keeps the *reported* winner honest against multiple
+testing while leaving the search itself permissive and well-guided. Being
+permissive in-search is intentional: it avoids discarding opportunities the
+tree could still refine into survivors.
+
 ### 4.4 PUCT tree search engine
 
 Faithful to ERA Algorithm 1 (globally flat PUCT):
@@ -196,9 +214,15 @@ which survive on the metric.
   cannot fit thresholds on outcomes.
 - Sandbox denies network/fs/imports; static pre-check + subprocess isolation.
 - Train / validation / held-out month separation; held-out scored once.
-- ×3 replicates; stability-weighted metric to resist single-month overfit.
+- ×3 replicates; a continuous stability-weighted metric (soft net-LB95 ×
+  month-consistency × n) resists single-month overfit *without* gating the
+  search.
+- **Multiple-testing control is end-stage:** Benjamini–Hochberg FDR over the
+  explored nodes + the untouched held-out block gate the *final* shortlist /
+  promotion only — never the per-node search signal, so the tree keeps a dense
+  gradient.
 - Every node (program, prompt, score, logs) is logged for full provenance and
-  multiple-testing audit.
+  the end-stage multiple-testing audit.
 
 ## 6. Layout & Build Division
 
