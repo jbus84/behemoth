@@ -67,3 +67,19 @@ def test_scorer_rejects_noncausal_program():
     score, logs = scorer.score(FORWARD, "validation")
     assert score == -1e6
     assert "causal" in logs.lower()
+
+
+def test_all_seeds_are_causal():
+    from scripts.era.seeds import SEED_PROGRAMS
+
+    ctx = _ctx(n=160, seed=3)
+    bad = []
+    for name, src in SEED_PROGRAMS.items():
+        resid, err, _ = run_program(src, ctx)
+        if err is not None:
+            bad.append(f"{name}: exec error {err}")
+            continue
+        ok, reason = causality_probe(src, ctx, resid)
+        if not ok:
+            bad.append(f"{name}: {reason}")
+    assert not bad, "non-causal seeds: " + "; ".join(bad)

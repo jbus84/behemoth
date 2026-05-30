@@ -35,8 +35,7 @@ SEED_PROGRAMS: dict[str, str] = {
         "        nb = ctx.peers().mean(axis=1)\n"
         "    else:\n"
         "        nb = ctx.r[:, same].mean(axis=1)\n"
-        "    d = ctx.target_col() - nb\n"
-        "    return d / (np.nanstd(d) + 1e-9)\n"
+        "    return ctx.target_col() - nb\n"
     ),
     # ordinal dispersion rank (k=2): +/- by extremity of cross-sectional rank
     "dispersion_rank": (
@@ -59,14 +58,15 @@ SEED_PROGRAMS: dict[str, str] = {
         "        z = np.where(ctx.hour <= 5, z, np.nan)\n"
         "    return z\n"
     ),
-    # leave-one-out basket z gated to high-dispersion bars (above median)
+    # leave-one-out basket z gated to high-dispersion bars (causal expanding mean)
     "loo_z_highdisp": (
         "def residual(ctx):\n"
         "    t = ctx.target_col(); p = ctx.peers()\n"
         "    z = (t - p.mean(axis=1)) / (p.std(axis=1) + 1e-9)\n"
         "    d = ctx.dispersion()\n"
-        "    z = np.where(d >= np.nanmedian(d), z, np.nan)\n"
-        "    return z\n"
+        "    csum = np.cumsum(d)\n"
+        "    expanding_mean = csum / np.arange(1, len(d) + 1)\n"
+        "    return np.where(d >= expanding_mean, z, np.nan)\n"
     ),
 }
 
