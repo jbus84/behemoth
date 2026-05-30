@@ -45,13 +45,9 @@ DEPLOY_SEED_PROGRAMS: dict[str, str] = {
         "    vbar = np.where(np.isfinite(vol), np.abs(vol), 0.0) + 1.0\n"
         "    tox = np.abs(ewma) / (vbar + 1e-9)\n"
         "    base = np.where(np.isfinite(rng), rng, 0.0)\n"
-        "    med = np.empty(n)\n"
-        "    for i in range(n):\n"
-        "        if i > 0:\n"
-        "            med[i] = np.nanmedian(tox[:i+1])\n"
-        "        else:\n"
-        "            med[i] = np.nanmedian(tox[:1])\n"
-        "    out = np.where(tox <= med, base, np.nan)\n"
+        "    csum = np.cumsum(tox); k = np.arange(n)\n"
+        "    exp_mean = csum / (k + 1.0)  # causal expanding mean of tox (O(n))\n"
+        "    out = np.where(tox <= exp_mean, base, np.nan)  # deploy when flow benign\n"
         "    return out\n"
     ),
     "burst_veto_deploy": (

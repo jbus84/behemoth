@@ -42,3 +42,15 @@ def test_research_ideas_cite_streams_and_combination():
     blob = " ".join(RESEARCH_IDEAS).lower()
     for kw in ["realized range", "variance ratio", "vpin", "hawkes", "avellaneda", "combine"]:
         assert kw in blob, f"missing idea keyword: {kw}"
+
+
+def test_seeds_are_fast_on_large_input():
+    # guards against O(n^2) per-bar window loops that would time out on real data
+    import time
+
+    ctx = _ctx(n=20000, seed=3)
+    for name, src in DEPLOY_SEED_PROGRAMS.items():
+        t0 = time.time()
+        _, err, _ = run_program(src, ctx, required_fn="deploy")
+        assert err is None, f"{name}: {err}"
+        assert time.time() - t0 < 6.0, f"{name} too slow on 20k bars (likely O(n^2))"
