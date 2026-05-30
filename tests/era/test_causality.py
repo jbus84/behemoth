@@ -46,3 +46,24 @@ def test_probe_rejects_forward_looking_program():
     ok, reason = causality_probe(FORWARD, ctx, resid)
     assert not ok
     assert "future" in reason.lower() or "causal" in reason.lower()
+
+
+def test_scorer_rejects_noncausal_program():
+    from scripts.era.score_program import ProgramScorer, SplitData
+
+    n = 120
+    rng = np.random.default_rng(1)
+    d = SplitData(
+        r=rng.standard_normal((n, 6)),
+        names=list(NAMES),
+        target="EURUSD",
+        usd_sign=1,
+        y_fwd=rng.standard_normal(n),
+        cost=np.full(n, 0.1),
+        test_month=np.array(["2025-07"] * n),
+        hour=(np.arange(n) % 24).astype(float),
+    )
+    scorer = ProgramScorer(splits={"validation": d}, thresholds=[1.0, 1.5])
+    score, logs = scorer.score(FORWARD, "validation")
+    assert score == -1e6
+    assert "causal" in logs.lower()
