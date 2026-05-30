@@ -20,3 +20,20 @@ def evaluate_residual(residual, usd_sign, y_fwd, cost, test_month, threshold):
     side = -np.sign(z) * int(usd_sign)
     net = side * y_fwd - cost
     return pd.DataFrame({"net": net[entry], "test_month": np.asarray(test_month)[entry]})
+
+_FLOOR = -1e6
+_N0 = 100
+
+def task_score(df: pd.DataFrame) -> float:
+    """Continuous, permissive per-node signal. NEVER a hard gate."""
+    n = len(df)
+    if n < 2:
+        return _FLOOR + n  # finite, slightly rewards 'some entries' over none
+    net = df["net"].to_numpy(float)
+    mean = net.mean(); se = net.std(ddof=1) / np.sqrt(n)
+    net_lb95 = mean - 1.645 * se
+    monthly = df.groupby("test_month")["net"].mean()
+    month_weight = float((monthly > 0).mean())          # in [0,1]
+    n_weight = n / (n + _N0)                             # smooth saturation
+    # keep continuous & signed: a positive lb95 with consistent months scores high
+    return float(net_lb95 * (0.25 + 0.75 * month_weight) * n_weight)
