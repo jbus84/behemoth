@@ -56,10 +56,31 @@ This validates the ERA loop end-to-end: given the gating capability, it finds
 economically-meaningful, session-conditioned, net-positive dispersion signals
 autonomously.
 
-## Next (SP2)
+## SP2 — wider exploration roughly doubles the edge
 
-Scale the search budget and add parent recombination; let PUCT expand from all
-seeded baselines (currently only the `loo_z` subtree); then **SP3 governance
-promotion** — run the winning program through the full Stage 2/3 WFO →
-Reduced-Core → Tick-Exact → Robustness ladder + the held-out months to confirm
-the +0.13 survives out-of-sample before it is trusted.
+Three changes widened the search: (1) **forest expansion** — PUCT selects over
+all seeds + all discoveries (not just the `loo_z` subtree); (2) **recombination**
+— with p=0.3 an expansion combines the two best distinct programs (ERA's
+discovery mechanism); (3) **generator temperature** (`ERA_GEN_TEMP=0.8`).
+
+Re-run (EURUSD 2000-tick/h3, budget 100, 29 unique programs explored):
+
+- **Best score +0.2579** — ~2× the SP1.5 winner (+0.1308).
+- The #1 program is a qwen-**evolved hybrid** that recombines three seed ideas:
+  the `graph_laplacian` cluster grouping (EUR/GBP/AUD vs JPY/CHF/CAD) + robust
+  median/MAD peer stats + dispersion-aware scaling + session (hour) gating —
+  better than any single baseline or the SP1.5 discovery.
+- Technique diversity across the 29 programs: dispersion/hour gating, cluster
+  graphs, cross-sectional rank, median/MAD, percentile bins, tanh shaping.
+
+This realises the thesis: given room to explore, the loop recombines ideas into
+novel signals that beat both the hand-written baselines and its own earlier
+discoveries.
+
+## Next (SP3 — governance promotion)
+
+The +0.26 is still a *validation-split, fast-metric* score. Take the SP2 winner
+(and the next few) through the full governance ladder — Stage 2/3 WFO →
+Reduced-Core → Tick-Exact → Robustness — plus the untouched held-out months and
+BH-FDR over the explored set, to confirm it survives out-of-sample before it is
+trusted. Also: scale budget further, and run other symbols.
