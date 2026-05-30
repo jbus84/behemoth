@@ -21,6 +21,14 @@ def test_range_scorer_runs_causal_deploy():
     scorer = RangeScorer(splits={"validation": _data()}, symbol="EURUSD")
     s, _ = scorer.score("def deploy(ctx):\n    return ctx.col('bar_range_pips')\n", "validation")
     assert np.isfinite(s)
+    assert s > -1e6  # a valid deploy program is accepted, not rejected as -1e6
+
+
+def test_range_scorer_requires_deploy_not_signal():
+    # the scorer requires `deploy`; a `signal`-named program must be rejected
+    scorer = RangeScorer(splits={"validation": _data()}, symbol="EURUSD")
+    s, logs = scorer.score("def signal(ctx):\n    return ctx.col('bar_range_pips')\n", "validation")
+    assert s == -1e6 and "deploy" in logs.lower()
 
 
 def test_range_scorer_rejects_noncausal():

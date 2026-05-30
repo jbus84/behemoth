@@ -26,14 +26,12 @@ class RangeScorer:
     def score(self, src: str, split: str) -> tuple[float, str]:
         d = self.splits[split]
         ctx = FeatureContext(X=d.X, names=d.names, hour=d.hour)
-        # Adapt deploy -> signal for the sandbox
-        adapted_src = src.replace("def deploy(", "def signal(")
-        sig, err, logs = run_program(adapted_src, ctx, timeout=self.timeout)
+        sig, err, logs = run_program(src, ctx, timeout=self.timeout, required_fn="deploy")
         if err is not None:
             return -1e6, f"static_check/exec: {err}" if "static_check" in (
                 err or ""
             ) else f"exec: {err}\n{logs}"
-        ok, reason = causality_probe(adapted_src, ctx, sig)
+        ok, reason = causality_probe(src, ctx, sig, required_fn="deploy")
         if not ok:
             return -1e6, f"causality_probe: {reason}"
         best = -1e9
