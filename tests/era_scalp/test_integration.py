@@ -46,3 +46,18 @@ def test_run_search_with_mocked_writer():
                        writer=fake_writer, p_recombine=0.0)
     assert len(nodes) >= 3
     assert all(np.isfinite(n.score) for n in nodes)
+
+
+def test_summarize_rejections_categorizes():
+    from scripts.era.puct import Node
+    from scripts.era_scalp.run_era_scalp import summarize_rejections
+
+    nodes = [
+        Node(payload="a", score=0.2, parent=None, logs="ok"),
+        Node(payload="b", score=-1e6, parent=None, logs="causality_probe: non-causal ..."),
+        Node(payload="c", score=-1e6, parent=None, logs="exec: timeout"),
+        Node(payload="d", score=-1e6, parent=None, logs="static_check: must define signal(ctx)"),
+    ]
+    h = summarize_rejections(nodes)
+    assert h["total"] == 4 and h["rejected"] == 3
+    assert h["timeout"] == 1 and h["causality"] == 1 and h["static_or_exec"] == 1

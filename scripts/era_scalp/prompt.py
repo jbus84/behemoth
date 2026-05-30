@@ -25,5 +25,10 @@ SCALP_RULES = (
     "Mechanisms to consider: order-flow imbalance (signed flow -> continuation), Ornstein-\n"
     "Uhlenbeck s-score reversion (fade trailing-equilibrium deviation), Hawkes bursts\n"
     "(EWMA tick intensity gating continuation), multi-horizon momentum, spread/vol regime\n"
-    "gates. Output ONLY one ```python code block.\n"
+    "gates.\n"
+    "PERFORMANCE: the scoring split has up to ~50k bars and your program is run 3x (a\n"
+    "causality check re-runs it). PREFER vectorised numpy — rolling windows via cumulative\n"
+    "sums (np.cumsum), not per-bar Python loops over bars. A single O(n) pass (e.g. an EWMA\n"
+    "loop) is fine, but a per-bar inner WINDOW loop (O(n*W)) may exceed the 10s limit and be\n"
+    "REJECTED with no score. Output ONLY one ```python code block.\n"
 )

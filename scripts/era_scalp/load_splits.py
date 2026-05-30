@@ -6,6 +6,30 @@ import pandas as pd
 
 from scripts.era_scalp.score_program import ScalpSplitData
 
+
+def cap_recent(split: ScalpSplitData, max_bars: int | None) -> ScalpSplitData:
+    """Return the most-recent `max_bars` of a split (contiguous, time-ordered).
+
+    Used to bound the DISCOVERY-loop scoring split so a sensible-but-heavy
+    program (e.g. an O(n*W) rolling estimator) does not blow the 10s sandbox
+    timeout on the full ~200k-bar validation set and get silently dropped. A
+    contiguous recent slice is used (NOT stride-sampling) so trailing-window /
+    EWMA programs stay meaningful. The holdout is always scored on full data.
+    """
+    n = split.X.shape[0]
+    if max_bars is None or n <= max_bars:
+        return split
+    sl = slice(n - max_bars, None)
+    return ScalpSplitData(
+        X=split.X[sl],
+        names=split.names,
+        hour=None if split.hour is None else split.hour[sl],
+        y_fwd=split.y_fwd[sl],
+        cost=split.cost[sl],
+        test_month=split.test_month[sl],
+        close_ts=None if split.close_ts is None else split.close_ts[sl],
+    )
+
 # Causal, stationary feature whitelist (audited backward/.shift(1) in
 # scripts/build_tick_velocity_dataset.py). Excludes y_fwd_*, raw OHLC,
 # cost_est_pips, close_ts, bar_ticks.

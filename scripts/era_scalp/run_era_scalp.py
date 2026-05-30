@@ -25,6 +25,27 @@ def select_seed_programs(no_baseline: bool = False) -> dict:
     return {k: v for k, v in SEED_PROGRAMS.items() if k not in BASELINE_SEED_NAMES}
 
 
+def summarize_rejections(nodes) -> dict:
+    """Count how many explored programs were rejected (scored -1e6) and why,
+    so silent losses (timeouts, causality, errors) are visible in the report."""
+    rej = {"total": len(nodes), "rejected": 0, "timeout": 0,
+           "causality": 0, "static_or_exec": 0, "other": 0}
+    for nd in nodes:
+        if nd.score > -1e6 + 1.0:
+            continue
+        rej["rejected"] += 1
+        lg = (nd.logs or "").lower()
+        if "timeout" in lg:
+            rej["timeout"] += 1
+        elif "causality_probe" in lg:
+            rej["causality"] += 1
+        elif "static_check" in lg or "exec" in lg:
+            rej["static_or_exec"] += 1
+        else:
+            rej["other"] += 1
+    return rej
+
+
 def finalize_selection(holdout_nets: dict, q: float = 0.10) -> list[str]:
     names = list(holdout_nets)
     pvals = np.array([holdout_pvalue(holdout_nets[n]["net"].to_numpy(float)) for n in names])
@@ -107,11 +128,17 @@ def main() -> None:
     ap.add_argument("--budget", type=int, default=60)
     ap.add_argument("--no-baseline-seeds", action="store_true")
     ap.add_argument("--holdout-top", type=int, default=5)
+    ap.add_argument("--score-max-bars", type=int, default=50000,
+                    help="cap the validation ranking split to its most-recent N bars "
+                         "(keeps heavy programs under the 10s timeout; 0 = no cap)")
     ap.add_argument("--out", default="/tmp/era_scalp/report.md")
     args = ap.parse_args()
-    from scripts.era_scalp.load_splits import build_splits
+    from scripts.era_scalp.load_splits import build_splits, cap_recent
 
     splits = build_splits(args.symbol, Path(args.parquet), horizon=args.horizon)
+    # Cap ONLY the validation ranking split for the discovery loop; holdout stays full.
+    cap = args.score_max_bars or None
+    splits["validation"] = cap_recent(splits["validation"], cap)
     seed_programs = select_seed_programs(no_baseline=args.no_baseline_seeds)
     nodes = run_search(
         splits, thresholds=THRESHOLDS, budget=args.budget, seed_programs=seed_programs
@@ -139,11 +166,14 @@ def main() -> None:
             sig, hold.y_fwd, hold.cost, hold.test_month, best[0]
         )
     survivors = finalize_selection(holdout_nets, q=0.10) if holdout_nets else []
+    health = summarize_rejections(nodes)
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:
         f.write(f"# ERA-scalp run — {args.symbol} 100tick (h{args.horizon})\n\n")
-        f.write(f"nodes: {len(nodes)} | no_baseline_seeds={args.no_baseline_seeds}\n\n")
+        f.write(f"nodes: {len(nodes)} | no_baseline_seeds={args.no_baseline_seeds} "
+                f"| score_max_bars={cap}\n\n")
+        f.write(f"## Search health: {health}\n\n")
         f.write(f"## BH-FDR holdout survivors (q=0.10): {survivors or 'none'}\n\n")
         f.write("## Top by validation score (with holdout diagnostics)\n\n")
         for i, nd in enumerate(top):
