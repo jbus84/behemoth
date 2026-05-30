@@ -29,10 +29,10 @@ _RULES = (
 )
 
 
-def build_prompt(parent_src: str, parent_score: float, logs: str, idea: str) -> str:
+def build_prompt(parent_src: str, parent_score: float, logs: str, idea: str, rules: str = _RULES) -> str:
     return (
         "Improve this dispersion residual program to increase its score.\n\n"
-        f"{_RULES}\n"
+        f"{rules}\n"
         f"Research idea to consider: {idea}\n\n"
         f"Parent score: {parent_score}\n"
         f"Parent logs: {logs[:500]}\n\n"
@@ -53,11 +53,11 @@ def _ollama_caller(prompt: str) -> str:
     return out.stdout
 
 
-def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None):
+def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None, rules=_RULES):
     caller = caller or _ollama_caller
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    prompt = build_prompt(parent_src, parent_score, logs, idea)
+    prompt = build_prompt(parent_src, parent_score, logs, idea, rules=rules)
     key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
     cached = cache_dir / f"{key}.py"
     if cached.exists():
@@ -67,10 +67,10 @@ def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None
     return src
 
 
-def build_recombine_prompt(srcA: str, scoreA: float, srcB: str, scoreB: float) -> str:
+def build_recombine_prompt(srcA: str, scoreA: float, srcB: str, scoreB: float, rules: str = _RULES) -> str:
     return (
         "Combine these two dispersion residual programs by studying both and writing ONE new program.\n\n"
-        f"{_RULES}\n"
+        f"{rules}\n"
         f"Parent A score: {scoreA}\n"
         f"Parent A program:\n```python\n{srcA}\n```\n\n"
         f"Parent B score: {scoreB}\n"
@@ -79,11 +79,11 @@ def build_recombine_prompt(srcA: str, scoreA: float, srcB: str, scoreB: float) -
     )
 
 
-def recombine_program(srcA, scoreA, srcB, scoreB, cache_dir, caller=None):
+def recombine_program(srcA, scoreA, srcB, scoreB, cache_dir, caller=None, rules=_RULES):
     caller = caller or _ollama_caller
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    prompt = build_recombine_prompt(srcA, scoreA, srcB, scoreB)
+    prompt = build_recombine_prompt(srcA, scoreA, srcB, scoreB, rules=rules)
     key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
     cached = cache_dir / f"{key}.py"
     if cached.exists():
