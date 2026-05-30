@@ -108,3 +108,52 @@ def run_program(src: str, ctx: CrossSectionContext, timeout: float = 10.0):
         if proc.returncode != 0 or not out.exists():
             return None, logs or f"exit {proc.returncode}", logs
         return np.load(out), None, logs
+
+
+def _arrays_match(a: np.ndarray, b: np.ndarray) -> bool:
+    """Equal where both finite (allclose) and NaN in identical positions."""
+    a = np.asarray(a, float)
+    b = np.asarray(b, float)
+    na, nb = np.isnan(a), np.isnan(b)
+    if not np.array_equal(na, nb):
+        return False
+    fa, fb = a[~na], b[~nb]
+    return bool(np.allclose(fa, fb, rtol=1e-9, atol=1e-9))
+
+
+def causality_probe(src, ctx, clean_resid, n_cuts: int = 2, seed: int = 0):
+    """Reject programs whose past residual depends on future bars.
+
+    For each cut k, replace every row at index > k with finite noise, re-run the
+    program, and require residual[:k+1] to be unchanged vs the clean run. Any
+    op that reads future rows (forward indexing, centered windows, full-split
+    statistics) perturbs a past value and is rejected. Returns (ok, reason).
+    """
+    n = ctx.n_bars
+    if n < 6:
+        return True, "too-short-to-probe"
+    rng = np.random.default_rng(seed)
+    clean = np.asarray(clean_resid, float)
+    cuts = [max(1, n * (i + 1) // (n_cuts + 1)) for i in range(n_cuts)]
+    for k in cuts:
+        r2 = ctx.r.copy()
+        r2[k + 1 :, :] = rng.standard_normal(r2[k + 1 :, :].shape) * 10.0
+        hour2 = None
+        if ctx.hour is not None:
+            hour2 = ctx.hour.copy()
+            hour2[k + 1 :] = rng.integers(0, 24, size=hour2[k + 1 :].shape).astype(float)
+        ctx2 = CrossSectionContext(
+            r=r2, names=ctx.names, target=ctx.target, usd_sign=ctx.usd_sign, hour=hour2
+        )
+        resid2, err, _ = run_program(src, ctx2, timeout=10.0)
+        if err is not None:
+            return (
+                False,
+                f"non-causal: errors under future perturbation at k={k}: {err}",
+            )
+        if not _arrays_match(clean[: k + 1], np.asarray(resid2, float)[: k + 1]):
+            return (
+                False,
+                f"non-causal: residual[:{k + 1}] changed when future bars perturbed",
+            )
+    return True, "ok"

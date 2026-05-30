@@ -6,7 +6,7 @@ import numpy as np
 
 from scripts.era.context import CrossSectionContext
 from scripts.era.harness import evaluate_residual, task_score
-from scripts.era.sandbox import run_program
+from scripts.era.sandbox import causality_probe, run_program
 
 
 @dataclass
@@ -39,6 +39,9 @@ class ProgramScorer:
             return -1e6, f"static_check/exec: {err}" if "static_check" in (
                 err or ""
             ) else f"exec: {err}\n{logs}"
+        ok, reason = causality_probe(src, ctx, resid)
+        if not ok:
+            return -1e6, f"causality_probe: {reason}"
         best = -1e9
         for thr in self.thresholds:
             df = evaluate_residual(resid, d.usd_sign, d.y_fwd, d.cost, d.test_month, thr)
