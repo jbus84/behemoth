@@ -8,10 +8,14 @@ _RULES = (
     "You write a Python function `residual(ctx) -> np.ndarray`.\n"
     "ctx gives ONLY causal cross-section data: ctx.r (n_bars x 6 USD-aligned\n"
     "vol-normalised returns), ctx.target_col(), ctx.peers(), ctx.target_idx,\n"
-    "ctx.names, ctx.usd_sign. `np` is available. You CANNOT import anything and\n"
-    "CANNOT access future returns / y_fwd / labels (they are not in ctx).\n"
-    "Return a per-bar residual; larger |residual| == stronger idiosyncratic\n"
-    "dislocation of the target. Output ONLY one ```python code block.\n"
+    "ctx.names, ctx.usd_sign. ctx.hour gives the per-bar UTC hour (int array).\n"
+    "ctx.dispersion() gives the per-bar cross-sectional std. `np` is available.\n"
+    "You CANNOT import anything and CANNOT access future returns / y_fwd / labels\n"
+    "(they are not in ctx). Return a per-bar residual; larger |residual| ==\n"
+    "stronger idiosyncratic dislocation of the target. You MAY gate: return np.nan\n"
+    "for bars you DO NOT want to trade (the scorer ignores non-finite entries).\n"
+    "E.g. trade only the asia session (UTC hour 0-5) or only high-dispersion bars.\n"
+    "Output ONLY one ```python code block.\n"
 )
 
 def build_prompt(parent_src: str, parent_score: float, logs: str, idea: str) -> str:

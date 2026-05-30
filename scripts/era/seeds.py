@@ -50,6 +50,24 @@ SEED_PROGRAMS: dict[str, str] = {
         "    mid = (m + 1) / 2.0\n"
         "    return mid - tr  # >0 near top rank, <0 near bottom\n"
     ),
+    # leave-one-out basket z gated to asia session (UTC hour 0-5)
+    "loo_z_asia": (
+        "def residual(ctx):\n"
+        "    t = ctx.target_col(); p = ctx.peers()\n"
+        "    z = (t - p.mean(axis=1)) / (p.std(axis=1) + 1e-9)\n"
+        "    if ctx.hour is not None:\n"
+        "        z = np.where(ctx.hour <= 5, z, np.nan)\n"
+        "    return z\n"
+    ),
+    # leave-one-out basket z gated to high-dispersion bars (above median)
+    "loo_z_highdisp": (
+        "def residual(ctx):\n"
+        "    t = ctx.target_col(); p = ctx.peers()\n"
+        "    z = (t - p.mean(axis=1)) / (p.std(axis=1) + 1e-9)\n"
+        "    d = ctx.dispersion()\n"
+        "    z = np.where(d >= np.nanmedian(d), z, np.nan)\n"
+        "    return z\n"
+    ),
 }
 
 RESEARCH_IDEAS: list[str] = [

@@ -5,6 +5,7 @@ def test_prompt_includes_parent_context():
                      "exec: nan residual", "use leave-one-out")
     assert "residual(ctx)" in p and "-0.5" in p and "leave-one-out" in p
     assert "y_fwd" in p.lower()  # the causal rule is stated
+    assert "ctx.hour" in p  # gating capability documented
 
 def test_extract_program_from_fenced_block():
     resp = "Here:\n```python\ndef residual(ctx):\n    return ctx.target_col()\n```\n"
