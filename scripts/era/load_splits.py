@@ -12,6 +12,11 @@ def build_splits(symbol, bar_ticks, tom_dir: Path, velocity_dir: Path, horizon: 
     from scripts.cross_symbol import get_or_build_cross_symbol_frame, CROSS_SYMBOLS, _USD_SIGN
     cs = get_or_build_cross_symbol_frame(symbol, bar_ticks, velocity_dir, [horizon]).copy()
     cs["close_ts"] = pd.to_datetime(cs["close_ts"], utc=True)
+    # The cs_frame carries xs_ret_z__<peer> for the 5 peers plus the target's
+    # own raw `ret_z`; the target's USD-aligned column is NOT pre-named. Derive
+    # it (mirrors cross_symbol._usd_aligned_ret_z) so all 6 CROSS_SYMBOLS
+    # columns exist before selection.
+    cs[f"xs_ret_z__{symbol}"] = int(_USD_SIGN[symbol]) * pd.to_numeric(cs["ret_z"], errors="coerce")
     vel = pd.read_parquet(velocity_dir / f"{symbol}_{bar_ticks}tick_velocity.parquet")
     vel["close_ts"] = pd.to_datetime(vel["close_ts"], utc=True)
     keep = ["close_ts", "cost_est_pips", f"y_fwd_pips_h{horizon}", "test_month"] \
