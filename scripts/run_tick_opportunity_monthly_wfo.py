@@ -221,6 +221,14 @@ def _build_registry_family_events(
         params["bar_ticks"] = bar_ticks
         params["dataset_dir"] = str(dataset_dir)
         params["horizons"] = horizons
+        # Cross-sectional families (dollar_residual, dispersion_rank, lead_lag)
+        # read the dataset dir and horizons under underscore-prefixed keys
+        # (mining_family.py: params["_dataset_dir"], params["_horizons"]; matches
+        # run_tick_opportunity_mining.py). Without these the cross-symbol frame
+        # loader gets None and returns zero entries -> zero events -> zero
+        # predictions, silently hiding all three families from evaluation.
+        params["_dataset_dir"] = str(dataset_dir)
+        params["_horizons"] = horizons
         entries = family.entry_indices(df, mask, params)
         if len(entries) == 0:
             continue
