@@ -12,33 +12,23 @@ def run_search(splits: dict[str, SplitData], thresholds, budget, writer=propose_
     ideas = ideas or RESEARCH_IDEAS
     scorer = ProgramScorer(splits=splits, thresholds=thresholds)
     rng = random.Random(seed)
-    # seed the tree with the best baseline as root; others as initial children
-    root_src = SEED_PROGRAMS["loo_z"]
-    rs, rlogs = scorer.score(root_src, "validation" if "validation" in splits else "train")
-    root = Node(payload=root_src, score=rs, parent=None, logs=rlogs)
-    nodes = [root]
-    for name, src in SEED_PROGRAMS.items():
-        if name == "loo_z":
-            continue
-        s, lg = scorer.score(src, "validation" if "validation" in splits else "train")
-        ch = Node(payload=src, score=s, parent=root, logs=lg)
-        root.children.append(ch); nodes.append(ch)
-
+    # build forest: all seeds as independent roots with parent=None
     split_for_rank = "validation" if "validation" in splits else "train"
+    forest = []
+    for name, src in SEED_PROGRAMS.items():
+        s, lg = scorer.score(src, split_for_rank)
+        nd = Node(payload=src, score=s, parent=None, logs=lg)
+        forest.append(nd)
+
     def expand(parent: Node) -> Node:
         idea = rng.choice(ideas)
         child_src = writer(parent.payload, parent.score, parent.logs, idea, cache_dir=cache_dir)
         s, lg = scorer.score(child_src, split_for_rank)
         return Node(payload=child_src, score=s, parent=parent, logs=lg)
 
-    # continue PUCT from the seeded forest
-    extra = puct_search(root, expand, budget=budget, c_puct=1.0, seed=seed)
-    # puct_search starts from root only; merge the pre-seeded children list
-    seen = {id(n) for n in extra}
-    for n in nodes:
-        if id(n) not in seen:
-            extra.append(n)
-    return extra
+    # PUCT selects and expands over the full forest
+    nodes = puct_search(forest, expand, budget=budget, c_puct=1.0, seed=seed)
+    return nodes
 
 def main() -> None:
     ap = argparse.ArgumentParser()

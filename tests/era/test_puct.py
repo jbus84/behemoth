@@ -8,7 +8,7 @@ def test_search_improves_and_keeps_all_nodes():
         x = parent.payload + rng.uniform(-1, 1)
         return Node(payload=x, score=-(x - 3.0) ** 2, parent=parent)
     root = Node(payload=0.0, score=-(0 - 3.0) ** 2, parent=None)
-    nodes = puct_search(root, expand, budget=80, c_puct=1.0, seed=0)
+    nodes = puct_search([root], expand, budget=80, c_puct=1.0, seed=0)
     assert len(nodes) == 81  # root + 80 expansions, nothing pruned
     best = max(nodes, key=lambda n: n.score)
     assert best.score > root.score  # search made progress

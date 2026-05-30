@@ -30,10 +30,10 @@ def select(nodes: list[Node], c_puct: float) -> Node:
             best_v, best_i = v, i
     return nodes[best_i]
 
-def puct_search(root: Node, expand_fn, budget: int, c_puct: float = 1.0,
+def puct_search(initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0,
                 seed: int = 0) -> list[Node]:
     np.random.seed(seed)
-    nodes = [root]
+    nodes = list(initial_nodes)
     for _ in range(budget):
         parent = select(nodes, c_puct)
         child = expand_fn(parent)
