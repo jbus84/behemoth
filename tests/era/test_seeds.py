@@ -91,3 +91,11 @@ def test_factor_resid_seed_present_and_causal():
     assert err is None
     ok, reason = causality_probe(SEED_PROGRAMS["factor_resid"], ctx, resid)
     assert ok, reason
+
+
+def test_research_ideas_cover_adr_transfers():
+    from scripts.era.seeds import RESEARCH_IDEAS
+
+    blob = " ".join(RESEARCH_IDEAS).lower()
+    for kw in ["pairwise", "pca", "covariance", "ewma", "dispersion change", "correlation"]:
+        assert kw in blob, f"missing research idea keyword: {kw}"

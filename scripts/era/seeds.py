@@ -133,4 +133,18 @@ RESEARCH_IDEAS: list[str] = [
     "cross-sectional dispersion (std of the six returns) is high; weight by it.",
     "Rank-transition: an extreme cross-sectional rank tends to move back toward the "
     "middle over the horizon; size the fade by how extreme the rank is.",
+    "Pairwise spread: score the target by the median (or mean) of its return "
+    "minus each peer's return, rather than versus a single basket mean.",
+    "Factor / PCA residual (Avellaneda-Lee): remove the common USD-basket factor "
+    "with a causal expanding/rolling regression beta (or the first principal "
+    "component of a trailing window of the six returns) and fade the idiosyncratic "
+    "residual; never use future rows.",
+    "Covariance-aware residual: scale the basket residual by a causal trailing "
+    "Mahalanobis-style covariance of the six returns so correlated moves count less.",
+    "Correlation-weighted peer graph: weight peers by their trailing-window "
+    "correlation with the target, then fade target-minus-weighted-peers.",
+    "Stateful residual: EWMA or short trailing-window smoothing of the basket "
+    "residual to separate one-bar noise from a persistent dislocation.",
+    "Dispersion change: compare current cross-sectional dispersion to its trailing "
+    "average (dispersion expansion vs contraction) and gate or size the fade by it.",
 ]
