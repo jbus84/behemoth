@@ -37,3 +37,28 @@ def test_search_rediscovers_a_seed_baseline():
     assert np.isfinite(best.score)
     # loo_z must score finite & be selected among the top
     assert best.score >= sorted(nd.score for nd in nodes)[len(nodes) // 2]
+
+
+def test_no_baseline_seeds_filters_canonical(tmp_path):
+    from scripts.era.run_era import select_seed_programs
+
+    full = select_seed_programs(no_baseline=False)
+    ablated = select_seed_programs(no_baseline=True)
+    for name in ("dispersion_rank", "loo_z", "robust_z", "graph_laplacian"):
+        assert name in full
+        assert name not in ablated
+    assert "all6_z" in ablated
+
+
+def test_finalize_applies_bh_fdr(tmp_path):
+    import pandas as pd
+
+    from scripts.era.run_era import finalize_selection
+
+    holdout_nets = {
+        "winner": pd.DataFrame({"net": np.random.default_rng(0).normal(1.0, 1.0, 400)}),
+        "null": pd.DataFrame({"net": np.random.default_rng(1).normal(0.0, 1.0, 400)}),
+    }
+    survivors = finalize_selection(holdout_nets, q=0.10)
+    assert "winner" in survivors
+    assert "null" not in survivors

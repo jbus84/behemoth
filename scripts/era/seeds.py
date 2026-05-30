@@ -119,6 +119,9 @@ SEED_PROGRAMS: dict[str, str] = {
     ),
 }
 
+# The four canonical baselines the ADR tracer-bullet must be able to rediscover.
+BASELINE_SEED_NAMES = ("dispersion_rank", "loo_z", "robust_z", "graph_laplacian")
+
 RESEARCH_IDEAS: list[str] = [
     "Leave-one-out basket residual: standardise the target's USD-aligned return "
     "against the mean and std of the OTHER five majors only, so the target is not "
