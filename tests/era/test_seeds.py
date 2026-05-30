@@ -26,3 +26,24 @@ def test_all_seeds_validate_and_run():
 
 def test_research_ideas_nonempty():
     assert len(RESEARCH_IDEAS) >= 4 and all(len(s) > 20 for s in RESEARCH_IDEAS)
+
+
+def test_pairwise_median_seed_present_and_runs():
+    import numpy as np
+
+    from scripts.era.context import CrossSectionContext
+    from scripts.era.sandbox import run_program
+    from scripts.era.seeds import SEED_PROGRAMS
+
+    assert "pairwise_median" in SEED_PROGRAMS
+    rng = np.random.default_rng(0)
+    ctx = CrossSectionContext(
+        r=rng.standard_normal((50, 6)),
+        names=["EURUSD", "GBPUSD", "AUDUSD", "USDJPY", "USDCHF", "USDCAD"],
+        target="EURUSD",
+        usd_sign=1,
+        hour=(np.arange(50) % 24).astype(float),
+    )
+    resid, err, _ = run_program(SEED_PROGRAMS["pairwise_median"], ctx)
+    assert err is None
+    assert resid.shape == (50,)

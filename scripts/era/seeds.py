@@ -68,6 +68,12 @@ SEED_PROGRAMS: dict[str, str] = {
         "    expanding_mean = csum / np.arange(1, len(d) + 1)\n"
         "    return np.where(d >= expanding_mean, z, np.nan)\n"
     ),
+    # median target-vs-peer spread (ADR pairwise_median)
+    "pairwise_median": (
+        "def residual(ctx):\n"
+        "    t = ctx.target_col()[:, None]; p = ctx.peers()\n"
+        "    return np.median(t - p, axis=1)\n"
+    ),
 }
 
 RESEARCH_IDEAS: list[str] = [
