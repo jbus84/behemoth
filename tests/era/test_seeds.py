@@ -69,3 +69,25 @@ def test_corr_weighted_graph_seed_present_and_causal():
     assert err is None
     ok, reason = causality_probe(SEED_PROGRAMS["corr_weighted_graph"], ctx, resid)
     assert ok, reason
+
+
+def test_factor_resid_seed_present_and_causal():
+    import numpy as np
+
+    from scripts.era.context import CrossSectionContext
+    from scripts.era.sandbox import causality_probe, run_program
+    from scripts.era.seeds import SEED_PROGRAMS
+
+    assert "factor_resid" in SEED_PROGRAMS
+    rng = np.random.default_rng(4)
+    ctx = CrossSectionContext(
+        r=rng.standard_normal((140, 6)),
+        names=["EURUSD", "GBPUSD", "AUDUSD", "USDJPY", "USDCHF", "USDCAD"],
+        target="EURUSD",
+        usd_sign=1,
+        hour=(np.arange(140) % 24).astype(float),
+    )
+    resid, err, _ = run_program(SEED_PROGRAMS["factor_resid"], ctx)
+    assert err is None
+    ok, reason = causality_probe(SEED_PROGRAMS["factor_resid"], ctx, resid)
+    assert ok, reason

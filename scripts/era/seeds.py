@@ -98,6 +98,25 @@ SEED_PROGRAMS: dict[str, str] = {
         "        out[k] = r[k, ti] - nb\n"
         "    return out\n"
     ),
+    # market-factor (USD basket) residual via causal expanding/rolling beta
+    # (ADR Avellaneda-Lee factor-residual transfer)
+    "factor_resid": (
+        "def residual(ctx):\n"
+        "    r = ctx.r; n = r.shape[0]; ti = ctx.target_idx; W = 250\n"
+        "    basket = r.mean(axis=1)  # common USD factor proxy (per-bar)\n"
+        "    out = np.full(n, np.nan)\n"
+        "    for k in range(n):\n"
+        "        lo = max(0, k - W)\n"
+        "        if k - lo < 20:\n"
+        "            continue\n"
+        "        x = basket[lo:k]; y = r[lo:k, ti]  # strictly past bars\n"
+        "        vx = x.var()\n"
+        "        if vx <= 1e-12:\n"
+        "            continue\n"
+        "        beta = np.cov(x, y)[0, 1] / vx\n"
+        "        out[k] = r[k, ti] - beta * basket[k]\n"
+        "    return out\n"
+    ),
 }
 
 RESEARCH_IDEAS: list[str] = [
