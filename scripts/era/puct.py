@@ -1,15 +1,19 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+
 import numpy as np
+
 
 @dataclass
 class Node:
-    payload: object            # program source (or toy value)
-    score: float               # validation TaskScore
-    parent: "Node | None"
+    payload: object  # program source (or toy value)
+    score: float  # validation TaskScore
+    parent: Node | None
     visits: int = 1
     logs: str = ""
     children: list = field(default_factory=list)
+
 
 def _rank_scores(nodes: list[Node]) -> dict[int, float]:
     order = sorted(range(len(nodes)), key=lambda i: nodes[i].score)
@@ -17,6 +21,7 @@ def _rank_scores(nodes: list[Node]) -> dict[int, float]:
     for rank, i in enumerate(order):
         out[i] = rank / max(1, len(nodes) - 1)  # 0..1, higher score -> higher rank
     return out
+
 
 def select(nodes: list[Node], c_puct: float) -> Node:
     ranks = _rank_scores(nodes)
@@ -30,8 +35,10 @@ def select(nodes: list[Node], c_puct: float) -> Node:
             best_v, best_i = v, i
     return nodes[best_i]
 
-def puct_search(initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0,
-                seed: int = 0) -> list[Node]:
+
+def puct_search(
+    initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0, seed: int = 0
+) -> list[Node]:
     np.random.seed(seed)
     nodes = list(initial_nodes)
     for _ in range(budget):

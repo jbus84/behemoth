@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
+
 import numpy as np
+
 
 @dataclass(frozen=True)
 class CrossSectionContext:
@@ -9,6 +12,7 @@ class CrossSectionContext:
     r: (n_bars, n_symbols) USD-aligned vol-normalised returns (xs_ret_z),
        columns ordered by `names`. Carries NO forward/label data.
     """
+
     r: np.ndarray
     names: list[str]
     target: str

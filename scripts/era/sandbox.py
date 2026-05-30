@@ -1,11 +1,31 @@
 from __future__ import annotations
-import ast, json, os, subprocess, sys, tempfile
+
+import ast
+import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
+
 import numpy as np
+
 from scripts.era.context import CrossSectionContext
 
-_FORBIDDEN_NAMES = {"open", "eval", "exec", "compile", "__import__", "globals",
-                    "locals", "getattr", "setattr", "delattr", "vars", "input"}
+_FORBIDDEN_NAMES = {
+    "open",
+    "eval",
+    "exec",
+    "compile",
+    "__import__",
+    "globals",
+    "locals",
+    "getattr",
+    "setattr",
+    "delattr",
+    "vars",
+    "input",
+}
+
 
 def static_check(src: str) -> tuple[bool, str]:
     """Reject imports, dunder access, and dangerous builtins. Require residual()."""
@@ -27,8 +47,9 @@ def static_check(src: str) -> tuple[bool, str]:
         return False, "must define residual(ctx)"
     return True, "ok"
 
+
 # Worker source: runs in a subprocess, reconstructs ctx, execs the program.
-_WORKER = r'''
+_WORKER = r"""
 import sys, json, numpy as np
 from scripts.era.context import CrossSectionContext
 payload = np.load(sys.argv[1], allow_pickle=True)
@@ -48,7 +69,8 @@ try:
 except Exception as e:
     print(f"ERR {type(e).__name__}: {e}", file=sys.stderr)
     sys.exit(3)
-'''
+"""
+
 
 def run_program(src: str, ctx: CrossSectionContext, timeout: float = 10.0):
     """Return (residual_array | None, error | None, logs)."""
@@ -56,17 +78,30 @@ def run_program(src: str, ctx: CrossSectionContext, timeout: float = 10.0):
     if not ok:
         return None, f"static_check: {reason}", ""
     with tempfile.TemporaryDirectory() as d:
-        inp = Path(d) / "in.npz"; out = Path(d) / "out.npy"; wrk = Path(d) / "w.py"
-        np.savez(inp, src=src, r=ctx.r, names=np.array(ctx.names),
-                 target=ctx.target, usd_sign=ctx.usd_sign,
-                 hour=ctx.hour if ctx.hour is not None else np.array([]))
+        inp = Path(d) / "in.npz"
+        out = Path(d) / "out.npy"
+        wrk = Path(d) / "w.py"
+        np.savez(
+            inp,
+            src=src,
+            r=ctx.r,
+            names=np.array(ctx.names),
+            target=ctx.target,
+            usd_sign=ctx.usd_sign,
+            hour=ctx.hour if ctx.hour is not None else np.array([]),
+        )
         wrk.write_text(_WORKER)
         try:
             env = dict(os.environ)
             env["PYTHONPATH"] = str(Path.cwd()) + os.pathsep + env.get("PYTHONPATH", "")
-            proc = subprocess.run([sys.executable, str(wrk), str(inp), str(out)],
-                                  capture_output=True, text=True, timeout=timeout,
-                                  cwd=str(Path.cwd()), env=env)
+            proc = subprocess.run(
+                [sys.executable, str(wrk), str(inp), str(out)],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=str(Path.cwd()),
+                env=env,
+            )
         except subprocess.TimeoutExpired:
             return None, "timeout", ""
         logs = (proc.stdout + proc.stderr).strip()
