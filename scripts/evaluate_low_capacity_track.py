@@ -173,6 +173,7 @@ def _load_and_process_predictions(
     velocity_dir: Path,
     symbols: list[str],
     families: list[str],
+    bar_ticks_filter: set[int] | None = None,
 ) -> pd.DataFrame:
     """Load WFO predictions and join with per-event costs.
 
@@ -198,6 +199,11 @@ def _load_and_process_predictions(
 
             pred_df = pd.read_parquet(pred_file)
 
+            # Legitimately-empty WFO runs write a 0-row, no-column parquet.
+            # Skip them: no selection column means no tradeable events.
+            if "selected_exec" not in pred_df.columns:
+                continue
+
             # Filter by selected_exec (truthy: "true", "1")
             pred_df["selected_exec_bool"] = pred_df["selected_exec"].astype(str).str.lower().isin(
                 {"true", "1"}
@@ -213,6 +219,12 @@ def _load_and_process_predictions(
             pred_df["bar_ticks"] = parsed.apply(lambda x: x["bar_ticks"])
             pred_df["horizon"] = parsed.apply(lambda x: x["horizon"])
             pred_df["state_id"] = parsed.apply(lambda x: x["state_id"])
+
+            # Apply bar_ticks filter if specified
+            if bar_ticks_filter is not None:
+                pred_df = pred_df[pred_df["bar_ticks"].isin(bar_ticks_filter)].copy()
+                if len(pred_df) == 0:
+                    continue
 
             # Ensure close_ts is timezone-aware UTC
             if "close_ts" in pred_df.columns:
@@ -383,6 +395,11 @@ def main() -> None:
         help="Comma-separated family list",
     )
     parser.add_argument(
+        "--bar-ticks",
+        default="",
+        help="Comma-separated bar_ticks to include (e.g. '1000,2000'). Empty = all.",
+    )
+    parser.add_argument(
         "--tom-dir",
         type=Path,
         default=Path("data/analysis/tick_opportunity_mining"),
@@ -435,11 +452,16 @@ def main() -> None:
 
     symbols = [s.strip() for s in args.symbols.split(",")]
     families = [f.strip() for f in args.families.split(",")]
+    bar_ticks_filter = (
+        {int(x.strip()) for x in args.bar_ticks.split(",") if x.strip()}
+        if args.bar_ticks
+        else None
+    )
 
     # Load and process predictions
     print("Loading predictions and costs...")
     pred_df = _load_and_process_predictions(
-        args.tom_dir, args.velocity_dir, symbols, families
+        args.tom_dir, args.velocity_dir, symbols, families, bar_ticks_filter
     )
 
     if len(pred_df) == 0:
