@@ -32,6 +32,29 @@ def cap_recent(split: ScalpSplitData, max_bars: int | None) -> ScalpSplitData:
         close_ts=None if split.close_ts is None else split.close_ts[sl],
     )
 
+
+def cap_recent_range(split: RangeSplitData, max_bars: int | None) -> RangeSplitData:
+    """Return the most-recent `max_bars` of a RangeSplitData (contiguous, time-ordered).
+
+    Slices all arrays to the most-recent max_bars rows. Returns split unchanged
+    if max_bars is None or split.X.shape[0] <= max_bars.
+    """
+    n = split.X.shape[0]
+    if max_bars is None or n <= max_bars:
+        return split
+    sl = slice(n - max_bars, None)
+    return RangeSplitData(
+        X=split.X[sl],
+        names=split.names,
+        hour=None if split.hour is None else split.hour[sl],
+        close_bid=split.close_bid[sl],
+        high_bid=split.high_bid[sl],
+        low_bid=split.low_bid[sl],
+        spread=split.spread[sl],
+        cost=split.cost[sl],
+        test_month=split.test_month[sl],
+    )
+
 # Causal, stationary feature whitelist (audited backward/.shift(1) in
 # scripts/build_tick_velocity_dataset.py). Excludes y_fwd_*, raw OHLC,
 # cost_est_pips, close_ts, bar_ticks.

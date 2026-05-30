@@ -39,3 +39,40 @@ def test_range_scorer_rejects_noncausal():
            "    return x\n")
     s, logs = scorer.score(fwd, "validation")
     assert s == -1e6 and "causal" in logs.lower()
+
+
+def test_select_seed_programs_ablation():
+    from scripts.era_scalp.run_era_range import select_seed_programs
+
+    full = select_seed_programs(no_baseline=False)
+    ablated = select_seed_programs(no_baseline=True)
+    for b in ("range_vol_deploy", "meanrev_regime_deploy", "toxicity_gate_deploy",
+              "spread_harvest_deploy"):
+        assert b in full and b not in ablated
+    assert "burst_veto_deploy" in ablated
+
+
+def test_finalize_applies_bh_fdr():
+    import pandas as pd
+
+    from scripts.era_scalp.run_era_range import finalize_selection
+
+    holdout_nets = {
+        "winner": pd.DataFrame({"net": np.random.default_rng(0).normal(0.5, 1.0, 400)}),
+        "null": pd.DataFrame({"net": np.random.default_rng(1).normal(0.0, 1.0, 400)}),
+    }
+    survivors = finalize_selection(holdout_nets, q=0.10)
+    assert "winner" in survivors and "null" not in survivors
+
+
+def test_run_search_with_mocked_writer():
+    from scripts.era_scalp.run_era_range import run_search
+
+    splits = {"validation": _data(), "holdout": _data(seed=2)}
+
+    def fake_writer(parent_src, parent_score, logs, idea, cache_dir, rules=None, caller=None):
+        return "def deploy(ctx):\n    return ctx.col('bar_range_pips')\n"
+
+    nodes = run_search(splits, symbol="EURUSD", budget=3, writer=fake_writer, p_recombine=0.0)
+    assert len(nodes) >= 3
+    assert all(np.isfinite(n.score) for n in nodes)

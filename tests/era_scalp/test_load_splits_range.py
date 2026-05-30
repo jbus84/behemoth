@@ -43,3 +43,18 @@ def test_bar_range_pips_is_in_whitelist_and_nonneg(tmp_path):
                                 train=("2023",), validation=("2024",), holdout=("2025",))
     j = splits["train"].names.index("bar_range_pips")
     assert np.all(splits["train"].X[:, j] >= 0)
+
+
+def test_cap_recent_range_slices_all_arrays(tmp_path):
+    from scripts.era_scalp.load_splits import cap_recent_range
+    p = tmp_path / "EURUSD_100tick_velocity.parquet"
+    _write_fake(p, n=5000)
+    splits = build_range_splits("EURUSD", p, max_hold=4,
+                                train=("2023",), validation=("2024",), holdout=("2025",))
+    orig_val = splits["validation"]
+    capped = cap_recent_range(orig_val, max_bars=100)
+    assert capped.close_bid.shape[0] == 100
+    assert capped.X.shape[0] == 100
+    assert capped.high_bid.shape[0] == 100
+    assert capped.low_bid.shape[0] == 100
+    assert capped.spread.shape[0] == 100
