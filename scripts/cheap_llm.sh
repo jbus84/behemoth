@@ -7,5 +7,5 @@ MODEL="${ERA_GEN_MODEL:-qwen3-coder-next}"
 PROMPT="${1:?prompt required}"
 curl -sS --max-time 180 https://ollama.com/api/generate \
   -H "Authorization: Bearer $OLLAMA_API_KEY" \
-  -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" '{model:$m, prompt:$p, stream:false}')" \
+  -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" --argjson t "${ERA_GEN_TEMP:-0.7}" '{model:$m, prompt:$p, stream:false, options:{temperature:$t}}')" \
   | jq -r '.response'
