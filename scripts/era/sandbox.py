@@ -33,8 +33,10 @@ import sys, json, numpy as np
 from scripts.era.context import CrossSectionContext
 payload = np.load(sys.argv[1], allow_pickle=True)
 src = str(payload["src"])
+hour = payload["hour"]; hour = None if hour.size == 0 else hour
 ctx = CrossSectionContext(r=payload["r"], names=list(payload["names"]),
-                          target=str(payload["target"]), usd_sign=int(payload["usd_sign"]))
+                          target=str(payload["target"]), usd_sign=int(payload["usd_sign"]),
+                          hour=hour)
 ns = {"np": np}
 try:
     exec(src, ns)
@@ -56,7 +58,8 @@ def run_program(src: str, ctx: CrossSectionContext, timeout: float = 10.0):
     with tempfile.TemporaryDirectory() as d:
         inp = Path(d) / "in.npz"; out = Path(d) / "out.npy"; wrk = Path(d) / "w.py"
         np.savez(inp, src=src, r=ctx.r, names=np.array(ctx.names),
-                 target=ctx.target, usd_sign=ctx.usd_sign)
+                 target=ctx.target, usd_sign=ctx.usd_sign,
+                 hour=ctx.hour if ctx.hour is not None else np.array([]))
         wrk.write_text(_WORKER)
         try:
             env = dict(os.environ)

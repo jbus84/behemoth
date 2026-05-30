@@ -29,5 +29,6 @@ def build_splits(symbol, bar_ticks, tom_dir: Path, velocity_dir: Path, horizon: 
                          target=symbol, usd_sign=int(_USD_SIGN[symbol]),
                          y_fwd=d[ycol].to_numpy(float),
                          cost=d["cost_est_pips"].to_numpy(float),
-                         test_month=d["test_month"].to_numpy())
+                         test_month=d["test_month"].to_numpy(),
+                         hour=d["hour_utc"].to_numpy())
     return {"train": _split(train), "validation": _split(validation), "holdout": _split(holdout)}

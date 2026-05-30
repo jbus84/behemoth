@@ -13,6 +13,7 @@ class CrossSectionContext:
     names: list[str]
     target: str
     usd_sign: int
+    hour: np.ndarray | None = None
 
     @property
     def target_idx(self) -> int:
@@ -31,3 +32,7 @@ class CrossSectionContext:
 
     def peers(self) -> np.ndarray:
         return self.r[:, self.peer_idx]
+
+    def dispersion(self) -> np.ndarray:
+        """Per-bar cross-sectional standard deviation of returns."""
+        return self.r.std(axis=1)
