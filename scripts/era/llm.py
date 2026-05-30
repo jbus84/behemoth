@@ -18,6 +18,13 @@ _RULES = (
     "stronger idiosyncratic dislocation of the target. You MAY gate: return np.nan\n"
     "for bars you DO NOT want to trade (the scorer ignores non-finite entries).\n"
     "E.g. trade only the asia session (UTC hour 0-5) or only high-dispersion bars.\n"
+    "ctx.r is the FULL split: shape (n_bars x 6), rows ordered in time. You MAY\n"
+    "use the time axis for stateful dispersion ideas (causal/bounded only):\n"
+    "trailing-window or expanding stats, EWMA/rolling residuals, dispersion-change\n"
+    "over a lookback, rolling correlation/PCA peer structure. HARD RULE: never read\n"
+    "future rows - residual[k] must depend ONLY on bars <= k (use r[k-W:k], not\n"
+    "r[k:], no centered windows, no full-split mean/median/std). A causality probe\n"
+    "perturbs future rows and REJECTS any program whose past output changes.\n"
     "Output ONLY one ```python code block.\n"
 )
 

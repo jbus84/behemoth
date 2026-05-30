@@ -75,3 +75,13 @@ def test_recombine_uses_caller_and_caches(tmp_path):
     src2 = recombine_program(srcA, 0.5, srcB, 0.4, cache_dir=tmp_path, caller=fake_caller)
     assert src1 == src2
     assert len(calls) == 1  # second call served from cache
+
+
+def test_rules_describe_causal_time_axis():
+    p = build_prompt("def residual(ctx):\n    return ctx.target_col()\n", 0.0, "", "idea")
+    low = p.lower()
+    # writer must know it has the full time axis...
+    assert "n_bars" in low and ("trailing" in low or "expanding" in low)
+    # ...but must never read future bars (probe will reject otherwise)
+    assert "future" in low
+    assert "ewma" in low or "rolling" in low

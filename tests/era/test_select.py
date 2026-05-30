@@ -12,3 +12,14 @@ def test_bh_basic():
 
 def test_bh_all_null():
     assert not bh_fdr(np.array([0.9, 0.8, 0.95]), q=0.1).any()
+
+
+def test_holdout_pvalue_one_sided():
+    from scripts.era.select import holdout_pvalue
+
+    rng = np.random.default_rng(0)
+    pos = holdout_pvalue(rng.normal(1.0, 1.0, size=500))
+    null = holdout_pvalue(rng.normal(0.0, 1.0, size=500))
+    assert 0.0 <= pos <= 1.0 and 0.0 <= null <= 1.0
+    assert pos < null
+    assert holdout_pvalue(np.array([1.0])) == 1.0

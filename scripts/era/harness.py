@@ -28,6 +28,30 @@ def evaluate_residual(residual, usd_sign, y_fwd, cost, test_month, threshold):
     return pd.DataFrame({"net": net[entry], "test_month": np.asarray(test_month)[entry]})
 
 
+def entry_diagnostics(residual, dispersion, usd_sign, y_fwd, cost, test_month, threshold):
+    """ADR 0005 dispersion diagnostics for the bars a program would trade."""
+    z = standardise(residual)
+    dispersion = np.asarray(dispersion, float)
+    y_fwd = np.asarray(y_fwd, float)
+    cost = np.asarray(cost, float)
+    valid = np.isfinite(z) & np.isfinite(y_fwd) & np.isfinite(cost)
+    entry = valid & (np.abs(z) >= float(threshold))
+    n = int(entry.sum())
+    if n == 0:
+        return {"n_entries": 0, "mean_dispersion_at_entry": float("nan"),
+                "mean_net": float("nan"), "month_hit_rate": float("nan")}
+    side = -np.sign(z) * int(usd_sign)
+    net = (side * y_fwd - cost)[entry]
+    months = np.asarray(test_month)[entry]
+    monthly = pd.Series(net).groupby(months).mean()
+    return {
+        "n_entries": n,
+        "mean_dispersion_at_entry": float(np.nanmean(dispersion[entry])),
+        "mean_net": float(net.mean()),
+        "month_hit_rate": float((monthly > 0).mean()),
+    }
+
+
 _FLOOR = -1e6
 _N0 = 100
 
