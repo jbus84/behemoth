@@ -27,8 +27,8 @@ _FORBIDDEN_NAMES = {
 }
 
 
-def static_check(src: str) -> tuple[bool, str]:
-    """Reject imports, dunder access, and dangerous builtins. Require residual()."""
+def static_check(src: str, required_fn: str = "residual") -> tuple[bool, str]:
+    """Reject imports, dunder access, and dangerous builtins. Require required_fn()."""
     try:
         tree = ast.parse(src)
     except SyntaxError as e:
@@ -41,10 +41,10 @@ def static_check(src: str) -> tuple[bool, str]:
             return False, f"dunder attribute access not allowed: {node.attr}"
         if isinstance(node, ast.Name) and node.id in _FORBIDDEN_NAMES:
             return False, f"forbidden name: {node.id}"
-        if isinstance(node, ast.FunctionDef) and node.name == "residual":
+        if isinstance(node, ast.FunctionDef) and node.name == required_fn:
             has_residual = True
     if not has_residual:
-        return False, "must define residual(ctx)"
+        return False, f"must define {required_fn}(ctx)"
     return True, "ok"
 
 

@@ -85,3 +85,10 @@ def test_rules_describe_causal_time_axis():
     # ...but must never read future bars (probe will reject otherwise)
     assert "future" in low
     assert "ewma" in low or "rolling" in low
+
+
+def test_build_prompt_accepts_custom_rules():
+    from scripts.era.llm import build_prompt
+
+    p = build_prompt("x", 0.0, "", "idea", rules="CUSTOM_RULES_SENTINEL")
+    assert "CUSTOM_RULES_SENTINEL" in p

@@ -89,3 +89,10 @@ def residual(ctx):
     # Compare with the expected dispersion
     expected = ctx.dispersion()
     np.testing.assert_array_almost_equal(res, expected)
+
+
+def test_static_check_custom_required_fn():
+    ok, _ = static_check("def signal(ctx):\n    return ctx\n", required_fn="signal")
+    assert ok
+    bad, reason = static_check("def residual(ctx):\n    return ctx\n", required_fn="signal")
+    assert not bad and "signal" in reason
