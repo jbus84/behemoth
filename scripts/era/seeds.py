@@ -74,6 +74,30 @@ SEED_PROGRAMS: dict[str, str] = {
         "    t = ctx.target_col()[:, None]; p = ctx.peers()\n"
         "    return np.median(t - p, axis=1)\n"
     ),
+    # correlation-weighted peer-network residual (ADR weighted graph_laplacian)
+    "corr_weighted_graph": (
+        "def residual(ctx):\n"
+        "    r = ctx.r; n, m = r.shape; ti = ctx.target_idx; W = 250\n"
+        "    pidx = ctx.peer_idx\n"
+        "    out = np.full(n, np.nan)\n"
+        "    for k in range(n):\n"
+        "        lo = max(0, k - W)\n"
+        "        if k - lo < 20:\n"
+        "            continue\n"
+        "        win = r[lo:k, :]  # strictly past bars only\n"
+        "        tg = win[:, ti]\n"
+        "        w = np.zeros(len(pidx))\n"
+        "        for j, pj in enumerate(pidx):\n"
+        "            c = np.corrcoef(tg, win[:, pj])[0, 1]\n"
+        "            w[j] = c if np.isfinite(c) else 0.0\n"
+        "        sw = np.abs(w).sum()\n"
+        "        if sw <= 1e-9:\n"
+        "            continue\n"
+        "        w = w / sw\n"
+        "        nb = float(np.dot(w, r[k, pidx]))\n"
+        "        out[k] = r[k, ti] - nb\n"
+        "    return out\n"
+    ),
 }
 
 RESEARCH_IDEAS: list[str] = [
