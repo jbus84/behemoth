@@ -1,6 +1,6 @@
 # ADR 0005: Low-Capacity Regime-Specific Strategy Track
 
-- Status: Proposed (evaluation harness merged in PR #273; promotion-to-governance decision pending)
+- Status: Accepted (2026-05-30; evaluation harness merged in PR #273, decision target PASSed — see Evidence; transition work tracked in the follow-on plan)
 - Date: 2026-05-30
 
 ## Context
