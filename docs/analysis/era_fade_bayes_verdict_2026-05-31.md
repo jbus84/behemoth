@@ -51,3 +51,27 @@ majors); it is **negative on GBPUSD** and **indistinguishable from zero on USDCH
 - The Bayesian layer worked as intended: it shrank an inflated multi-symbol headline to the two
   symbols that survive honest, de-correlated, partial-pooled scrutiny. This is the confidence tool the
   investigation needed; Phase 2 (Bayesian-integrated PUCT) builds on it.
+
+## Follow-up: GBP wants CONTINUATION, not reversion (directional regime split)
+
+GBP's credibly-negative fade prompted the question "just flip to continuation?". Tested by negating
+the signal (same VR gate + q=0.99 extreme, opposite side) and re-running the Bayesian verdict:
+
+| symbol | fade P(edge>0) | continuation P(edge>0) | regime |
+|---|---|---|---|
+| EURUSD | 0.994 (+1.16) | 0.000 (-2.11) | reversion |
+| AUDUSD | 0.983 (+1.02) | 0.000 (-3.01) | reversion |
+| GBPUSD | 0.072 (-3.49) | **1.000 (+1.96)** | **continuation** |
+| USDJPY | 0.881 (+0.35) | 0.000 (-2.25) | weak reversion (not credible) |
+| USDCHF | 0.408 (-0.21) | 0.217 (-1.19) | no edge either way |
+
+**GBP is credibly a continuation symbol** (flip -> +1.96, P=1.000, CI [+1.56,+2.26]). The clean
+ANTI-CORRELATION (EUR/AUD fade-positive go strongly continuation-NEGATIVE, GBP the reverse) confirms a
+real per-symbol directional regime split, not noise — noise would not flip to credible opposite signs.
+JPY leans reversion but uncredible; CHF is noise in both directions (drop it).
+
+**Principled deployment (avoids per-symbol overfit):** condition direction on the measurable regime —
+`fade if trailing variance-ratio < 1 (mean-reverting: EUR/AUD) else continue (trending: GBP)` — a
+single causal rule decided without peeking at PnL, then Bayesian-validated. A natural next ERA seed
+(`vr_conditional_direction`). Still mid-to-mid/flat-cost; tick-exact gate pending. Real credible edge
+now = EUR+AUD (fade) + GBP (continuation), ~+1 to +2 pip/trade pre-cost; JPY/CHF no credible edge.
