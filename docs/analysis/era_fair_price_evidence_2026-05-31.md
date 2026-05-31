@@ -50,3 +50,37 @@ the transient component of mid IS predictable, and the signal is robust across i
 
 This is the first robust, cross-symbol-replicating result in the scalping investigation. It is a
 *prediction* result (fair price is weakly predictable), not yet a deployable trading edge.
+
+## qwen exploration update (capped run) — and a spurious-regression catch
+
+Re-ran coverage (budget 60, with `num_predict=2000` + a "≤~40 lines" prompt; calls now bounded,
+~4–7 min/run). qwen's top EURUSD program reached holdout **IC 0.043** (vs seed 0.030),
+month-consistency 1.0, and — cross-applied to other symbols' holdouts — **replicated**:
+EURUSD +0.043 / GBPUSD +0.042 / USDCHF +0.046 / AUDUSD +0.023.
+
+**But inspection killed the headline.** The 37-line program's "vectorised EWMA"
+(`ew[1:] = a*p[1:] + (1-a)*ew[:-1]`) is **not recursive** — it reads uninitialised `np.empty`
+memory, so `ew ≈ 0.05·p` and the dominant term `denoise = ew − p ≈ −0.95·p` = **negative
+cumulative-return (the de-trended price LEVEL)**. Confirmed: the pure one-liner
+`fair = −np.cumsum(vel_pips_h1)` reproduces the IC **exactly** (+0.043/+0.042/+0.046/+0.023);
+qwen's imbalance/bounce terms add ~nothing.
+
+That signal is **non-stationary (I(1))**. Correlating an integrated series against overlapping
+forward windows is a textbook **spurious-regression / inflated-significance** setup; the causality
+probe passes (it *is* causal) but does not test stationarity, and the cross-symbol "replication"
+is partly just all majors being similar random walks. So the 0.043 is **not** a trustworthy
+improvement.
+
+**What stands:** the *seed* result — a PROPER, stationary EWMA-denoise (recursive loop, ~4-pip-scale
+predictions) — at **IC ~0.02–0.03 replicating across four majors**. That is the genuine (if small)
+predictable transient component. The qwen "winner" (943-pip-scale predictions) is a non-stationary
+artifact that scored higher by exploiting the spurious-regression effect.
+
+**Lessons / follow-ups:**
+- The IC harness needs a **stationarity guard** (reject predictions with a unit root / excessive
+  correlation with the raw price level) and an **overlap-robust significance** (non-overlapping
+  sampling or effective-n correction) — the n≈3×10⁵ p-value is over-confident under W-overlap.
+- Mechanism inspection is essential: a high IC from a causal program can still be a measurement
+  artifact (non-stationary level), not predictability.
+- Net: fair price is weakly predictable (~0.03, stationary, cross-symbol) — modest and real; the
+  apparent qwen lift to 0.043 was spurious.
