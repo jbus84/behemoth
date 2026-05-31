@@ -160,3 +160,49 @@ def build_range_splits(
         "validation": _split(validation, embargo_tail=True),
         "holdout": _split(holdout, embargo_tail=False),
     }
+
+
+@dataclass
+class FairSplitData:
+    X: np.ndarray
+    names: list[str]
+    hour: np.ndarray | None
+    mid: np.ndarray
+    test_month: np.ndarray
+
+
+def build_fair_splits(
+    symbol: str,
+    parquet_path: Path,
+    embargo: int = 200,
+    train=("2018", "2019", "2020", "2021", "2022", "2023"),
+    validation=("2024",),
+    holdout=("2025", "2026"),
+) -> dict[str, FairSplitData]:
+    df = pd.read_parquet(parquet_path)
+    df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
+    df = df[df["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
+    df["mid"] = (df["close_bid"] + df["close_ask"]) / 2.0
+    # bar_range_pips is a derived causal feature in WHITELIST (not a raw column).
+    if "bar_range_pips" not in df.columns:
+        df["bar_range_pips"] = (df["high_bid"] - df["low_bid"]).abs() / _pip_size(symbol)
+    df["year"] = df["close_ts"].dt.strftime("%Y")
+    df["test_month"] = df["close_ts"].dt.strftime("%Y-%m")
+
+    def _split(years, embargo_tail: bool) -> FairSplitData:
+        d = df[df["year"].isin(years)].reset_index(drop=True)
+        if embargo_tail and len(d) > embargo:
+            d = d.iloc[: len(d) - embargo].reset_index(drop=True)
+        return FairSplitData(
+            X=d[WHITELIST].to_numpy(float),
+            names=list(WHITELIST),
+            hour=d["hour_utc"].to_numpy(float),
+            mid=d["mid"].to_numpy(float),
+            test_month=d["test_month"].to_numpy(),
+        )
+
+    return {
+        "train": _split(train, embargo_tail=True),
+        "validation": _split(validation, embargo_tail=True),
+        "holdout": _split(holdout, embargo_tail=False),
+    }
