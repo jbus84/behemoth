@@ -36,6 +36,25 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
         "    out = np.where((m >= 60) & (vr < 1.0), dev, np.nan)\n"
         "    return out\n"
     ),
+    "vr_conditional_direction": (
+        "def signal(ctx):\n" + _FAIR +
+        "    W = 240; qv = 20\n"
+        "    d1 = np.diff(p, prepend=p[0])\n"
+        "    dq = np.empty(n); dq[:qv] = 0.0; dq[qv:] = p[qv:] - p[:-qv]\n"
+        "    def rollvar(x):\n"
+        "        c1 = np.concatenate(([0.0], np.cumsum(x)))\n"
+        "        c2 = np.concatenate(([0.0], np.cumsum(x * x)))\n"
+        "        k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
+        "        ms = np.where(m > 0, m, 1.0)\n"
+        "        mu = (c1[k] - c1[lo]) / ms\n"
+        "        return (c2[k] - c2[lo]) / ms - mu * mu, m\n"
+        "    v1, m = rollvar(d1); vq, _ = rollvar(dq)\n"
+        "    vr = vq / (qv * v1 + 1e-12)\n"
+        "    out = np.full(n, np.nan); ok = m >= 60\n"
+        "    out = np.where(ok & (vr < 0.95), dev, out)   # mean-reverting -> FADE\n"
+        "    out = np.where(ok & (vr > 1.05), -dev, out)  # trending -> CONTINUE\n"
+        "    return out\n"
+    ),
     "autocorr_gated_fade": (
         "def signal(ctx):\n" + _FAIR +
         "    W = 240; x = np.where(np.isfinite(r), r, 0.0); xp = np.concatenate(([0.0], x[:-1]))\n"
@@ -87,4 +106,8 @@ RESEARCH_IDEAS: list[str] = [
     "Combine: gate the fair-mispricing fade by a mean-reversion regime AND require an extreme "
     "dislocation; this opens a way in for otherwise-trending symbols (CHF/JPY) in their reverting "
     "windows without breaking the mean-reverting ones (EUR/AUD).",
+    "Regime-conditional direction: do not assume reversion. Use the SAME causal trailing variance "
+    "ratio to pick the side per bar - fade (toward fair) when VR<1 (mean-reverting), but go WITH the "
+    "move (continuation) when VR>1 (trending), abstaining in a dead-band near 1. One causal rule, no "
+    "per-symbol direction fitting; recovers EUR/AUD fade and GBP continuation from the regime alone.",
 ]
