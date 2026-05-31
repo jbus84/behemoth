@@ -62,11 +62,15 @@ def _vel_ctx(vel):
 
 def _dev_ref(vel):
     """Replicate the seed's _FAIR block to get dev = fair - mid for assertions."""
-    r = np.asarray(vel, float); n = r.shape[0]; a = 0.05
+    r = np.asarray(vel, float)
+    n = r.shape[0]
+    a = 0.05
     p = np.cumsum(np.where(np.isfinite(r), r, 0.0))
-    ew = np.empty(n); acc = p[0]
+    ew = np.empty(n)
+    acc = p[0]
     for i in range(n):
-        acc = (1 - a) * acc + a * p[i]; ew[i] = acc
+        acc = (1 - a) * acc + a * p[i]
+        ew[i] = acc
     return ew - p
 
 
@@ -77,7 +81,8 @@ def test_vr_conditional_fades_in_reverting_regime():
     sig, err, _ = run_program(FADE_SEED_PROGRAMS["vr_conditional_direction"], _vel_ctx(vel),
                               required_fn="signal")
     assert err is None
-    dev = _dev_ref(vel); fin = np.isfinite(sig)
+    dev = _dev_ref(vel)
+    fin = np.isfinite(sig)
     assert fin.any()
     assert np.allclose(sig[fin], dev[fin]), "reverting regime must return +dev (fade)"
 
@@ -85,13 +90,15 @@ def test_vr_conditional_fades_in_reverting_regime():
 def test_vr_conditional_continues_in_trending_regime():
     # Positively autocorrelated increments (AR(1), phi=0.9) => persistent => VR>1 => CONTINUE side.
     rng = np.random.default_rng(0)
-    e = rng.standard_normal(1500); vel = np.zeros(1500)
+    e = rng.standard_normal(1500)
+    vel = np.zeros(1500)
     for i in range(1, 1500):
         vel[i] = 0.9 * vel[i - 1] + e[i]
     sig, err, _ = run_program(FADE_SEED_PROGRAMS["vr_conditional_direction"], _vel_ctx(vel),
                               required_fn="signal")
     assert err is None
-    dev = _dev_ref(vel); fin = np.isfinite(sig)
+    dev = _dev_ref(vel)
+    fin = np.isfinite(sig)
     assert fin.sum() > 0
     cont = np.isclose(sig[fin], -dev[fin])
     assert cont.mean() > 0.7, f"trending regime should mostly CONTINUE (-dev); got {cont.mean():.2f}"
@@ -103,7 +110,8 @@ def test_vr_conditional_magnitude_equals_dev():
     sig, err, _ = run_program(FADE_SEED_PROGRAMS["vr_conditional_direction"], ctx,
                               required_fn="signal")
     assert err is None
-    dev = _dev_ref(ctx.col("vel_pips_h1")); fin = np.isfinite(sig)
+    dev = _dev_ref(ctx.col("vel_pips_h1"))
+    fin = np.isfinite(sig)
     assert fin.any()
     assert np.allclose(np.abs(sig[fin]), np.abs(dev[fin]))
 
