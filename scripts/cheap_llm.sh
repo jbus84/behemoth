@@ -5,8 +5,8 @@ set -a; . "$ROOT/.env" 2>/dev/null || true; set +a
 : "${OLLAMA_API_KEY:?OLLAMA_API_KEY not set (add to .env)}"
 MODEL="${ERA_GEN_MODEL:-qwen3-coder-next}"
 PROMPT="${1:?prompt required}"
-# num_predict caps output tokens: generation latency is output-dominated, and short
-# programs generalise better here (long ones overfit).
+# num_predict caps output tokens: generation latency is dominated by output length
+# (autoregressive), and short programs generalise better here (long ones overfit).
 NUMPREDICT="${ERA_GEN_NUM_PREDICT:-2000}"
 curl -sS --max-time 180 https://ollama.com/api/generate \
   -H "Authorization: Bearer $OLLAMA_API_KEY" \

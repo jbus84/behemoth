@@ -47,8 +47,8 @@ def extract_program(resp: str) -> str:
 
 
 def _ollama_caller(prompt: str) -> str:
-    """A timeout or non-zero exit yields "" (a failed expansion the search rejects)
-    rather than crashing the whole run on a single slow network call."""
+    """Call the cheap LLM. A timeout or non-zero exit yields "" (a failed expansion the
+    search rejects) rather than crashing the whole run on a single slow network call."""
     try:
         out = subprocess.run(
             [str(ROOT / "scripts/cheap_llm.sh"), prompt],
