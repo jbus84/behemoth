@@ -24,5 +24,9 @@ FAIR_RULES = (
     "reversal (Roll), micro-price imbalance tilt (Stoikov), trailing anchor, order-flow tilt\n"
     "(persistent vs transient). The best estimator usually BLENDS denoising + imbalance + bounce.\n"
     "PERFORMANCE: ~50k bars, run 3x; prefer vectorised cumsum windows over per-bar loops (a single\n"
-    "O(n) EWMA pass is fine); >10s is REJECTED. Output ONLY one ```python code block.\n"
+    "O(n) EWMA pass is fine); >10s is REJECTED.\n"
+    "KEEP IT CONCISE: aim for <= ~40 lines. A short blend of a few causal ingredients (denoise +\n"
+    "imbalance + bounce) generalises far better than a long program with many tunable weights/\n"
+    "clips - those overfit the validation split and fail out-of-sample. Output ONLY one ```python\n"
+    "code block.\n"
 )
