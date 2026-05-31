@@ -89,6 +89,55 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
         "    out = np.where((m >= 60) & (ad > mu + 2.0 * sd), dev, np.nan)\n"
         "    return out\n"
     ),
+    "conditional_response_fade": (
+        "def signal(ctx):\n" + _FAIR +
+        "    H = 100; W = 240; MINEP = 20\n"
+        "    ad = np.abs(np.where(np.isfinite(dev), dev, 0.0))\n"
+        "    c1 = np.concatenate(([0.0], np.cumsum(ad)))\n"
+        "    c2 = np.concatenate(([0.0], np.cumsum(ad * ad)))\n"
+        "    k = np.arange(n); lo = np.maximum(0, k - W); mwin = (k - lo).astype(float)\n"
+        "    ms = np.where(mwin > 0, mwin, 1.0)\n"
+        "    mu = (c1[k] - c1[lo]) / ms; var = (c2[k] - c2[lo]) / ms - mu * mu\n"
+        "    sd = np.sqrt(np.clip(var, 1e-12, None))\n"
+        "    ext = (mwin >= 60) & (ad > mu + 2.0 * sd)\n"
+        "    pf = np.full(n, np.nan); pf[:n - H] = p[H:] - p[:n - H]\n"
+        "    fr = np.sign(dev) * pf\n"
+        "    valid = ext & np.isfinite(fr)\n"
+        "    resolved = np.full(n, np.nan)\n"
+        "    j = np.nonzero(valid)[0]; resolved[j + H] = fr[j]\n"
+        "    fin = np.isfinite(resolved)\n"
+        "    rv = np.where(fin, resolved, 0.0); cnt = np.where(fin, 1.0, 0.0)\n"
+        "    nep = np.cumsum(cnt)\n"
+        "    R = np.cumsum(rv) / np.maximum(nep, 1.0)\n"
+        "    direction = np.where(R >= 0.0, 1.0, -1.0)\n"
+        "    out = np.where(nep >= MINEP, dev * direction, np.nan)\n"
+        "    return out\n"
+    ),
+    "conditional_response_signed": (
+        "def signal(ctx):\n" + _FAIR +
+        "    H = 100; W = 240; MINEP = 20\n"
+        "    ad = np.abs(np.where(np.isfinite(dev), dev, 0.0))\n"
+        "    c1 = np.concatenate(([0.0], np.cumsum(ad)))\n"
+        "    c2 = np.concatenate(([0.0], np.cumsum(ad * ad)))\n"
+        "    k = np.arange(n); lo = np.maximum(0, k - W); mwin = (k - lo).astype(float)\n"
+        "    ms = np.where(mwin > 0, mwin, 1.0)\n"
+        "    mu = (c1[k] - c1[lo]) / ms; var = (c2[k] - c2[lo]) / ms - mu * mu\n"
+        "    sd = np.sqrt(np.clip(var, 1e-12, None))\n"
+        "    ext = (mwin >= 60) & (ad > mu + 2.0 * sd)\n"
+        "    pf = np.full(n, np.nan); pf[:n - H] = p[H:] - p[:n - H]\n"
+        "    fr = np.sign(dev) * pf\n"
+        "    def runmean(mask):\n"
+        "        rs = np.full(n, np.nan); j = np.nonzero(mask & np.isfinite(fr))[0]\n"
+        "        rs[j + H] = fr[j]; fn = np.isfinite(rs)\n"
+        "        ct = np.cumsum(np.where(fn, 1.0, 0.0))\n"
+        "        return np.cumsum(np.where(fn, rs, 0.0)) / np.maximum(ct, 1.0), ct\n"
+        "    Rp, ep = runmean(ext & (dev > 0)); Rn, en = runmean(ext & (dev <= 0))\n"
+        "    use_p = dev > 0\n"
+        "    R = np.where(use_p, Rp, Rn); nep = np.where(use_p, ep, en)\n"
+        "    direction = np.where(R >= 0.0, 1.0, -1.0)\n"
+        "    out = np.where(nep >= MINEP, dev * direction, np.nan)\n"
+        "    return out\n"
+    ),
 }
 
 BASELINE_SEED_NAMES = ("fair_fade", "vr_gated_fade", "autocorr_gated_fade", "extreme_fade")
@@ -110,4 +159,9 @@ RESEARCH_IDEAS: list[str] = [
     "ratio to pick the side per bar - fade (toward fair) when VR<1 (mean-reverting), but go WITH the "
     "move (continuation) when VR>1 (trending), abstaining in a dead-band near 1. One causal rule, no "
     "per-symbol direction fitting; recovers EUR/AUD fade and GBP continuation from the regime alone.",
+    "Entry-conditioned conditional response: do not gate direction by a trailing-average regime "
+    "(which misclassifies the mean-reverting majors at the tail dislocations). Instead maintain a "
+    "causal online mean of how the symbol's OWN past EXTREME dislocations resolved over the next H "
+    "bars (completed episodes only), and fade when reversion has paid, continue when it has not. "
+    "Empirical conditional-response/reversion function; learns direction per symbol with no peeking.",
 ]
