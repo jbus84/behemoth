@@ -84,3 +84,30 @@ artifact that scored higher by exploiting the spurious-regression effect.
   artifact (non-stationary level), not predictability.
 - Net: fair price is weakly predictable (~0.03, stationary, cross-symbol) — modest and real; the
   apparent qwen lift to 0.043 was spurious.
+
+## Tradeability pre-check — the edge concentrates in large mispricings (honest exits)
+
+Before building an exploitation search, measured whether fading the (proper, stationary) fair
+mispricing beats cost. Trade = enter when |dev| is in the top decile, side = sign(dev) (fade toward
+fair), exit after h bars at the REAL mid (not de-noised), cost = 0.42 pip.
+
+| symbol | top-decile net/trade (h=200) | months positive (of 17) |
+|---|---|---|
+| EURUSD | **+1.13 pips** | 0.71 |
+| GBPUSD | +0.32 pips | 0.59 |
+| USDCHF | −0.53 pips | 0.65 (but negative net) |
+
+Overall (all bars) is sub-cost everywhere (−0.15/−0.24/−0.43); the edge lives in the **top decile of
+|mispricing|** and needs the **longer horizon** (h=60 is marginal/negative). So the average IC ~0.03
+is not tradeable, but the conditional tail is: on EURUSD a large fair-dislocation, faded and held
+~200 bars, nets +1.13 pip/trade, positive in 12/17 months.
+
+**Caveats:** 2/3 majors (USDCHF fails; GBPUSD's 59% months is weak); h≈200 bars (~hours) is
+short-term reversion, not micro-scalping; overlapping windows still inflate naive significance
+(month-consistency is the better guard); flat 0.42 cost is approximate. This is the SEED estimate,
+un-optimised.
+
+**Implication:** an ERA *exploitation* search is now justified (unlike before) — search the fair
+estimator + entry threshold + holding horizon + regime gate, scored by HONEST net-of-cost PnL with
+cross-symbol + month-consistency + non-overlapping guards. The pre-check cleared the cost bar
+honestly on EURUSD; the goal is to widen it (more symbols, higher/steadier net) or prove it doesn't.
