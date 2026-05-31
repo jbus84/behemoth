@@ -111,3 +111,24 @@ un-optimised.
 estimator + entry threshold + holding horizon + regime gate, scored by HONEST net-of-cost PnL with
 cross-symbol + month-consistency + non-overlapping guards. The pre-check cleared the cost bar
 honestly on EURUSD; the goal is to widen it (more symbols, higher/steadier net) or prove it doesn't.
+
+## Why it works on some majors and not others (all 5, honest exits)
+
+| sym | fair IC (W=200) | variance ratio(200) | top-decile fade net | months+ |
+|---|---|---|---|---|
+| EURUSD | +0.030 | 0.894 | +1.13 | 0.71 |
+| AUDUSD | +0.029 | 0.897 | +1.07 | 0.65 |
+| GBPUSD | +0.020 | 0.917 | +0.32 | 0.59 |
+| USDCHF | −0.002 | 0.965 | −0.53 | 0.65 |
+| USDJPY | +0.000 | 0.948 | −1.32 | 0.35 |
+
+One law explains the whole table: **fade-edge ∝ fair-IC ∝ (1 − variance ratio) = mean-reversion
+strength.** USDCHF and USDJPY fail because their mid is closer to a random walk at this horizon
+(VR ≈ 0.95–0.97 vs 0.89 for EUR/AUD) → the transient/mispricing component is ~unpredictable (IC ≈ 0)
+→ fading loses. EUR & AUD are the most mean-reverting and give the strongest, month-consistent edge;
+GBP intermediate. The failures are explained by a measurable market property, not noise.
+
+**Design consequence:** the exploitation search should include a **causal mean-reversion regime gate**
+(trailing variance-ratio / Hurst / OU half-life) so it trades the fade only when the market is
+reverting — likely widening breadth (CHF/JPY may have reverting *periods*) and protecting against
+trending regimes. Mean-reversion strength is the edge's root cause, so it should be the primary gate.
