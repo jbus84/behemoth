@@ -54,10 +54,10 @@ def summarize_rejections(nodes) -> dict:
 
 def run_search(splits_by_symbol, symbols, budget, writer=propose_program, ideas=None,
                seed: int = 0, cache_dir: str = "/tmp/era_fade_cache", p_recombine: float = 0.3,
-               seed_programs=None):
+               seed_programs=None, aggregate: str = "robust"):
     ideas = ideas or RESEARCH_IDEAS
     seed_programs = seed_programs or FADE_SEED_PROGRAMS
-    scorer = PooledTradeScorer(splits_by_symbol, symbols=symbols)
+    scorer = PooledTradeScorer(splits_by_symbol, symbols=symbols, aggregate=aggregate)
     rng = random.Random(seed)
     forest = []
     for _name, src in seed_programs.items():
