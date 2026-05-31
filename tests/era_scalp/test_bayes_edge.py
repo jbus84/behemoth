@@ -71,3 +71,22 @@ def test_thin_symbol_wider_posterior():
     w_rich = post.per_symbol[0]["hi"] - post.per_symbol[0]["lo"]
     w_thin = post.per_symbol[1]["hi"] - post.per_symbol[1]["lo"]
     assert w_thin > w_rich
+
+
+def test_edge_verdict_from_net_frames():
+    from scripts.era_scalp.bayes_edge import edge_verdict
+    rng = np.random.default_rng(5)
+
+    def frame(mu, months=12):
+        rows = []
+        for mo in range(months):
+            for _ in range(rng.integers(40, 120)):
+                rows.append({"net": mu + rng.normal(0, 2.0), "test_month": f"2025-{mo + 1:02d}"})
+        return pd.DataFrame(rows)
+
+    nets = {"EURUSD": frame(1.2), "GBPUSD": frame(0.4), "USDCHF": frame(0.0)}
+    post = edge_verdict(nets, seed=0, num_warmup=300, num_samples=300)
+    assert post.names == ["EURUSD", "GBPUSD", "USDCHF"]
+    assert set(post.per_symbol[0]) >= {"p_positive", "mean", "lo", "hi"}
+    # EURUSD (mu=1.2) should read more confident than USDCHF (mu=0)
+    assert post.per_symbol[0]["p_positive"] > post.per_symbol[2]["p_positive"]
