@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy as np
+
 from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.load_splits import _pip_size
 from scripts.era_scalp.sandbox import causality_probe, run_program
@@ -10,11 +12,14 @@ GRID_H = [100, 200, 400]
 
 
 class PooledTradeScorer:
-    def __init__(self, splits_by_symbol: dict, symbols: list[str], timeout: float = 10.0):
+    def __init__(self, splits_by_symbol: dict, symbols: list[str], timeout: float = 10.0,
+                 aggregate: str = "max"):
         self.splits = splits_by_symbol
         self.symbols = symbols
         self.pip = {s: _pip_size(s) for s in symbols}
         self.timeout = timeout
+        assert aggregate in ("max", "robust"), aggregate
+        self.aggregate = aggregate
 
     def score(self, src: str, split: str) -> tuple[float, str]:
         sigs = {}
@@ -33,7 +38,7 @@ class PooledTradeScorer:
                     return -1e6, f"causality_probe: {reason}"
                 first_logs = logs
             sigs[sym] = sig
-        best = -1e9
+        cells = []
         for q in GRID_Q:
             for h in GRID_H:
                 frames = []
@@ -41,5 +46,7 @@ class PooledTradeScorer:
                     d = self.splits[sym][split]
                     frames.append(evaluate_trades(sigs[sym], d.mid, d.cost, d.test_month,
                                                   self.pip[sym], q, h))
-                best = max(best, pooled_task_score(frames))
-        return float(best), first_logs
+                cells.append(pooled_task_score(frames))
+        arr = np.asarray(cells, float)
+        agg = float(arr.mean() - arr.std()) if self.aggregate == "robust" else float(arr.max())
+        return agg, first_logs
