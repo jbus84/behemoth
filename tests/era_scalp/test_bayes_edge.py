@@ -41,12 +41,20 @@ def test_recovers_positive_edge():
     assert post.pooled["lo"] < 1.0 < post.pooled["hi"]
 
 
-def test_zero_edge_is_uncertain():
+def test_zero_edge_credible_interval_straddles_zero():
+    # The robust 'uncertain' property: a true-zero edge yields a pooled credible interval
+    # that INCLUDES 0 (indistinguishable from zero), unlike the positive-edge case whose CI
+    # is entirely above 0. (Asserting p_positive ~= 0.5 is fragile: finite-sample noise in the
+    # realized monthly means can legitimately push it, as it does here.) Average several seeds
+    # so the realized sample mean is near zero and the property is stable.
     from scripts.era_scalp.bayes_edge import fit_hierarchical_edge
-    y, n, idx = _synth([0.0, 0.0, 0.0, 0.0], seed=2)
-    post = fit_hierarchical_edge(y, n, idx, n_symbols=4, seed=0, num_warmup=400, num_samples=400)
-    # Actual p_positive: 0.8975 (data has mean 0.2518 due to seed=2 sampling)
-    assert 0.20 < post.pooled["p_positive"] < 0.95
+    straddles = []
+    for sd in (2, 7, 11):
+        y, n, idx = _synth([0.0, 0.0, 0.0, 0.0], seed=sd)
+        post = fit_hierarchical_edge(y, n, idx, n_symbols=4, seed=0, num_warmup=400, num_samples=400)
+        straddles.append(post.pooled["lo"] < 0.0 < post.pooled["hi"])
+    # a genuine zero edge should land a straddling CI in the clear majority of seeds
+    assert sum(straddles) >= 2
 
 
 def test_thin_symbol_wider_posterior():
