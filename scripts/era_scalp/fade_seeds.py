@@ -1,0 +1,90 @@
+"""Fade-exploitation seeds: signed fade conviction (fair - mid), gated by mean-reversion regime.
+
+Positive => mid below fair => long toward fair. np.nan => abstain. Level-free (returns +
+microstructure). Gates: variance-ratio (Lo-MacKinlay 1988), lag-1 autocorrelation, Kaufman
+efficiency ratio, extreme-dislocation; OU half-life (Leung-Li, Bertram) as an idea.
+"""
+
+_FAIR = (
+    "    r = ctx.col('vel_pips_h1'); n = r.shape[0]; a = 0.05\n"
+    "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+    "    ew = np.empty(n); acc = p[0]\n"
+    "    for i in range(n):\n"
+    "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+    "    dev = ew - p  # fair - mid (pips); >0 => mid below fair => fade long\n"
+)
+
+FADE_SEED_PROGRAMS: dict[str, str] = {
+    "fair_fade": (
+        "def signal(ctx):\n" + _FAIR +
+        "    return dev\n"
+    ),
+    "vr_gated_fade": (
+        "def signal(ctx):\n" + _FAIR +
+        "    W = 240; qv = 20\n"
+        "    d1 = np.diff(p, prepend=p[0])\n"
+        "    dq = np.empty(n); dq[:qv] = 0.0; dq[qv:] = p[qv:] - p[:-qv]\n"
+        "    def rollvar(x):\n"
+        "        c1 = np.concatenate(([0.0], np.cumsum(x)))\n"
+        "        c2 = np.concatenate(([0.0], np.cumsum(x * x)))\n"
+        "        k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
+        "        ms = np.where(m > 0, m, 1.0)\n"
+        "        mu = (c1[k] - c1[lo]) / ms\n"
+        "        return (c2[k] - c2[lo]) / ms - mu * mu, m\n"
+        "    v1, m = rollvar(d1); vq, _ = rollvar(dq)\n"
+        "    vr = vq / (qv * v1 + 1e-12)\n"
+        "    out = np.where((m >= 60) & (vr < 1.0), dev, np.nan)\n"
+        "    return out\n"
+    ),
+    "autocorr_gated_fade": (
+        "def signal(ctx):\n" + _FAIR +
+        "    W = 240; x = np.where(np.isfinite(r), r, 0.0); xp = np.concatenate(([0.0], x[:-1]))\n"
+        "    cxx = np.concatenate(([0.0], np.cumsum(x * x)))\n"
+        "    cxy = np.concatenate(([0.0], np.cumsum(x * xp)))\n"
+        "    k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
+        "    rho = (cxy[k] - cxy[lo]) / (cxx[k] - cxx[lo] + 1e-12)\n"
+        "    out = np.where((m >= 60) & (rho < 0.0), dev, np.nan)\n"
+        "    return out\n"
+    ),
+    "efficiency_gated_fade": (
+        "def signal(ctx):\n" + _FAIR +
+        "    W = 120\n"
+        "    absr = np.abs(np.where(np.isfinite(r), r, 0.0))\n"
+        "    cabs = np.concatenate(([0.0], np.cumsum(absr)))\n"
+        "    k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
+        "    net = np.abs(p - p[np.maximum(0, k - W)])\n"
+        "    denom = cabs[k] - cabs[lo] + 1e-9\n"
+        "    er = net / denom\n"
+        "    out = np.where((m >= 60) & (er < 0.3), dev, np.nan)\n"
+        "    return out\n"
+    ),
+    "extreme_fade": (
+        "def signal(ctx):\n" + _FAIR +
+        "    W = 240; ad = np.abs(np.where(np.isfinite(dev), dev, 0.0))\n"
+        "    c = np.concatenate(([0.0], np.cumsum(ad)))\n"
+        "    c2 = np.concatenate(([0.0], np.cumsum(ad * ad)))\n"
+        "    k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
+        "    ms = np.where(m > 0, m, 1.0)\n"
+        "    mu = (c[k] - c[lo]) / ms; var = (c2[k] - c2[lo]) / ms - mu * mu\n"
+        "    sd = np.sqrt(np.clip(var, 1e-12, None))\n"
+        "    out = np.where((m >= 60) & (ad > mu + 2.0 * sd), dev, np.nan)\n"
+        "    return out\n"
+    ),
+}
+
+BASELINE_SEED_NAMES = ("fair_fade", "vr_gated_fade", "autocorr_gated_fade", "extreme_fade")
+
+RESEARCH_IDEAS: list[str] = [
+    "Variance ratio regime (Lo-MacKinlay 1988): the fade only pays when price mean-reverts; gate on "
+    "a causal trailing variance ratio < 1 (q-step variance below q x 1-step variance).",
+    "Lag-1 autocorrelation: negative trailing return autocorrelation = reverting; trade then.",
+    "Kaufman efficiency ratio: |net move| / sum|moves| over a window; low ER = choppy/reverting "
+    "(not trending) = good for fading.",
+    "OU half-life (Leung-Li; Bertram): estimate a short reversion half-life on a trailing window; "
+    "fade when reversion is fast and size the exit horizon to it.",
+    "Extreme dislocation: only fade when |fair - mid| is in the tail of its own trailing "
+    "distribution (e.g. > mean + 2 sd) - the edge is tail-concentrated.",
+    "Combine: gate the fair-mispricing fade by a mean-reversion regime AND require an extreme "
+    "dislocation; this opens a way in for otherwise-trending symbols (CHF/JPY) in their reverting "
+    "windows without breaking the mean-reverting ones (EUR/AUD).",
+]
