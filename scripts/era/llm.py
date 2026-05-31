@@ -47,10 +47,16 @@ def extract_program(resp: str) -> str:
 
 
 def _ollama_caller(prompt: str) -> str:
-    out = subprocess.run(
-        [str(ROOT / "scripts/cheap_llm.sh"), prompt], capture_output=True, text=True, timeout=180
-    )
-    return out.stdout
+    """A timeout or non-zero exit yields "" (a failed expansion the search rejects)
+    rather than crashing the whole run on a single slow network call."""
+    try:
+        out = subprocess.run(
+            [str(ROOT / "scripts/cheap_llm.sh"), prompt],
+            capture_output=True, text=True, timeout=180,
+        )
+    except subprocess.TimeoutExpired:
+        return ""
+    return out.stdout if out.returncode == 0 else ""
 
 
 def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None, rules=_RULES):
@@ -63,7 +69,8 @@ def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None
     if cached.exists():
         return cached.read_text()
     src = extract_program(caller(prompt))
-    cached.write_text(src)
+    if src.strip():  # don't cache empty (transient LLM failure) — allow retry next run
+        cached.write_text(src)
     return src
 
 
@@ -89,5 +96,6 @@ def recombine_program(srcA, scoreA, srcB, scoreB, cache_dir, caller=None, rules=
     if cached.exists():
         return cached.read_text()
     src = extract_program(caller(prompt))
-    cached.write_text(src)
+    if src.strip():
+        cached.write_text(src)
     return src
