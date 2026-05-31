@@ -8,10 +8,11 @@ from scripts.era_scalp.sandbox import causality_probe, run_program
 _PIP = {"EURUSD": 1e-4, "GBPUSD": 1e-4, "AUDUSD": 1e-4,
         "USDCHF": 1e-4, "USDCAD": 1e-4, "USDJPY": 1e-2}
 
-# search grid for the bracket geometry
+# search grid for the bracket geometry (pips). Δ spans both 100-tick (~1-2 pip bars)
+# and 1000-tick (~6-7 pip bars) regimes so the search can size bands to the bar.
 _QS = [0.1, 0.2, 0.4]
-_DELTAS = [2.0, 3.0, 5.0]
-_STOPS = [2.0, 4.0]
+_DELTAS = [2.0, 3.0, 5.0, 8.0, 12.0]
+_STOPS = [2.0, 4.0, 8.0]
 _MAXHOLDS = [5, 10]
 
 
