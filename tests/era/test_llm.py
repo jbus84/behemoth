@@ -92,3 +92,20 @@ def test_build_prompt_accepts_custom_rules():
 
     p = build_prompt("x", 0.0, "", "idea", rules="CUSTOM_RULES_SENTINEL")
     assert "CUSTOM_RULES_SENTINEL" in p
+
+
+def test_failed_caller_returns_empty_not_cached(tmp_path):
+    # a caller that returns "" (simulating a timed-out/failed LLM call) must not be cached,
+    # so a later successful run can retry the same prompt.
+    from scripts.era.llm import propose_program
+
+    calls = {"n": 0}
+
+    def flaky(prompt):
+        calls["n"] += 1
+        return "" if calls["n"] == 1 else "```python\ndef residual(ctx):\n    return ctx\n```"
+
+    first = propose_program("p", 0.0, "", "idea", cache_dir=str(tmp_path), caller=flaky)
+    assert first == ""  # failed call -> empty, search will reject it
+    second = propose_program("p", 0.0, "", "idea", cache_dir=str(tmp_path), caller=flaky)
+    assert "def residual" in second  # not cached as empty -> retried and succeeded
