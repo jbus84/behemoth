@@ -17,6 +17,7 @@ def _write_fake(path, n=3000):
     cols["close_ask"] = cols["close_bid"] + 3e-5
     cols["high_bid"] = cols["close_bid"] + np.abs(rng.standard_normal(n)) * 1e-4
     cols["low_bid"] = cols["close_bid"] - np.abs(rng.standard_normal(n)) * 1e-4
+    cols["spread_pips"] = np.full(n, 0.3)
     cols["cost_est_pips"] = np.full(n, 0.4)
     pd.DataFrame(cols).to_parquet(path)
 
@@ -34,3 +35,15 @@ def test_build_trade_splits_mid_cost_embargo(tmp_path):
         assert np.all(d.mid > 1.0) and np.all(d.cost > 0)
     full = (pd.read_parquet(p)["close_ts"].dt.year == 2023).sum()
     assert sp["train"].X.shape[0] == full - 50
+
+
+def test_trade_split_has_spread_pips(tmp_path):
+    p = tmp_path / "EURUSD_100tick_velocity.parquet"
+    _write_fake(p)
+    sp = build_trade_splits("EURUSD", p, embargo=50,
+                            train=("2023",), validation=("2024",), holdout=("2025",))
+    for phase in ("train", "validation", "holdout"):
+        d = sp[phase]
+        assert d.spread_pips is not None
+        assert d.spread_pips.shape[0] == d.X.shape[0]
+        assert np.all(d.spread_pips > 0)

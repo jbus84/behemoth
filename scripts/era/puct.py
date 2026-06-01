@@ -13,6 +13,8 @@ class Node:
     visits: int = 1
     logs: str = ""
     children: list = field(default_factory=list)
+    mean: float = 0.0
+    se: float = 0.0
 
 
 def _rank_scores(nodes: list[Node]) -> dict[int, float]:
@@ -36,13 +38,25 @@ def select(nodes: list[Node], c_puct: float) -> Node:
     return nodes[best_i]
 
 
+def select_thompson(nodes: list[Node], rng) -> Node:
+    """Thompson sampling: draw from each node's edge posterior N(mean, se), pick the argmax draw."""
+    best_i, best_draw = 0, -1e18
+    for i, nd in enumerate(nodes):
+        draw = nd.mean if nd.se <= 0 else float(rng.normal(nd.mean, nd.se))
+        if draw > best_draw:
+            best_draw, best_i = draw, i
+    return nodes[best_i]
+
+
 def puct_search(
-    initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0, seed: int = 0
+    initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0, seed: int = 0,
+    select_fn=None,
 ) -> list[Node]:
     np.random.seed(seed)
     nodes = list(initial_nodes)
+    chooser = select_fn if select_fn is not None else select
     for _ in range(budget):
-        parent = select(nodes, c_puct)
+        parent = chooser(nodes, c_puct)
         child = expand_fn(parent)
         parent.children.append(child)
         nodes.append(child)
