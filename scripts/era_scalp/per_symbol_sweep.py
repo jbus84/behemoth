@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from scripts.era_scalp.bayes_edge import edge_verdict
 from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.fade_seeds import FADE_SEED_PROGRAMS
 from scripts.era_scalp.load_splits import _pip_size
@@ -45,3 +46,37 @@ def diagnostics(net_frame: pd.DataFrame) -> dict:
         "month_hit": float((g > 0).mean()),
         "raw_mean": float(net_frame["net"].mean()),
     }
+
+
+def credibility(net_frame: pd.DataFrame, seed: int = 0, fast: bool = False) -> dict | None:
+    """Single-symbol monthly posterior summary {p_positive, mean, lo, hi}, or None if too thin.
+
+    fast=True uses short chains for the validation selection sweep (ranking only)."""
+    kw = {"num_warmup": 300, "num_samples": 300} if fast else {}
+    try:
+        post = edge_verdict({"_": net_frame}, seed=seed, **kw)
+    except ValueError:
+        return None
+    return post.pooled
+
+
+def select_on_validation(signal: np.ndarray, split_data, symbol: str) -> dict | None:
+    """Pick the (direction, q, h) maximising the lower credible bound among cells passing the
+    sample guard (>= MIN_TRADES trades, >= MIN_MONTHS_SEL months) on the validation split."""
+    best = None
+    for direction in DIRECTIONS:
+        for q in GRID_Q:
+            for h in GRID_H:
+                frame = cell_net(signal, split_data, symbol, direction, q, h)
+                diag = diagnostics(frame)
+                if diag["n_trades"] < MIN_TRADES or diag["n_months"] < MIN_MONTHS_SEL:
+                    continue
+                cred = credibility(frame, fast=True)
+                if cred is None:
+                    continue
+                val = {**cred, **diag}
+                cand = {"direction": direction, "q": q, "h": h, "val": val}
+                key = (val["lo"], val["raw_mean"])
+                if best is None or key > (best["val"]["lo"], best["val"]["raw_mean"]):
+                    best = cand
+    return best

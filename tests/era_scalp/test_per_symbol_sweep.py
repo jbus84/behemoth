@@ -48,3 +48,36 @@ def test_diagnostics_empty_frame():
     d = pss.diagnostics(pd.DataFrame({"net": [], "test_month": []}))
     assert d["n_trades"] == 0 and d["n_months"] == 0
     assert d["month_hit"] == 0.0 and np.isnan(d["raw_mean"])
+
+
+def test_select_prefers_higher_lo_when_both_pass_guard(monkeypatch):
+    sp = _split(n=3000)  # large enough that q=0.90 clears the 200-trade guard
+    sig = pss.dev_signal(sp)
+    def fake_cred(frame, seed=0, fast=False):
+        return {"p_positive": 0.9, "mean": 1.0, "lo": 0.5, "hi": 1.5}
+    monkeypatch.setattr(pss, "credibility", fake_cred)
+    choice = pss.select_on_validation(sig, sp, "EURUSD")
+    assert choice is not None
+    assert choice["direction"] in pss.DIRECTIONS and choice["q"] in pss.GRID_Q and choice["h"] in pss.GRID_H
+
+
+def test_select_respects_sample_guard(monkeypatch):
+    sp = _split(n=3000)  # q=0.90 clears the 200-trade guard; q=0.95/0.99 do not
+    sig = pss.dev_signal(sp)
+    def fake_cred(frame, seed=0, fast=False):
+        return {"p_positive": 0.99, "mean": 9.0, "lo": 9.0, "hi": 9.1} if len(frame) < pss.MIN_TRADES \
+            else {"p_positive": 0.7, "mean": 0.2, "lo": 0.1, "hi": 0.4}
+    monkeypatch.setattr(pss, "credibility", fake_cred)
+    choice = pss.select_on_validation(sig, sp, "EURUSD")
+    assert choice is not None
+    assert choice["val"]["n_trades"] >= pss.MIN_TRADES
+    assert choice["val"]["n_months"] >= pss.MIN_MONTHS_SEL
+    assert np.isclose(choice["val"]["lo"], 0.1)
+
+
+def test_select_returns_none_when_nothing_admissible(monkeypatch):
+    sp = _split(n=120)
+    sig = pss.dev_signal(sp)
+    monkeypatch.setattr(pss, "credibility",
+                        lambda frame, seed=0, fast=False: {"p_positive": 0.9, "mean": 1.0, "lo": 0.5, "hi": 1.5})
+    assert pss.select_on_validation(sig, sp, "EURUSD") is None
