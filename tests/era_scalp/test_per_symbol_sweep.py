@@ -81,3 +81,29 @@ def test_select_returns_none_when_nothing_admissible(monkeypatch):
     monkeypatch.setattr(pss, "credibility",
                         lambda frame, seed=0, fast=False: {"p_positive": 0.9, "mean": 1.0, "lo": 0.5, "hi": 1.5})
     assert pss.select_on_validation(sig, sp, "EURUSD") is None
+
+
+def test_confirm_and_sweep_wiring(monkeypatch):
+    # Force validation selection to a specific cell, then assert holdout confirms THAT cell.
+    chosen = {"direction": "continue", "q": 0.90, "h": 100}
+
+    def fake_select(signal, split_data, symbol):
+        return {**chosen, "val": {"p_positive": 0.8, "mean": 0.5, "lo": 0.3, "hi": 0.7,
+                                  "n_trades": 999, "n_months": 12, "month_hit": 0.6, "raw_mean": 0.5}}
+
+    captured = {}
+
+    def fake_cred(frame, seed=0, fast=False):
+        captured["fast"] = fast  # holdout confirm must call with fast=False (full chains)
+        return {"p_positive": 0.77, "mean": 0.4, "lo": 0.1, "hi": 0.7}
+
+    monkeypatch.setattr(pss, "select_on_validation", fake_select)
+    monkeypatch.setattr(pss, "credibility", fake_cred)
+
+    sp_h = _split(seed=2)
+    sig_h = pss.dev_signal(sp_h)
+    res = pss.confirm_on_holdout(sig_h, sp_h, "EURUSD", fake_select(None, sp_h, "EURUSD"))
+    assert res["direction"] == "continue" and res["q"] == 0.90 and res["h"] == 100
+    assert set(res["holdout"]) >= {"p_positive", "mean", "lo", "hi",
+                                   "n_trades", "n_months", "month_hit", "raw_mean"}
+    assert captured["fast"] is False  # holdout uses full chains
