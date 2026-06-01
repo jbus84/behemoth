@@ -14,6 +14,34 @@ _FAIR = (
     "    dev = ew - p  # fair - mid (pips); >0 => mid below fair => fade long\n"
 )
 
+
+def _cond_response_src(H: int) -> str:
+    return (
+        "def signal(ctx):\n" + _FAIR +
+        f"    H = {H}; W = 240; MINEP = 20\n"
+        "    ad = np.abs(np.where(np.isfinite(dev), dev, 0.0))\n"
+        "    c1 = np.concatenate(([0.0], np.cumsum(ad)))\n"
+        "    c2 = np.concatenate(([0.0], np.cumsum(ad * ad)))\n"
+        "    k = np.arange(n); lo = np.maximum(0, k - W); mwin = (k - lo).astype(float)\n"
+        "    ms = np.where(mwin > 0, mwin, 1.0)\n"
+        "    mu = (c1[k] - c1[lo]) / ms; var = (c2[k] - c2[lo]) / ms - mu * mu\n"
+        "    sd = np.sqrt(np.clip(var, 1e-12, None))\n"
+        "    ext = (mwin >= 60) & (ad > mu + 2.0 * sd)\n"
+        "    pf = np.full(n, np.nan); pf[:n - H] = p[H:] - p[:n - H]\n"
+        "    fr = np.sign(dev) * pf\n"
+        "    valid = ext & np.isfinite(fr)\n"
+        "    resolved = np.full(n, np.nan)\n"
+        "    j = np.nonzero(valid)[0]; resolved[j + H] = fr[j]\n"
+        "    fin = np.isfinite(resolved)\n"
+        "    rv = np.where(fin, resolved, 0.0); cnt = np.where(fin, 1.0, 0.0)\n"
+        "    nep = np.cumsum(cnt)\n"
+        "    R = np.cumsum(rv) / np.maximum(nep, 1.0)\n"
+        "    direction = np.where(R >= 0.0, 1.0, -1.0)\n"
+        "    out = np.where(nep >= MINEP, dev * direction, np.nan)\n"
+        "    return out\n"
+    )
+
+
 FADE_SEED_PROGRAMS: dict[str, str] = {
     "fair_fade": (
         "def signal(ctx):\n" + _FAIR +
@@ -89,30 +117,9 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
         "    out = np.where((m >= 60) & (ad > mu + 2.0 * sd), dev, np.nan)\n"
         "    return out\n"
     ),
-    "conditional_response_fade": (
-        "def signal(ctx):\n" + _FAIR +
-        "    H = 100; W = 240; MINEP = 20\n"
-        "    ad = np.abs(np.where(np.isfinite(dev), dev, 0.0))\n"
-        "    c1 = np.concatenate(([0.0], np.cumsum(ad)))\n"
-        "    c2 = np.concatenate(([0.0], np.cumsum(ad * ad)))\n"
-        "    k = np.arange(n); lo = np.maximum(0, k - W); mwin = (k - lo).astype(float)\n"
-        "    ms = np.where(mwin > 0, mwin, 1.0)\n"
-        "    mu = (c1[k] - c1[lo]) / ms; var = (c2[k] - c2[lo]) / ms - mu * mu\n"
-        "    sd = np.sqrt(np.clip(var, 1e-12, None))\n"
-        "    ext = (mwin >= 60) & (ad > mu + 2.0 * sd)\n"
-        "    pf = np.full(n, np.nan); pf[:n - H] = p[H:] - p[:n - H]\n"
-        "    fr = np.sign(dev) * pf\n"
-        "    valid = ext & np.isfinite(fr)\n"
-        "    resolved = np.full(n, np.nan)\n"
-        "    j = np.nonzero(valid)[0]; resolved[j + H] = fr[j]\n"
-        "    fin = np.isfinite(resolved)\n"
-        "    rv = np.where(fin, resolved, 0.0); cnt = np.where(fin, 1.0, 0.0)\n"
-        "    nep = np.cumsum(cnt)\n"
-        "    R = np.cumsum(rv) / np.maximum(nep, 1.0)\n"
-        "    direction = np.where(R >= 0.0, 1.0, -1.0)\n"
-        "    out = np.where(nep >= MINEP, dev * direction, np.nan)\n"
-        "    return out\n"
-    ),
+    "conditional_response_fade": _cond_response_src(100),
+    "conditional_response_fade_h200": _cond_response_src(200),
+    "conditional_response_fade_h400": _cond_response_src(400),
     "conditional_response_signed": (
         "def signal(ctx):\n" + _FAIR +
         "    H = 100; W = 240; MINEP = 20\n"
@@ -164,4 +171,8 @@ RESEARCH_IDEAS: list[str] = [
     "causal online mean of how the symbol's OWN past EXTREME dislocations resolved over the next H "
     "bars (completed episodes only), and fade when reversion has paid, continue when it has not. "
     "Empirical conditional-response/reversion function; learns direction per symbol with no peeking.",
+    "Horizon-matched conditional response: learn the conditional reversion outcome over the SAME horizon "
+    "the trade is held (internal H == exit h), not a fixed H. The fixed-H seed was strong only where its "
+    "learning horizon coincided with the holding horizon; matching them tests whether the (q,h) collapse "
+    "was a horizon mismatch rather than a horizon-specific edge.",
 ]
