@@ -1,3 +1,29 @@
+## v0.31.0 (2026-06-01)
+
+### Feat
+
+- branch-aware PUCT search with literature-backed branch taxonomy and diversity selection (#288)
+- add 12 strategy branches to fade_seeds.py: transient_impact, jump_aware, flow_intensity, asymmetric_vol, seasonality, liquidity_gate, regime_switching, empirical_direction, spread_vol_gate, ofi_gated, adaptive_fair, mean_reversion_gate (#288)
+- implement `select_diversity()` in puct.py using node-count branch bonus to prevent parameter-sweep collapse (#288)
+- add `build_branch_prompt()` and `build_cross_branch_prompt()` in llm.py with rich per-branch templates (#288)
+- add cross-branch semantic recombination via `CROSS_BRANCH_INDEX` in fade_seeds.py (#288)
+- extend `run_era_eur.py` with `--c-branch`, `--p-recombine`, `--p-cross-branch` CLI flags (#288)
+- add fix-window seasonality seed (`fix_window_gate`) gating on UTC hour per Krohn et al. 2024 (#288)
+- add jump-aware fade seed (`jump_aware_fade`) with Bibinger et al. 2024 jump detection (#288)
+- add Hawkes self-excitation gate (`hawkes_gate`) per Nittur & Jain 2025 (#288)
+- add asymmetric volatility gate (`asymmetric_vol_gate`) using Barndorff-Nielsen semivariance (#288)
+- add transient impact fade (`transient_impact_fade`) using Barzykin 2025 propagator model (#288)
+
+### Docs
+
+- add `ANALYSIS_HORIZON_400_200.md`: deep analysis of why h=400 and h=200 succeed for EURUSD 100-tick scalping (#288)
+
+### Fix
+
+- fix non-causal `adaptive_fair` seed: replace global median with causal expanding mean (#288)
+- assign recombination children to `branch_a` (higher-scoring parent) instead of `"hybrid"` to prevent parasitic branch accumulation (#288)
+- fix lambda lint error in `run_era_eur.py` selector function (#288)
+
 ## v0.30.0 (2026-05-09)
 
 ### Feat

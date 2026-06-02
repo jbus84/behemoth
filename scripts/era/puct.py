@@ -7,12 +7,16 @@ import numpy as np
 
 @dataclass
 class Node:
-    payload: object  # program source (or toy value)
+    payload: object  # program source (or spec dict)
     score: float  # validation TaskScore
     parent: Node | None
     visits: int = 1
     logs: str = ""
     children: list = field(default_factory=list)
+    mean: float = 0.0
+    se: float = 0.0
+    # Branch-aware fields (optional — set by branch-aware drivers)
+    branch: str | None = None  # literature branch tag, e.g. "mean_reversion_gate"
 
 
 def _rank_scores(nodes: list[Node]) -> dict[int, float]:
@@ -36,13 +40,84 @@ def select(nodes: list[Node], c_puct: float) -> Node:
     return nodes[best_i]
 
 
+def select_thompson(nodes: list[Node], rng) -> Node:
+    """Thompson sampling: draw from each node's edge posterior N(mean, se), pick the argmax draw."""
+    best_i, best_draw = 0, -1e18
+    for i, nd in enumerate(nodes):
+        draw = nd.mean if nd.se <= 0 else float(rng.normal(nd.mean, nd.se))
+        if draw > best_draw:
+            best_draw, best_i = draw, i
+    return nodes[best_i]
+
+
+def _branch_counts(nodes: list[Node]) -> dict[str | None, int]:
+    """Count how many NODES (distinct programs) each branch has produced.
+
+    This reflects conceptual coverage: a branch with 30 nodes has been explored
+    more thoroughly than one with 3 nodes, regardless of how many times those
+    nodes were selected as parents by PUCT.
+    """
+    counts: dict[str | None, int] = {}
+    for nd in nodes:
+        b = nd.branch
+        counts[b] = counts.get(b, 0) + 1
+    return counts
+
+
+def _normalised_scores(nodes: list[Node]) -> dict[int, float]:
+    """Map raw scores to [0,1] using min-max normalisation over the current frontier."""
+    scores = [nd.score for nd in nodes]
+    lo, hi = min(scores), max(scores)
+    span = hi - lo
+    if span <= 0:
+        return {i: 1.0 for i in range(len(nodes))}
+    return {i: (nodes[i].score - lo) / span for i in range(len(nodes))}
+
+
+def select_diversity(nodes: list[Node], c_puct: float = 1.0,
+                     c_branch: float = 0.5, rng=None) -> Node:
+    """Branch-aware UCB selection: bonus for under-explored branches.
+
+    Uses min-max normalised scores instead of rank scores so that the diversity
+    bonus can meaningfully nudge under-represented branches without requiring
+    extreme c_branch values.
+
+    Parameters
+    ----------
+    c_puct : float
+        Standard PUCT exploration constant.
+    c_branch : float
+        Branch diversity weight.  0 = score-only UCB (no diversity bonus).
+    rng : np.random.Generator | None
+        Unused in this selector (kept for API consistency with select_thompson).
+    """
+    norm = _normalised_scores(nodes)
+    n_total = sum(n.visits for n in nodes)
+    branch_counts = _branch_counts(nodes)
+    total_nodes = sum(branch_counts.values())
+    best_i, best_v = 0, -1e18
+    for i, nd in enumerate(nodes):
+        # Standard PUCT explore term
+        p = 1.0 / len(nodes)
+        explore = c_puct * p * np.sqrt(n_total) / (1 + nd.visits)
+        # Branch diversity bonus: under-explored branches get a boost
+        branch_n = branch_counts.get(nd.branch, 1)
+        diversity = c_branch * np.sqrt(total_nodes) / (1 + branch_n)
+        v = norm[i] + explore + diversity
+        if v > best_v:
+            best_v, best_i = v, i
+    return nodes[best_i]
+
+
 def puct_search(
-    initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0, seed: int = 0
+    initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0, seed: int = 0,
+    select_fn=None,
 ) -> list[Node]:
     np.random.seed(seed)
     nodes = list(initial_nodes)
+    chooser = select_fn if select_fn is not None else select
     for _ in range(budget):
-        parent = select(nodes, c_puct)
+        parent = chooser(nodes, c_puct)
         child = expand_fn(parent)
         parent.children.append(child)
         nodes.append(child)

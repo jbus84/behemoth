@@ -28,6 +28,10 @@ _RULES = (
     "Output ONLY one ```python code block.\n"
 )
 
+# ---------------------------------------------------------------------------
+# Legacy prompts (kept for backward compatibility)
+# ---------------------------------------------------------------------------
+
 
 def build_prompt(parent_src: str, parent_score: float, logs: str, idea: str, rules: str = _RULES) -> str:
     return (
@@ -38,6 +42,59 @@ def build_prompt(parent_src: str, parent_score: float, logs: str, idea: str, rul
         f"Parent logs: {logs[:500]}\n\n"
         f"Parent program:\n```python\n{parent_src}\n```\n"
     )
+
+
+def build_recombine_prompt(srcA: str, scoreA: float, srcB: str, scoreB: float, rules: str = _RULES) -> str:
+    return (
+        "Combine these two dispersion residual programs by studying both and writing ONE new program.\n\n"
+        f"{rules}\n"
+        f"Parent A score: {scoreA}\n"
+        f"Parent A program:\n```python\n{srcA}\n```\n\n"
+        f"Parent B score: {scoreB}\n"
+        f"Parent B program:\n```python\n{srcB}\n```\n\n"
+        "Write a single new `residual(ctx)` that combines the best ideas from both.\n"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Branch-aware rich prompts (new)
+# ---------------------------------------------------------------------------
+
+def build_branch_prompt(parent_src: str, parent_score: float, logs: str,
+                        branch: str, rich_template: str,
+                        rules: str = _RULES) -> str:
+    """Rich prompt using the full branch template (formula + rationale + reference)."""
+    return (
+        f"{rich_template}\n\n"
+        f"PARENT PROGRAM (your starting point):\n```python\n{parent_src}\n```\n\n"
+        f"Parent score: {parent_score:.3f}\n"
+        f"Parent logs: {logs[:500]}\n\n"
+        "YOUR TASK:\n"
+        "Write a NEW signal(ctx) that improves on the parent. You may vary parameters within the allowed "
+        "ranges, or combine with another gate/direction idea if you see a sensible crossover. "
+        "Output ONLY one ```python block.\n"
+    )
+
+
+def build_cross_branch_prompt(srcA: str, scoreA: float, branchA: str,
+                              srcB: str, scoreB: float, branchB: str,
+                              cross_text: str, rules: str = _RULES) -> str:
+    """Semantic recombination prompt when parents are from different branches."""
+    return (
+        f"{cross_text}\n\n"
+        f"PARENT A ({branchA}, score {scoreA:.3f}):\n"
+        f"```python\n{srcA}\n```\n\n"
+        f"PARENT B ({branchB}, score {scoreB:.3f}):\n"
+        f"```python\n{srcB}\n```\n\n"
+        "YOUR TASK:\n"
+        "Write a single NEW signal(ctx) that combines the best ideas from BOTH parents. "
+        "Output ONLY one ```python block.\n"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Callers / extractors (unchanged)
+# ---------------------------------------------------------------------------
 
 
 def extract_program(resp: str) -> str:
@@ -59,6 +116,11 @@ def _ollama_caller(prompt: str) -> str:
     return out.stdout if out.returncode == 0 else ""
 
 
+# ---------------------------------------------------------------------------
+# Legacy wrappers (kept for backward compatibility)
+# ---------------------------------------------------------------------------
+
+
 def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None, rules=_RULES):
     caller = caller or _ollama_caller
     cache_dir = Path(cache_dir)
@@ -74,18 +136,6 @@ def propose_program(parent_src, parent_score, logs, idea, cache_dir, caller=None
     return src
 
 
-def build_recombine_prompt(srcA: str, scoreA: float, srcB: str, scoreB: float, rules: str = _RULES) -> str:
-    return (
-        "Combine these two dispersion residual programs by studying both and writing ONE new program.\n\n"
-        f"{rules}\n"
-        f"Parent A score: {scoreA}\n"
-        f"Parent A program:\n```python\n{srcA}\n```\n\n"
-        f"Parent B score: {scoreB}\n"
-        f"Parent B program:\n```python\n{srcB}\n```\n\n"
-        "Write a single new `residual(ctx)` that combines the best ideas from both.\n"
-    )
-
-
 def recombine_program(srcA, scoreA, srcB, scoreB, cache_dir, caller=None, rules=_RULES):
     caller = caller or _ollama_caller
     cache_dir = Path(cache_dir)
@@ -93,6 +143,47 @@ def recombine_program(srcA, scoreA, srcB, scoreB, cache_dir, caller=None, rules=
     prompt = build_recombine_prompt(srcA, scoreA, srcB, scoreB, rules=rules)
     key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
     cached = cache_dir / f"{key}.py"
+    if cached.exists():
+        return cached.read_text()
+    src = extract_program(caller(prompt))
+    if src.strip():
+        cached.write_text(src)
+    return src
+
+
+# ---------------------------------------------------------------------------
+# Branch-aware wrappers (new)
+# ---------------------------------------------------------------------------
+
+def propose_branch_program(parent_src, parent_score, logs, branch: str,
+                           rich_template: str, cache_dir, caller=None):
+    """Expand a node staying within its literature branch (rich template)."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_branch_prompt(parent_src, parent_score, logs, branch, rich_template)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"branch_{branch}_{key}.py"
+    if cached.exists():
+        return cached.read_text()
+    src = extract_program(caller(prompt))
+    if src.strip():
+        cached.write_text(src)
+    return src
+
+
+def recombine_branch_program(srcA, scoreA, branchA: str,
+                             srcB, scoreB, branchB: str,
+                             cross_text: str, cache_dir, caller=None):
+    """Recombine two nodes, with semantic cross-branch context if branches differ."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_cross_branch_prompt(srcA, scoreA, branchA, srcB, scoreB, branchB, cross_text)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    # Include both branches in cache key so A+B and B+A share a cache entry
+    branches = sorted([branchA, branchB])
+    cached = cache_dir / f"cross_{branches[0]}_{branches[1]}_{key}.py"
     if cached.exists():
         return cached.read_text()
     src = extract_program(caller(prompt))

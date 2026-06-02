@@ -216,6 +216,7 @@ class TradeSplitData:
     mid: np.ndarray
     cost: np.ndarray
     test_month: np.ndarray
+    spread_pips: np.ndarray | None = None
 
 
 def build_trade_splits(
@@ -246,6 +247,7 @@ def build_trade_splits(
             hour=d["hour_utc"].to_numpy(float),
             mid=d["mid"].to_numpy(float),
             cost=d["cost_est_pips"].to_numpy(float),
+            spread_pips=d["spread_pips"].to_numpy(float),
             test_month=d["test_month"].to_numpy(),
         )
 
