@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import random
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +28,64 @@ from scripts.era_scalp.load_splits import _pip_size, build_trade_splits
 from scripts.era_scalp.sandbox import run_program
 from scripts.era_scalp.trade_harness import evaluate_trades
 
+class WinnerArchive:
+    """Persist evolved programs that score above a threshold.
+
+    Programs are written to data/era_winners/{symbol}/{timestamp}_{score}_{branch}_{hash}.py
+    with YAML frontmatter containing score, holdout stats, and parent lineage.
+    """
+
+    def __init__(self, symbol: str, threshold: float = -0.5,
+                 root: Path | None = None):
+        self.symbol = symbol
+        self.threshold = threshold
+        self.root = root or Path("data/era_winners")
+        self.dir = self.root / symbol
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self._seen: set[str] = set()
+
+    def _key(self, src: str) -> str:
+        return hashlib.sha256(src.encode()).hexdigest()[:12]
+
+    def save(self, src: str, score: float, mean: float, se: float,
+             branch: str | None, parent: Node | None,
+             holdout: dict | None = None) -> Path | None:
+        """Save program if score > threshold and not already saved."""
+        if score <= self.threshold:
+            return None
+        key = self._key(src)
+        if key in self._seen:
+            return None
+        self._seen.add(key)
+
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        fname = f"{ts}_val{score:+.3f}_{branch or 'unknown'}_{key}.py"
+        path = self.dir / fname
+
+        meta = {
+            "symbol": self.symbol,
+            "score": float(score),
+            "mean": float(mean),
+            "se": float(se),
+            "branch": branch,
+            "parent_score": float(parent.score) if parent else None,
+            "parent_branch": parent.branch if parent else None,
+            "holdout": holdout,
+            "timestamp": ts,
+        }
+
+        lines = [
+            '"""',
+            json.dumps(meta, indent=2, default=str),
+            '"""',
+            "",
+            src,
+        ]
+        path.write_text("\n".join(lines))
+        print(f"[archive] saved {path}")
+        return path
+
+
 SYMBOL_DEFAULT = "EURUSD"
 TRIVIAL_ROOT = (
     "def signal(ctx):\n"
@@ -34,7 +95,7 @@ TRIVIAL_ROOT = (
 
 def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                cache_dir="/tmp/era_eur_cache", p_recombine=0.25, p_cross_branch=0.35,
-               c_branch=0.7, branch_depth_limit=3, seed_programs=None):
+               c_branch=0.7, branch_depth_limit=3, seed_programs=None, archive=None):
     """Branch-aware ERA-PUCT search.
 
     Parameters
@@ -156,6 +217,8 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
             mean=mean, se=se, branch=child_branch,
         )
         all_nodes.append(child)
+        if archive is not None and v > -1e6 + 1:
+            archive.save(child_src, v, mean, se, child_branch, parent, None)
         return child
 
     # Progress logging
@@ -235,14 +298,18 @@ def main() -> None:
                     help="probability of jumping to a different branch's template on propose (default 0.35)")
     ap.add_argument("--branch-depth-limit", type=int, default=3,
                     help="max consecutive expansions within the same branch before forcing a cross-branch jump (default 3)")
+    ap.add_argument("--archive-threshold", type=float, default=-0.5,
+                    help="save programs with validation score above this threshold to data/era_winners/ (default -0.5)")
     args = ap.parse_args()
     sp = build_trade_splits(args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
                             embargo=max(GRID_H))
     seed_programs = {"_root": TRIVIAL_ROOT} if args.no_seeds else None
+    archive = WinnerArchive(args.symbol, threshold=args.archive_threshold)
     nodes = run_search(sp, args.symbol, budget=args.budget, select_policy=args.policy,
                        seed=args.seed, seed_programs=seed_programs,
                        p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
-                       c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit)
+                       c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit,
+                       archive=archive)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
     # Deduplicate by payload so the same generated program doesn't dominate the top-5 display.
     seen_payloads: set[str] = set()
@@ -260,6 +327,8 @@ def main() -> None:
         if hv:
             lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout P={hv['p_positive']:.3f} "
                          f"raw={hv['raw_mean']:+.3f} (q{hv['q']} h{hv['h']} n={hv['n_trades']})")
+            # Archive top-5 holdout results as well
+            archive.save(nd.payload, nd.score, nd.mean, nd.se, nd.branch, nd.parent, hv)
         else:
             lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout: program error")
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
