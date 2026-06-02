@@ -33,8 +33,8 @@ TRIVIAL_ROOT = (
 
 
 def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
-               cache_dir="/tmp/era_eur_cache", p_recombine=0.15, p_cross_branch=0.35,
-               c_branch=1.2, seed_programs=None):
+               cache_dir="/tmp/era_eur_cache", p_recombine=0.25, p_cross_branch=0.35,
+               c_branch=0.7, branch_depth_limit=3, seed_programs=None):
     """Branch-aware ERA-PUCT search.
 
     Parameters
@@ -46,14 +46,21 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
         is below the current best mean_reversion_gate node.
     p_recombine : float
         Probability of recombining two parent nodes instead of mutating one.
-        Default 0.15 (low: explore branches individually before combining).
+        Default 0.25 (moderate: enough cross-branch hybrids to find novel
+        recombinations without overwhelming single-branch refinement).
     p_cross_branch : float
         When doing a *propose* (not recombine), probability of forcing a jump
         to a different branch's rich template instead of staying in the parent's
         branch.  Default 0.35 (high: actively explore new branches).
     c_branch : float
         Diversity bonus weight in select_diversity.  Higher = stronger preference
-        for under-explored branches.  Default 1.2.
+        for under-explored branches.  Default 0.7 (tuned: prevents over-exploring
+        a branch with marginal early advantage while still giving new branches
+        a fair shot).
+    branch_depth_limit : int
+        If the same branch produces this many consecutive children, force the
+        next *propose* to jump to a different branch.  This prevents
+        parameter-sweeping paralysis.  Default 3.
     """
     scorer = CostAwarePerSymbolScorer(splits, symbol)
     rng = random.Random(seed)
@@ -78,7 +85,13 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     def _branch_template(branch: str | None) -> str:
         return RICH_TEMPLATES.get(branch or "baseline", RICH_TEMPLATES["baseline"])
 
+    # Track consecutive expansions within the same branch to prevent parameter-sweep paralysis.
+    _last_branch: str | None = None
+    _branch_depth: int = 0
+
     def expand(parent: Node) -> Node:
+        nonlocal _last_branch, _branch_depth
+
         # Decide: recombine vs propose
         if rng.random() < p_recombine and len(all_nodes) >= 2:
             cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
@@ -106,10 +119,16 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
             # so it contributes to branch coverage instead of creating a parasitic
             # catch-all "hybrid" branch.
             child_branch = branch_a
+            _last_branch = child_branch
+            _branch_depth = 0  # recombination resets depth (it's inherently cross-concept)
         else:
             # Propose: stay in branch or jump to a different branch
-            if rng.random() < p_cross_branch and len(branch_pool) > 1:
-                # Force a cross-branch proposal: pick a different branch's template
+            force_jump = (
+                _last_branch == parent.branch
+                and _branch_depth >= branch_depth_limit
+                and len(branch_pool) > 1
+            )
+            if force_jump or (rng.random() < p_cross_branch and len(branch_pool) > 1):
                 other_branches = [b for b in branch_pool if b != parent.branch]
                 target_branch = rng.choice(other_branches) if other_branches else parent.branch
             else:
@@ -123,6 +142,13 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                 cache_dir=cache_dir,
             )
             child_branch = target_branch
+
+            # Update branch-depth tracker
+            if _last_branch == child_branch:
+                _branch_depth += 1
+            else:
+                _last_branch = child_branch
+                _branch_depth = 1
 
         v, mean, se, lg = scorer.score(child_src, "validation")
         child = Node(
@@ -183,12 +209,14 @@ def main() -> None:
     ap.add_argument("--no-seeds", action="store_true", help="rediscovery control")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="/tmp/era_eur/verdict.md")
-    ap.add_argument("--c-branch", type=float, default=1.2,
-                    help="diversity bonus weight for branch-aware selection (default 1.2)")
-    ap.add_argument("--p-recombine", type=float, default=0.15,
-                    help="probability of cross-parent recombination vs single-parent propose (default 0.15)")
+    ap.add_argument("--c-branch", type=float, default=0.7,
+                    help="diversity bonus weight for branch-aware selection (default 0.7)")
+    ap.add_argument("--p-recombine", type=float, default=0.25,
+                    help="probability of cross-parent recombination vs single-parent propose (default 0.25)")
     ap.add_argument("--p-cross-branch", type=float, default=0.35,
                     help="probability of jumping to a different branch's template on propose (default 0.35)")
+    ap.add_argument("--branch-depth-limit", type=int, default=3,
+                    help="max consecutive expansions within the same branch before forcing a cross-branch jump (default 3)")
     args = ap.parse_args()
     sp = build_trade_splits(args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
                             embargo=max(GRID_H))
@@ -196,7 +224,7 @@ def main() -> None:
     nodes = run_search(sp, args.symbol, budget=args.budget, select_policy=args.policy,
                        seed=args.seed, seed_programs=seed_programs,
                        p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
-                       c_branch=args.c_branch)
+                       c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
     lines = [f"# Cost-aware PUCT verdict — {args.symbol} (policy={args.policy}, "
              f"seeds={'no' if args.no_seeds else 'yes'}, budget={args.budget})\n"]
