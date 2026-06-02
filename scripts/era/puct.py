@@ -109,6 +109,80 @@ def select_diversity(nodes: list[Node], c_puct: float = 1.0,
     return nodes[best_i]
 
 
+def select_diversity_with_priors(nodes: list[Node], c_puct: float = 1.0,
+                                  c_branch: float = 0.5,
+                                  branch_priors: dict[str, float] | None = None,
+                                  rng=None) -> Node:
+    """Branch-aware UCB selection with Level-1 branch priors.
+
+    After running many small PUCT trees (Level 1), we compute a prior score
+    for each branch based on its average performance.  In Level 2, nodes from
+    high-prior branches get their normalised score multiplied by the prior,
+    focusing deep search on branches that Level 1 showed promise while still
+    allowing exploration of weaker branches via the diversity bonus.
+
+    Parameters
+    ----------
+    branch_priors : dict[str, float] | None
+        Mapping branch -> prior weight (typically in [0.5, 2.0]).
+        1.0 = neutral.  Higher = branch was strong in Level 1.
+    """
+    norm = _normalised_scores(nodes)
+    n_total = sum(n.visits for n in nodes)
+    branch_counts = _branch_counts(nodes)
+    total_nodes = sum(branch_counts.values())
+    best_i, best_v = 0, -1e18
+    for i, nd in enumerate(nodes):
+        p = 1.0 / len(nodes)
+        explore = c_puct * p * np.sqrt(n_total) / (1 + nd.visits)
+        branch_n = branch_counts.get(nd.branch, 1)
+        diversity = c_branch * np.sqrt(total_nodes) / (1 + branch_n)
+        # Prior boost: multiply normalised score by branch prior from Level 1
+        prior = branch_priors.get(nd.branch, 1.0) if branch_priors else 1.0
+        v = norm[i] * prior + explore + diversity
+        if v > best_v:
+            best_v, best_i = v, i
+    return nodes[best_i]
+
+
+def compute_branch_priors(all_nodes_list: list[list[Node]],
+                          min_prior: float = 0.5,
+                          max_prior: float = 2.0) -> dict[str, float]:
+    """Compute branch priors from Level 1 (many small trees).
+
+    Uses the *mean validation score* of all valid nodes per branch across
+    all trees.  Branches with higher average scores get higher priors.
+
+    Parameters
+    ----------
+    all_nodes_list : list[list[Node]]
+        One list of nodes per Level 1 tree.
+    min_prior, max_prior : float
+        Range to scale priors into.  Neutral = 1.0.
+    """
+    branch_scores: dict[str, list[float]] = {}
+    for nodes in all_nodes_list:
+        for nd in nodes:
+            if nd.score > -1e6 + 1:
+                b = nd.branch or "unknown"
+                branch_scores.setdefault(b, []).append(nd.score)
+
+    if not branch_scores:
+        return {}
+
+    branch_means = {b: float(np.mean(scores)) for b, scores in branch_scores.items()}
+    lo, hi = min(branch_means.values()), max(branch_means.values())
+    span = hi - lo
+    if span <= 0:
+        return {b: 1.0 for b in branch_means}
+
+    priors = {}
+    for b, mean_score in branch_means.items():
+        normalized = (mean_score - lo) / span  # 0..1
+        priors[b] = min_prior + normalized * (max_prior - min_prior)
+    return priors
+
+
 def puct_search(
     initial_nodes: list[Node], expand_fn, budget: int, c_puct: float = 1.0, seed: int = 0,
     select_fn=None,

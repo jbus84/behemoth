@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
 import hashlib
 import json
 import random
@@ -14,7 +13,14 @@ from scripts.era.llm import (
     propose_branch_program,
     recombine_branch_program,
 )
-from scripts.era.puct import Node, puct_search, select_diversity, select_thompson
+from scripts.era.puct import (
+    Node,
+    compute_branch_priors,
+    puct_search,
+    select_diversity,
+    select_diversity_with_priors,
+    select_thompson,
+)
 from scripts.era_scalp.bayes_edge import edge_verdict
 from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.cost_aware_score import GRID_H, GRID_Q, CostAwarePerSymbolScorer
@@ -253,6 +259,159 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     return puct_search(forest, _expand_logged, budget=budget, c_puct=1.0, seed=seed, select_fn=_select_fn)
 
 
+def run_two_level_search(splits, symbol, level1_trees=10, level1_budget=5,
+                         level2_budget=100, select_policy="diversity", seed=0,
+                         cache_dir="/tmp/era_eur_cache", p_recombine=0.25,
+                         p_cross_branch=0.35, c_branch=0.7, branch_depth_limit=3,
+                         seed_programs=None, archive=None):
+    """Two-level ERA-PUCT search.
+
+    Level 1: Run many small PUCT trees to assess branch-level quality.
+    Level 2: Run one deep tree using branch priors from Level 1.
+    """
+    print(f"[two-level] Level 1: {level1_trees} trees x budget={level1_budget}")
+    level1_results: list[list[Node]] = []
+    for t in range(level1_trees):
+        tree_seed = seed + t
+        nodes = run_search(
+            splits, symbol, budget=level1_budget, select_policy=select_policy,
+            seed=tree_seed, seed_programs=seed_programs,
+            p_recombine=p_recombine, p_cross_branch=p_cross_branch,
+            c_branch=c_branch, branch_depth_limit=branch_depth_limit,
+            archive=archive,
+        )
+        level1_results.append(nodes)
+        valid = [n for n in nodes if n.score > -1e6 + 1]
+        best = max((n.score for n in valid), default=float("-inf"))
+        print(f"[two-level] Level 1 tree {t}: {len(valid)} valid nodes, best={best:.3f}")
+
+    # Compute branch priors from Level 1
+    branch_priors = compute_branch_priors(level1_results, min_prior=0.5, max_prior=2.0)
+    print(f"[two-level] Branch priors from Level 1:")
+    for b, p in sorted(branch_priors.items(), key=lambda x: x[1], reverse=True):
+        print(f"  {b}: prior={p:.2f}")
+
+    # Level 2: deep search with branch priors
+    print(f"[two-level] Level 2: budget={level2_budget} with branch priors")
+    scorer = CostAwarePerSymbolScorer(splits, symbol)
+    rng = random.Random(seed + level1_trees)
+    nprng = np.random.default_rng(seed + level1_trees)
+
+    if seed_programs is None:
+        seed_programs = FADE_SEED_PROGRAMS
+
+    forest = []
+    for name, src in seed_programs.items():
+        v, mean, se, lg = scorer.score(src, "validation")
+        branch = SEED_BRANCH_TAGS.get(name, "baseline")
+        forest.append(
+            Node(payload=src, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch)
+        )
+    all_nodes = list(forest)
+    branch_pool = list(set(n.branch for n in all_nodes if n.branch is not None))
+
+    def _branch_template(branch: str | None) -> str:
+        return RICH_TEMPLATES.get(branch or "baseline", RICH_TEMPLATES["baseline"])
+
+    _last_branch: str | None = None
+    _branch_depth: int = 0
+
+    def expand(parent: Node) -> Node:
+        nonlocal _last_branch, _branch_depth
+
+        if rng.random() < p_recombine and len(all_nodes) >= 2:
+            cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
+            parent_a = cands[0]
+            parent_b = next(
+                (n for n in cands[1:] if n.branch != parent_a.branch), cands[1]
+            )
+            branch_a = parent_a.branch or "baseline"
+            branch_b = parent_b.branch or "baseline"
+
+            if branch_a != branch_b and (branch_a, branch_b) in CROSS_BRANCH_INDEX:
+                cross_text = CROSS_BRANCH_INDEX[(branch_a, branch_b)]
+            else:
+                cross_text = (
+                    f"Combine these two programs. Parent A is from the {branch_a} branch; "
+                    f"Parent B is from the {branch_b} branch."
+                )
+            child_src = recombine_branch_program(
+                parent_a.payload, parent_a.score, branch_a,
+                parent_b.payload, parent_b.score, branch_b,
+                cross_text, cache_dir=cache_dir,
+            )
+            child_branch = branch_a
+            _last_branch = child_branch
+            _branch_depth = 0
+        else:
+            force_jump = (
+                _last_branch == parent.branch
+                and _branch_depth >= branch_depth_limit
+                and len(branch_pool) > 1
+            )
+            if force_jump or (rng.random() < p_cross_branch and len(branch_pool) > 1):
+                other_branches = [b for b in branch_pool if b != parent.branch]
+                target_branch = rng.choice(other_branches) if other_branches else parent.branch
+            else:
+                target_branch = parent.branch
+
+            template = _branch_template(target_branch)
+            child_src = propose_branch_program(
+                parent.payload, parent.score, parent.logs,
+                branch=target_branch or "baseline",
+                rich_template=template,
+                cache_dir=cache_dir,
+            )
+            child_branch = target_branch
+
+            if _last_branch == child_branch:
+                _branch_depth += 1
+            else:
+                _last_branch = child_branch
+                _branch_depth = 1
+
+        v, mean, se, lg = scorer.score(child_src, "validation")
+        child = Node(
+            payload=child_src, score=v, parent=parent, logs=lg,
+            mean=mean, se=se, branch=child_branch,
+        )
+        all_nodes.append(child)
+        if archive is not None and v > -1e6 + 1:
+            archive.save(child_src, v, mean, se, child_branch, parent, None)
+        return child
+
+    _expansion_count = 0
+
+    def _expand_logged(parent: Node) -> Node:
+        nonlocal _expansion_count
+        _expansion_count += 1
+        child = expand(parent)
+        if _expansion_count % 10 == 0 or _expansion_count == level2_budget:
+            valid = [n for n in all_nodes if n.score > -1e6 + 1]
+            best = max((n.score for n in valid), default=float("-inf"))
+            branches = {}
+            for n in all_nodes:
+                b = n.branch or "unknown"
+                branches[b] = branches.get(b, 0) + 1
+            print(f"[ERA L2] expansions={_expansion_count}/{level2_budget}  nodes={len(all_nodes)}  "
+                  f"valid={len(valid)}  best_score={best:.3f}  branches={branches}")
+        return child
+
+    if select_policy == "thompson":
+        def _select_fn(ns, c):
+            return select_thompson(ns, nprng)
+    elif select_policy == "diversity":
+        def _select_fn(ns, c):
+            return select_diversity_with_priors(ns, c_puct=c, c_branch=c_branch,
+                                                branch_priors=branch_priors, rng=nprng)
+    else:
+        _select_fn = None
+
+    level2_nodes = puct_search(forest, _expand_logged, budget=level2_budget,
+                               c_puct=1.0, seed=seed + level1_trees, select_fn=_select_fn)
+    return level2_nodes
+
+
 def _score_seed(name_src: tuple, scorer: CostAwarePerSymbolScorer, symbol: str) -> dict:
     """Worker for seed sweep: score a single seed."""
     name, src = name_src
@@ -351,6 +510,13 @@ def main() -> None:
                     help="score all seeds in parallel and exit (no PUCT search)")
     ap.add_argument("--workers", type=int, default=8,
                     help="parallel workers for --seed-sweep (default 8)")
+    ap.add_argument("--two-level", action="store_true",
+                    help="run two-level search: Level 1 = many small trees to assess branches, "
+                         "Level 2 = deep tree with branch priors from Level 1")
+    ap.add_argument("--level1-trees", type=int, default=10,
+                    help="number of Level 1 small trees (default 10)")
+    ap.add_argument("--level1-budget", type=int, default=5,
+                    help="budget per Level 1 tree (default 5)")
     args = ap.parse_args()
     sp = build_trade_splits(args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
                             embargo=max(GRID_H))
@@ -378,11 +544,22 @@ def main() -> None:
         return
 
     archive = WinnerArchive(args.symbol, threshold=args.archive_threshold)
-    nodes = run_search(sp, args.symbol, budget=args.budget, select_policy=args.policy,
-                       seed=args.seed, seed_programs=seed_programs,
-                       p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
-                       c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit,
-                       archive=archive)
+    if args.two_level:
+        nodes = run_two_level_search(
+            sp, args.symbol,
+            level1_trees=args.level1_trees, level1_budget=args.level1_budget,
+            level2_budget=args.budget, select_policy=args.policy,
+            seed=args.seed, seed_programs=seed_programs,
+            p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
+            c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit,
+            archive=archive,
+        )
+    else:
+        nodes = run_search(sp, args.symbol, budget=args.budget, select_policy=args.policy,
+                           seed=args.seed, seed_programs=seed_programs,
+                           p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
+                           c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit,
+                           archive=archive)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
     # Deduplicate by payload so the same generated program doesn't dominate the top-5 display.
     seen_payloads: set[str] = set()
