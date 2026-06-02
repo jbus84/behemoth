@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import json
 import random
@@ -252,6 +253,52 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     return puct_search(forest, _expand_logged, budget=budget, c_puct=1.0, seed=seed, select_fn=_select_fn)
 
 
+def _score_seed(name_src: tuple, scorer: CostAwarePerSymbolScorer, symbol: str) -> dict:
+    """Worker for seed sweep: score a single seed."""
+    name, src = name_src
+    try:
+        v, mean, se, lg = scorer.score(src, "validation")
+        branch = SEED_BRANCH_TAGS.get(name, "baseline")
+        hv = holdout_verdict(src, scorer.splits["holdout"], symbol)
+        return {
+            "name": name,
+            "branch": branch,
+            "score": v,
+            "mean": mean,
+            "se": se,
+            "holdout": hv,
+            "payload": src,
+        }
+    except Exception as e:
+        return {
+            "name": name,
+            "branch": SEED_BRANCH_TAGS.get(name, "baseline"),
+            "score": -1e9,
+            "mean": 0.0,
+            "se": 0.0,
+            "holdout": None,
+            "payload": src,
+            "error": str(e),
+        }
+
+
+def seed_sweep(sp, symbol, seed_programs=None, workers=8):
+    """Sequential sweep of all seeds.
+
+    JAX/numpyro (inside edge_verdict) is not thread-safe, so we run sequentially.
+    With ~18 seeds this still completes in a few minutes.
+    """
+    if seed_programs is None:
+        seed_programs = FADE_SEED_PROGRAMS
+    scorer = CostAwarePerSymbolScorer(sp, symbol)
+    results = []
+    for item in seed_programs.items():
+        results.append(_score_seed(item, scorer, symbol))
+    # Sort by validation score descending
+    results.sort(key=lambda r: r["score"], reverse=True)
+    return results
+
+
 def holdout_verdict(src, split_holdout, symbol):
     """Net-of-realistic-cost EUR holdout posterior at the best-by-(q,h) cell. None on program error."""
     d = split_holdout
@@ -300,10 +347,36 @@ def main() -> None:
                     help="max consecutive expansions within the same branch before forcing a cross-branch jump (default 3)")
     ap.add_argument("--archive-threshold", type=float, default=-0.5,
                     help="save programs with validation score above this threshold to data/era_winners/ (default -0.5)")
+    ap.add_argument("--seed-sweep", action="store_true",
+                    help="score all seeds in parallel and exit (no PUCT search)")
+    ap.add_argument("--workers", type=int, default=8,
+                    help="parallel workers for --seed-sweep (default 8)")
     args = ap.parse_args()
     sp = build_trade_splits(args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
                             embargo=max(GRID_H))
     seed_programs = {"_root": TRIVIAL_ROOT} if args.no_seeds else None
+
+    if args.seed_sweep:
+        print(f"[seed-sweep] evaluating {len(seed_programs or FADE_SEED_PROGRAMS)} seeds in parallel "
+              f"({args.workers} workers)...")
+        results = seed_sweep(sp, args.symbol, seed_programs=seed_programs, workers=args.workers)
+        lines = [f"# Seed sweep — {args.symbol}\n"]
+        lines.append(f"| rank | branch | name | val | holdout P | raw | (q,h,n) |\n")
+        lines.append(f"| --- | --- | --- | --- | --- | --- | --- |\n")
+        for i, r in enumerate(results[:10], 1):
+            hv = r.get("holdout")
+            if hv:
+                lines.append(f"| {i} | {r['branch']} | {r['name']} | {r['score']:+.3f} | "
+                             f"{hv['p_positive']:.3f} | {hv['raw_mean']:+.3f} | "
+                             f"q{hv['q']} h{hv['h']} n={hv['n_trades']} |")
+            else:
+                lines.append(f"| {i} | {r['branch']} | {r['name']} | {r['score']:+.3f} | err | err | err |")
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text("\n".join(lines) + "\n")
+        print(f"wrote {args.out}")
+        print("\n".join(lines))
+        return
+
     archive = WinnerArchive(args.symbol, threshold=args.archive_threshold)
     nodes = run_search(sp, args.symbol, budget=args.budget, select_policy=args.policy,
                        seed=args.seed, seed_programs=seed_programs,
