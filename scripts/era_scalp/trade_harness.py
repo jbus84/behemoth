@@ -45,3 +45,49 @@ def per_symbol_net(sigs: dict, mids: dict, costs: dict, tms: dict, pips: dict, q
         out[sym] = {"n": int(len(df)),
                     "mean_net": float(df["net"].mean()) if len(df) else float("nan")}
     return out
+
+
+def evaluate_fair_price_trades(fair_price, mid, cost, test_month, pip, q, h,
+                                deviation_mode="absolute"):
+    """Fair-price deviation trading.
+
+    fair_price[t] = estimated fair price at bar t (in same units as mid).
+    deviation[t] = fair_price[t] - mid[t] (positive = price below fair).
+    Entry when |deviation| > threshold, direction = sign(deviation).
+    Exit at t+h.
+
+    Parameters
+    ----------
+    deviation_mode : str
+        "absolute" = threshold on raw deviation in pips.
+        "relative" = threshold on deviation / rolling_std(deviation).
+    """
+    fair = np.asarray(fair_price, float)
+    mid_arr = np.asarray(mid, float)
+    dev = (fair - mid_arr) / pip  # deviation in pips
+
+    fwd = forward_return(mid_arr, pip, h)
+    cost_arr = np.asarray(cost, float)
+
+    fin = np.isfinite(dev)
+    if fin.sum() < 2:
+        return pd.DataFrame({"net": np.array([]), "test_month": np.array([])})
+
+    if deviation_mode == "relative":
+        # Normalise deviation by rolling standard deviation
+        window = max(h * 5, 50)
+        roll_std = pd.Series(dev).rolling(window=window, min_periods=10).std().values
+        roll_std = np.where(np.isfinite(roll_std) & (roll_std > 0), roll_std, 1.0)
+        norm_dev = dev / roll_std
+        thr = np.quantile(np.abs(norm_dev[fin]), q)
+        entry = fin & np.isfinite(fwd) & np.isfinite(cost_arr) & (np.abs(norm_dev) >= thr)
+        # Direction: fair > mid → buy (dev > 0), fair < mid → sell (dev < 0)
+        side = np.sign(dev)
+    else:
+        # Absolute deviation in pips
+        thr = np.quantile(np.abs(dev[fin]), q)
+        entry = fin & np.isfinite(fwd) & np.isfinite(cost_arr) & (np.abs(dev) >= thr)
+        side = np.sign(dev)
+
+    net = side * fwd - cost_arr
+    return pd.DataFrame({"net": net[entry], "test_month": np.asarray(test_month)[entry]})
