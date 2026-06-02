@@ -1,7 +1,7 @@
 import numpy as np
 
-from scripts.era_scalp.load_splits import WHITELIST, TradeSplitData
 from scripts.era_scalp import run_era_eur as R
+from scripts.era_scalp.load_splits import WHITELIST, TradeSplitData
 
 
 def _split(n=1500, seed=0):
@@ -18,11 +18,25 @@ def _split(n=1500, seed=0):
 def test_run_search_builds_forest_with_thompson(monkeypatch):
     # stub qwen writer/recombiner so no network; expansions return a trivial program
     prog = "def signal(ctx):\n    return ctx.col('vel_pips_h1')\n"
-    monkeypatch.setattr(R, "propose_program",
+    monkeypatch.setattr(R, "propose_branch_program",
                         lambda *a, **k: prog)
-    monkeypatch.setattr(R, "recombine_program", lambda *a, **k: prog)
+    monkeypatch.setattr(R, "recombine_branch_program", lambda *a, **k: prog)
     splits = {"validation": _split(seed=1), "holdout": _split(seed=2)}
     nodes = R.run_search(splits, "EURUSD", budget=4, select_policy="thompson",
                          seed_programs={"fair_fade": prog}, seed=0)
     assert len(nodes) == 1 + 4  # one seed + 4 expansions
     assert all(np.isfinite(n.score) or n.score == -1e6 for n in nodes)
+
+
+def test_run_search_with_diversity_policy(monkeypatch):
+    """Branch-aware diversity selection runs without crashing."""
+    prog = "def signal(ctx):\n    return ctx.col('vel_pips_h1')\n"
+    monkeypatch.setattr(R, "propose_branch_program", lambda *a, **k: prog)
+    monkeypatch.setattr(R, "recombine_branch_program", lambda *a, **k: prog)
+    splits = {"validation": _split(seed=1), "holdout": _split(seed=2)}
+    nodes = R.run_search(splits, "EURUSD", budget=4, select_policy="diversity",
+                         seed_programs={"fair_fade": prog}, seed=0)
+    assert len(nodes) == 1 + 4
+    # Check that branch tags were assigned
+    branches = {n.branch for n in nodes}
+    assert None not in branches

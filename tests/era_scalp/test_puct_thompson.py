@@ -1,6 +1,6 @@
 import numpy as np
 
-from scripts.era.puct import Node, puct_search, select, select_thompson
+from scripts.era.puct import Node, puct_search, select_thompson
 
 
 def _node(mean, se):

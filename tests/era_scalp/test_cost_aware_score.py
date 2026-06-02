@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from scripts.era_scalp.load_splits import WHITELIST, TradeSplitData
 from scripts.era_scalp import cost_aware_score as cas
+from scripts.era_scalp.load_splits import WHITELIST, TradeSplitData
 
 
 def _split(n=1500, seed=0):
