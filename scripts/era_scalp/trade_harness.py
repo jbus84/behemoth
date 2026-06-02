@@ -38,6 +38,39 @@ def pooled_task_score(frames: list[pd.DataFrame]) -> float:
     return task_score(pd.concat(nz, ignore_index=True))
 
 
+def evaluate_fair_price_trades(fair_price, mid, cost, test_month, pip, q, h,
+                                deviation_mode="absolute"):
+    """Trade when fair deviates from mid: deviation = (fair - mid) / pip.
+
+    Parameters
+    ----------
+    fair_price : np.ndarray
+        Estimated fair price at each bar (same length as mid).
+    mid : np.ndarray
+        Observed mid price.
+    deviation_mode : str
+        "absolute" = threshold on |deviation|; "relative" = threshold on |deviation| / spread.
+    """
+    fair = np.asarray(fair_price, float)
+    mid_arr = np.asarray(mid, float)
+    cost_arr = np.asarray(cost, float)
+    fwd = forward_return(mid_arr, pip, h)
+    deviation = (fair - mid_arr) / pip
+    fin = np.isfinite(deviation) & np.isfinite(fwd) & np.isfinite(cost_arr)
+    if fin.sum() < 2:
+        return pd.DataFrame({"net": np.array([]), "test_month": np.array([])})
+    if deviation_mode == "absolute":
+        abs_dev = np.abs(deviation)
+    else:
+        spread = cost_arr * 2.0  # cost = half-spread
+        abs_dev = np.abs(deviation) / np.maximum(spread, 1e-12)
+    thr = np.quantile(abs_dev[fin], q)
+    entry = fin & (abs_dev >= thr)
+    # Trade direction: buy when fair > mid (deviation > 0), sell when fair < mid
+    net = np.sign(deviation) * fwd - cost_arr
+    return pd.DataFrame({"net": net[entry], "test_month": np.asarray(test_month)[entry]})
+
+
 def per_symbol_net(sigs: dict, mids: dict, costs: dict, tms: dict, pips: dict, q, h) -> dict:
     out = {}
     for sym in sigs:
