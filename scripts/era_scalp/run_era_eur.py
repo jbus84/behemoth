@@ -158,6 +158,24 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
         all_nodes.append(child)
         return child
 
+    # Progress logging
+    _expansion_count = 0
+
+    def _expand_logged(parent: Node) -> Node:
+        nonlocal _expansion_count
+        _expansion_count += 1
+        child = expand(parent)
+        if _expansion_count % 10 == 0 or _expansion_count == budget:
+            valid = [n for n in all_nodes if n.score > -1e6 + 1]
+            best = max((n.score for n in valid), default=float("-inf"))
+            branches = {}
+            for n in all_nodes:
+                b = n.branch or "unknown"
+                branches[b] = branches.get(b, 0) + 1
+            print(f"[ERA progress] expansions={_expansion_count}/{budget}  nodes={len(all_nodes)}  "
+                  f"valid={len(valid)}  best_score={best:.3f}  branches={branches}")
+        return child
+
     # Selection function
     if select_policy == "thompson":
         def _select_fn(ns, c):
@@ -168,7 +186,7 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     else:
         _select_fn = None  # default rank-based select
 
-    return puct_search(forest, expand, budget=budget, c_puct=1.0, seed=seed, select_fn=_select_fn)
+    return puct_search(forest, _expand_logged, budget=budget, c_puct=1.0, seed=seed, select_fn=_select_fn)
 
 
 def holdout_verdict(src, split_holdout, symbol):
@@ -226,9 +244,16 @@ def main() -> None:
                        p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
                        c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
+    # Deduplicate by payload so the same generated program doesn't dominate the top-5 display.
+    seen_payloads: set[str] = set()
+    unique_ranked = []
+    for nd in ranked:
+        if nd.payload not in seen_payloads:
+            seen_payloads.add(nd.payload)
+            unique_ranked.append(nd)
     lines = [f"# Cost-aware PUCT verdict — {args.symbol} (policy={args.policy}, "
              f"seeds={'no' if args.no_seeds else 'yes'}, budget={args.budget})\n"]
-    for nd in ranked[:5]:
+    for nd in unique_ranked[:5]:
         hv = holdout_verdict(nd.payload, sp["holdout"], args.symbol)
         tag = "SEED" if nd.parent is None else "evolved"
         branch_tag = f"[{nd.branch}]" if nd.branch else ""
