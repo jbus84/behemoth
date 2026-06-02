@@ -333,8 +333,19 @@ def main() -> None:
                     help="fair-price mode: programs define estimate_fair(ctx) and we trade on deviations (h=1-20)")
     args = ap.parse_args()
     grid_h = GRID_H_SHORT if args.fair_price else GRID_H
-    sp = build_trade_splits(args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
-                            embargo=max(grid_h))
+    # For fair-price mode, score on all historical data (2018-2024) so the Bayesian
+    # monthly-net posterior has ~84 months of statistical power.  Holdout stays 2025-26.
+    if args.fair_price:
+        sp = build_trade_splits(
+            args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
+            embargo=max(grid_h),
+            train=("2018", "2019", "2020", "2021", "2022", "2023"),
+            validation=("2018", "2019", "2020", "2021", "2022", "2023", "2024"),
+            holdout=("2025", "2026"),
+        )
+    else:
+        sp = build_trade_splits(args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
+                                embargo=max(grid_h))
     if args.no_seeds:
         seed_programs = {"_root": FAIR_TRIVIAL_ROOT if args.fair_price else TRIVIAL_ROOT}
     else:

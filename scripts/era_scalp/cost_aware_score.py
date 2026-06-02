@@ -28,7 +28,10 @@ def fast_lower_bound(net_frame, z: float = 1.645):
 class CostAwarePerSymbolScorer:
     """Per-symbol, net-of-realistic-cost, robustness-gated, confidence-aware program scorer.
 
-    score() -> (value, mean, se, logs): value = robust aggregate (mean-std) of per-(q,h) lower bounds;
+    score() -> (value, mean, se, logs):
+    - Directional mode: value = mean(lbs) - std(lbs) across (q,h) — rewards robustness.
+    - Fair-price mode: value = max(lb) across (q,h) — a fair-price program need only excel
+      at one (conviction, horizon) cell, not all of them.
     (mean, se) = posterior of the max-lb cell, exposed for Thompson node selection."""
 
     def __init__(self, split_by_phase: dict, symbol: str, z: float = 1.645, timeout: float = 10.0,
@@ -68,5 +71,10 @@ class CostAwarePerSymbolScorer:
         if not lbs:
             return -1e6, float("nan"), float("nan"), "no admissible (q,h) cell"
         arr = np.asarray(lbs, float)
-        value = float(arr.mean() - arr.std())
+        if self.fair_price_mode:
+            # Fair-price programs are allowed to be specialised to one (q,h) cell.
+            value = float(arr.max())
+        else:
+            # Directional mode: penalise fragility across the (q,h) grid.
+            value = float(arr.mean() - arr.std())
         return value, best[1], best[2], logs

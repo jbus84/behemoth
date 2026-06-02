@@ -242,15 +242,14 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "jump_robust_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1')\n"
         "    n = r.shape[0]\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    # Bibinger (2024): robust fair price using median filter instead of mean.\n"
         "    W = 20\n"
-        "    fair = np.empty(n)\n"
-        "    for i in range(n):\n"
-        "        lo = max(0, i - W + 1)\n"
-        "        fair[i] = np.median(p[lo:i+1])\n"
+        "    # Vectorised rolling median via np.lib.stride_tricks (no import needed).\n"
+        "    padded = np.concatenate([np.full(W - 1, np.nan), p])\n"
+        "    fair = np.nanmedian(np.lib.stride_tricks.sliding_window_view(padded, W), axis=1)\n"
         "    return fair\n"
     ),
 }

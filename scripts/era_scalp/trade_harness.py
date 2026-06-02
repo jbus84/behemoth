@@ -40,14 +40,19 @@ def pooled_task_score(frames: list[pd.DataFrame]) -> float:
 
 def evaluate_fair_price_trades(fair_price, mid, cost, test_month, pip, q, h,
                                 deviation_mode="absolute"):
-    """Trade when fair deviates from mid: deviation = (fair - mid) / pip.
+    """Trade when fair deviates from mid.
+
+    The program's `fair_price` is a synthetic price index (e.g. cumsum of
+    vel_pips_h1).  We align it with `mid` by converting mid to pips-from-start
+    so the two series are directly comparable.
 
     Parameters
     ----------
     fair_price : np.ndarray
-        Estimated fair price at each bar (same length as mid).
+        Estimated fair price at each bar (synthetic price index, same units
+        as cumsum of returns in pips).
     mid : np.ndarray
-        Observed mid price.
+        Observed mid price (raw price, e.g. 1.0850).
     deviation_mode : str
         "absolute" = threshold on |deviation|; "relative" = threshold on |deviation| / spread.
     """
@@ -55,7 +60,17 @@ def evaluate_fair_price_trades(fair_price, mid, cost, test_month, pip, q, h,
     mid_arr = np.asarray(mid, float)
     cost_arr = np.asarray(cost, float)
     fwd = forward_return(mid_arr, pip, h)
-    deviation = (fair - mid_arr) / pip
+
+    # Normalise mid to pips-from-first-valid so it lives in the same space as
+    # fair (cumsum of bar returns in pips).
+    fin_mid = np.isfinite(mid_arr)
+    if not fin_mid.any():
+        return pd.DataFrame({"net": np.array([]), "test_month": np.array([])})
+    base = mid_arr[fin_mid][0]
+    mid_pips = np.full_like(mid_arr, np.nan, dtype=float)
+    mid_pips[fin_mid] = (mid_arr[fin_mid] - base) / pip
+
+    deviation = fair - mid_pips
     fin = np.isfinite(deviation) & np.isfinite(fwd) & np.isfinite(cost_arr)
     if fin.sum() < 2:
         return pd.DataFrame({"net": np.array([]), "test_month": np.array([])})
