@@ -325,6 +325,78 @@ class TreeTracker:
             )[:10],
         }
 
+    # ── Tree serialization for resumption ───────────────────────────────────
+
+    def save_tree_state(self, nodes: list, path: Path | None = None) -> Path:
+        """Serialize a full PUCT tree to disk for later resumption.
+
+        Returns the path written.
+        """
+        if path is None:
+            path = self.root / f"{self.symbol}_tree_state.json"
+        # Flatten tree with parent indices (handles cycles via index lookup)
+        records = []
+        node_to_idx = {id(n): i for i, n in enumerate(nodes)}
+        for n in nodes:
+            rec = {
+                "payload": n.payload,
+                "score": n.score,
+                "parent_idx": node_to_idx.get(id(n.parent)) if n.parent is not None else None,
+                "visits": n.visits,
+                "logs": n.logs,
+                "mean": n.mean,
+                "se": n.se,
+                "branch": n.branch,
+                "concepts": list(getattr(n, 'concepts', [])),
+                "prior_prob": getattr(n, 'prior_prob', 0.5),
+            }
+            records.append(rec)
+        data = {
+            "symbol": self.symbol,
+            "run_id": self._run_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "n_nodes": len(records),
+            "nodes": records,
+        }
+        path.write_text(json.dumps(data, indent=2))
+        return path
+
+    def load_tree_state(self, path: Path | None = None) -> list | None:
+        """Deserialize a PUCT tree from disk and rebuild Node objects.
+
+        Returns a list of Node objects (root-first), or None if no state file.
+        """
+        if path is None:
+            path = self.root / f"{self.symbol}_tree_state.json"
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text())
+        records = data["nodes"]
+        # First pass: create all nodes without parent refs
+        nodes = []
+        for rec in records:
+            from scripts.era.puct import Node
+            node = Node(
+                payload=rec["payload"],
+                score=rec["score"],
+                parent=None,  # fixed in second pass
+                visits=rec.get("visits", 1),
+                logs=rec.get("logs", ""),
+                mean=rec.get("mean", 0.0),
+                se=rec.get("se", 0.0),
+                branch=rec.get("branch"),
+                concepts=rec.get("concepts", []),
+                prior_prob=rec.get("prior_prob", 0.5),
+            )
+            nodes.append(node)
+        # Second pass: wire parent refs and children lists
+        for i, rec in enumerate(records):
+            pidx = rec.get("parent_idx")
+            if pidx is not None and 0 <= pidx < len(nodes):
+                nodes[i].parent = nodes[pidx]
+                nodes[pidx].children.append(nodes[i])
+        return nodes
+
 
 # Need numpy for synergy calculation
 import numpy as np  # noqa: E402

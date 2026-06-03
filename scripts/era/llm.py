@@ -93,7 +93,7 @@ def build_cross_branch_prompt(srcA: str, scoreA: float, branchA: str,
 
 
 # ---------------------------------------------------------------------------
-# Callers / extractors (unchanged)
+# Extractors
 # ---------------------------------------------------------------------------
 
 
@@ -101,6 +101,28 @@ def extract_program(resp: str) -> str:
     m = re.search(r"```(?:python)?\s*(.*?)```", resp, re.DOTALL)
     src = (m.group(1) if m else resp).strip()
     return src
+
+
+def extract_prior_prob(resp: str) -> float:
+    """Parse LLM self-assessed confidence from response text.
+
+    Looks for patterns like 'confidence: 0.85' or 'prior_prob: 0.7'.
+    Returns 0.5 (neutral) if not found.
+    """
+    m = re.search(r"(?:confidence|prior_prob|prior|confidence score)[:=\s]+(\d\.?\d*)", resp, re.IGNORECASE)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            pass
+    return 0.5
+
+
+def extract_program_with_prior(resp: str) -> tuple[str, float]:
+    """Extract both program source and LLM confidence score."""
+    src = extract_program(resp)
+    prior = extract_prior_prob(resp)
+    return src, prior
 
 
 def _ollama_caller(prompt: str) -> str:
@@ -152,6 +174,52 @@ def recombine_program(srcA, scoreA, srcB, scoreB, cache_dir, caller=None, rules=
 
 
 # ---------------------------------------------------------------------------
+# Dimension-locked atomic prompts (new — zarrduck-inspired)
+# ---------------------------------------------------------------------------
+
+def build_dimension_locked_prompt(parent_src: str, parent_score: float, logs: str,
+                                    branch: str, rich_template: str,
+                                    target_dimension: str, rules: str = _RULES) -> str:
+    """Force the LLM to make exactly ONE atomic tweak in a specific dimension.
+
+    target_dimension is a concept name from CONCEPT_TAXONOMY, e.g. 'roll_bounce',
+    'barzykin_impact', 'taylor_adaptive_alpha'.  The prompt tells the LLM to
+    vary ONLY that dimension while keeping everything else identical.
+    """
+    return (
+        f"{rich_template}\n\n"
+        f"PARENT PROGRAM (your starting point):\n```python\n{parent_src}\n```\n\n"
+        f"Parent score: {parent_score:.3f}\n"
+        f"Parent logs: {logs[:500]}\n\n"
+        f"YOUR TASK:\n"
+        f"Make EXACTLY ONE atomic tweak focused on the '{target_dimension}' dimension.\n"
+        f"You may vary parameters, add/remove a gate, or adjust a weight, but ONLY\n"
+        f"within the '{target_dimension}' concept.  Keep ALL other parts of the program\n"
+        f"IDENTICAL to the parent.  Output ONLY one ```python block.\n"
+        f"Also include your confidence (0-1) that this tweak will improve the score,\n"
+        f"e.g. 'confidence: 0.85'.\n"
+    )
+
+
+def build_self_correct_prompt(parent_src: str, error_log: str,
+                              branch: str, rich_template: str,
+                              rules: str = _RULES) -> str:
+    """When sandbox/static_check rejects a candidate, ask LLM to fix it.
+
+    Sends the parent baseline + error log so the LLM can repair the candidate
+    while preserving the original function signatures.
+    """
+    return (
+        f"{rich_template}\n\n"
+        f"The following program failed validation.  Please FIX the error while keeping\n"
+        f"the core logic intact.  Do NOT change the function signature.\n\n"
+        f"ERROR LOG:\n```\n{error_log[:800]}\n```\n\n"
+        f"FAILED PROGRAM:\n```python\n{parent_src}\n```\n\n"
+        f"Output ONLY the corrected ```python block.\n"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Branch-aware wrappers (new)
 # ---------------------------------------------------------------------------
 
@@ -164,6 +232,70 @@ def propose_branch_program(parent_src, parent_score, logs, branch: str,
     prompt = build_branch_prompt(parent_src, parent_score, logs, branch, rich_template)
     key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
     cached = cache_dir / f"branch_{branch}_{key}.py"
+    if cached.exists():
+        return cached.read_text()
+    src = extract_program(caller(prompt))
+    if src.strip():
+        cached.write_text(src)
+    return src
+
+
+def propose_branch_program_with_prior(parent_src, parent_score, logs, branch: str,
+                                      rich_template: str, cache_dir, caller=None) -> tuple[str, float]:
+    """Expand a node and also extract LLM self-assessed confidence (prior_prob)."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_branch_prompt(parent_src, parent_score, logs, branch, rich_template)
+    # Augment prompt to request confidence
+    prompt += "\n\nAlso include your confidence (0-1) that this program will improve the score, e.g. 'confidence: 0.85'.\n"
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"branch_prior_{branch}_{key}.py"
+    if cached.exists():
+        text = cached.read_text()
+        parts = text.split("\n---PRIOR---\n")
+        if len(parts) == 2:
+            return parts[0], float(parts[1])
+        return text, 0.5
+    resp = caller(prompt)
+    src, prior = extract_program_with_prior(resp)
+    if src.strip():
+        cached.write_text(src + "\n---PRIOR---\n" + str(prior))
+    return src, prior
+
+
+def propose_dimension_locked_program(parent_src, parent_score, logs, branch: str,
+                                     rich_template: str, target_dimension: str,
+                                     cache_dir, caller=None) -> tuple[str, float]:
+    """Expand with dimension-locking: exactly ONE tweak in target_dimension."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_dimension_locked_prompt(parent_src, parent_score, logs, branch, rich_template, target_dimension)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"atomic_{branch}_{target_dimension}_{key}.py"
+    if cached.exists():
+        text = cached.read_text()
+        parts = text.split("\n---PRIOR---\n")
+        if len(parts) == 2:
+            return parts[0], float(parts[1])
+        return text, 0.5
+    resp = caller(prompt)
+    src, prior = extract_program_with_prior(resp)
+    if src.strip():
+        cached.write_text(src + "\n---PRIOR---\n" + str(prior))
+    return src, prior
+
+
+def self_correct_program(parent_src, error_log, branch: str,
+                         rich_template: str, cache_dir, caller=None) -> str:
+    """When a candidate fails, ask the LLM to repair it."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_self_correct_prompt(parent_src, error_log, branch, rich_template)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"correct_{branch}_{key}.py"
     if cached.exists():
         return cached.read_text()
     src = extract_program(caller(prompt))

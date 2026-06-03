@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import json
 import random
@@ -11,10 +12,13 @@ import numpy as np
 
 from scripts.era.llm import (
     propose_branch_program,
+    propose_branch_program_with_prior,
+    propose_dimension_locked_program,
     recombine_branch_program,
+    self_correct_program,
 )
-from scripts.era.puct import Node, puct_search, select_diversity, select_diversity_with_history, select_thompson
-from scripts.era_scalp.atomic_concepts import extract_concepts_from_source
+from scripts.era.puct import Node, puct_search, select_diversity, select_diversity_with_history, select_diversity_with_llm_prior, select_thompson
+from scripts.era_scalp.atomic_concepts import CONCEPT_TAXONOMY, extract_concepts_from_source
 from scripts.era_scalp.tree_tracker import TreeTracker
 from scripts.era_scalp.bayes_edge import edge_verdict
 from scripts.era_scalp.context import FeatureContext
@@ -117,67 +121,64 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                fair_price_mode: bool = False,
                tracker: TreeTracker | None = None,
                warm_start: bool = False,
-               concept_mode: bool = False):
-    """Branch-aware ERA-PUCT search with optional persistent warm-start.
+               concept_mode: bool = False,
+               dimension_locked: bool = False,
+               self_correct: bool = False,
+               parallel_expansions: int = 1,
+               use_llm_prior: bool = False,
+               resume_tree: bool = False):
+    """Branch-aware ERA-PUCT search with zarrduck-inspired improvements.
 
-    Parameters
-    ----------
-    select_policy : str
-        "thompson" | "rank" | "diversity"
-        "diversity" adds a branch-exploration bonus so under-sampled literature
-        branches (e.g. regime_switching) get selected even when their raw score
-        is below the current best mean_reversion_gate node.
-    p_recombine : float
-        Probability of recombining two parent nodes instead of mutating one.
-        Default 0.25 (moderate: enough cross-branch hybrids to find novel
-        recombinations without overwhelming single-branch refinement).
-    p_cross_branch : float
-        When doing a *propose* (not recombine), probability of forcing a jump
-        to a different branch's rich template instead of staying in the parent's
-        branch.  Default 0.35 (high: actively explore new branches).
-    c_branch : float
-        Diversity bonus weight in select_diversity.  Higher = stronger preference
-        for under-explored branches.  Default 0.7 (tuned: prevents over-exploring
-        a branch with marginal early advantage while still giving new branches
-        a fair shot).
-    branch_depth_limit : int
-        If the same branch produces this many consecutive children, force the
-        next *propose* to jump to a different branch.  This prevents
-        parameter-sweeping paralysis.  Default 3.
-    fair_price_mode : bool
-        If True, programs define `estimate_fair(ctx)` and the harness trades on
-        deviations from fair price using short horizons (h=1-20 bars).
-    tracker : TreeTracker | None
-        Persistent tracker for logging nodes and computing warm-start priors.
-    warm_start : bool
-        If True and tracker has historical data, use select_diversity_with_history
-        to bias selection toward historically successful branches/concepts.
-    concept_mode : bool
-        If True, extract atomic concepts from generated source and log them.
-        Enables concept-level priors and synergy bonuses when warm_start=True.
+    New features
+    ------------
+    dimension_locked : bool
+        When proposing (not recombining), force the LLM to make exactly ONE atomic
+        tweak in a specific dimension (e.g. 'roll_bounce', 'barzykin_impact').
+        Dimensions cycle through CONCEPT_TAXONOMY keys.
+    self_correct : bool
+        When sandbox/static_check rejects a candidate, send the error log + parent
+        baseline back to the LLM for 1-2 repair attempts before giving up.
+    parallel_expansions : int
+        Generate this many candidate programs in parallel per PUCT step (using
+        ThreadPoolExecutor), evaluate all, and keep the best-scoring child.
+        Budget is interpreted as total PUCT steps, not total LLM calls.
+    use_llm_prior : bool
+        Ask the LLM to self-assess confidence (0-1) for each proposal.  The prior
+        feeds into the PUCT exploration bonus, focusing search on high-confidence
+        proposals.  Uses select_diversity_with_llm_prior.
+    resume_tree : bool
+        If tracker has a saved tree state (from a previous interrupted run), load
+        it and resume search from the frontier instead of rebuilding from seeds.
     """
     scorer = CostAwarePerSymbolScorer(splits, symbol, fair_price_mode=fair_price_mode)
     rng = random.Random(seed)
     nprng = np.random.default_rng(seed)
 
-    if seed_programs is None:
-        seed_programs = FAIR_SEED_PROGRAMS if fair_price_mode else FADE_SEED_PROGRAMS
-
     seed_branch_tags = FAIR_SEED_BRANCH_TAGS if fair_price_mode else FADE_SEED_BRANCH_TAGS
     rich_templates = FAIR_RICH_TEMPLATES if fair_price_mode else FADE_RICH_TEMPLATES
     cross_branch_index = FAIR_CROSS_BRANCH_INDEX if fair_price_mode else FADE_CROSS_BRANCH_INDEX
 
-    # Build forest with branch tags and concepts
-    forest = []
-    for name, src in seed_programs.items():
-        v, mean, se, lg = scorer.score(src, "validation")
-        branch = seed_branch_tags.get(name, "baseline")
-        concepts = extract_concepts_from_source(src) if concept_mode else []
-        node = Node(payload=src, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch, concepts=concepts)
-        forest.append(node)
-        if tracker is not None:
-            tracker.log_node(src, branch, concepts, v, mean, se, None, 0)
-    all_nodes = list(forest)
+    # ── Optional: resume from saved tree state ───────────────────────────────
+    forest: list[Node] = []
+    if resume_tree and tracker is not None:
+        resumed = tracker.load_tree_state()
+        if resumed:
+            forest = [n for n in resumed if n.parent is None]
+            print(f"[resume] loaded {len(resumed)} nodes ({len(forest)} roots) from tree state")
+
+    if not forest:
+        if seed_programs is None:
+            seed_programs = FAIR_SEED_PROGRAMS if fair_price_mode else FADE_SEED_PROGRAMS
+        for name, src in seed_programs.items():
+            v, mean, se, lg = scorer.score(src, "validation")
+            branch = seed_branch_tags.get(name, "baseline")
+            concepts = extract_concepts_from_source(src) if concept_mode else []
+            node = Node(payload=src, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch, concepts=concepts)
+            forest.append(node)
+            if tracker is not None:
+                tracker.log_node(src, branch, concepts, v, mean, se, None, 0)
+
+    all_nodes: list[Node] = list(forest)
 
     # Collect branch list for cross-branch jumps
     branch_pool = list(set(n.branch for n in all_nodes if n.branch is not None))
@@ -185,17 +186,23 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     def _branch_template(branch: str | None) -> str:
         return rich_templates.get(branch or "baseline", rich_templates["baseline"])
 
-    # Track consecutive expansions within the same branch to prevent parameter-sweep paralysis.
+    # Dimension-locking state: cycle through atomic concept keys
+    concept_keys = list(CONCEPT_TAXONOMY.keys()) if dimension_locked else []
+    _dim_idx = 0
+
+    # Track consecutive expansions within the same branch
     _last_branch: str | None = None
     _branch_depth: int = 0
 
-    def expand(parent: Node) -> Node:
-        nonlocal _last_branch, _branch_depth
+    # ── Inner expansion logic ───────────────────────────────────────────────
+
+    def _generate_single_candidate(parent: Node) -> tuple[str, str, float]:
+        """Generate one candidate program. Returns (src, branch, prior_prob)."""
+        nonlocal _dim_idx
 
         # Decide: recombine vs propose
         if rng.random() < p_recombine and len(all_nodes) >= 2:
             cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
-            # Prefer top-2 from different branches for recombination
             parent_a = cands[0]
             parent_b = next(
                 (n for n in cands[1:] if n.branch != parent_a.branch), cands[1]
@@ -215,54 +222,151 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                 parent_b.payload, parent_b.score, branch_b,
                 cross_text, cache_dir=cache_dir,
             )
-            # Assign recombination child to the higher-scoring parent's branch
-            # so it contributes to branch coverage instead of creating a parasitic
-            # catch-all "hybrid" branch.
             child_branch = branch_a
-            _last_branch = child_branch
-            _branch_depth = 0  # recombination resets depth (it's inherently cross-concept)
-        else:
-            # Propose: stay in branch or jump to a different branch
-            force_jump = (
-                _last_branch == parent.branch
-                and _branch_depth >= branch_depth_limit
-                and len(branch_pool) > 1
-            )
-            if force_jump or (rng.random() < p_cross_branch and len(branch_pool) > 1):
-                other_branches = [b for b in branch_pool if b != parent.branch]
-                target_branch = rng.choice(other_branches) if other_branches else parent.branch
-            else:
-                target_branch = parent.branch
+            return child_src, child_branch, 0.5  # recombination has no LLM prior
 
-            template = _branch_template(target_branch)
+        # Propose: stay in branch or jump
+        force_jump = (
+            _last_branch == parent.branch
+            and _branch_depth >= branch_depth_limit
+            and len(branch_pool) > 1
+        )
+        if force_jump or (rng.random() < p_cross_branch and len(branch_pool) > 1):
+            other_branches = [b for b in branch_pool if b != parent.branch]
+            target_branch = rng.choice(other_branches) if other_branches else parent.branch
+        else:
+            target_branch = parent.branch
+
+        template = _branch_template(target_branch)
+
+        if dimension_locked and concept_keys:
+            target_dim = concept_keys[_dim_idx % len(concept_keys)]
+            _dim_idx += 1
+            if use_llm_prior:
+                child_src, prior = propose_dimension_locked_program(
+                    parent.payload, parent.score, parent.logs,
+                    branch=target_branch or "baseline",
+                    rich_template=template,
+                    target_dimension=target_dim,
+                    cache_dir=cache_dir,
+                )
+            else:
+                child_src, prior = propose_dimension_locked_program(
+                    parent.payload, parent.score, parent.logs,
+                    branch=target_branch or "baseline",
+                    rich_template=template,
+                    target_dimension=target_dim,
+                    cache_dir=cache_dir,
+                )
+            child_branch = target_branch
+            return child_src, child_branch, prior
+
+        if use_llm_prior:
+            child_src, prior = propose_branch_program_with_prior(
+                parent.payload, parent.score, parent.logs,
+                branch=target_branch or "baseline",
+                rich_template=template,
+                cache_dir=cache_dir,
+            )
+        else:
             child_src = propose_branch_program(
                 parent.payload, parent.score, parent.logs,
                 branch=target_branch or "baseline",
                 rich_template=template,
                 cache_dir=cache_dir,
             )
-            child_branch = target_branch
+            prior = 0.5
+        child_branch = target_branch
+        return child_src, child_branch, prior
 
+    def _try_self_correct(parent: Node, failed_src: str, error_log: str, branch: str) -> Node | None:
+        """Ask LLM to repair a failed candidate. Returns new Node or None."""
+        if not self_correct:
+            return None
+        template = _branch_template(branch)
+        corrected = self_correct_program(failed_src, error_log, branch, template, cache_dir=cache_dir)
+        if not corrected.strip():
+            return None
+        v, mean, se, lg = scorer.score(corrected, "validation")
+        concepts = extract_concepts_from_source(corrected) if concept_mode else []
+        child = Node(
+            payload=corrected, score=v, parent=parent, logs=lg,
+            mean=mean, se=se, branch=branch, concepts=concepts,
+        )
+        return child
+
+    def _score_and_log(child_src: str, child_branch: str, prior: float,
+                         parent: Node) -> Node:
+        """Score a candidate, apply self-correction if needed, log, and return Node."""
+        v, mean, se, lg = scorer.score(child_src, "validation")
+
+        # Self-correction: if program failed, try once to fix it
+        if v <= -1e6 + 1 and self_correct:
+            sc = _try_self_correct(parent, child_src, lg, child_branch)
+            if sc is not None and sc.score > -1e6 + 1:
+                child = sc
+                child.prior_prob = prior
+                all_nodes.append(child)
+                if archive is not None:
+                    archive.save(child.payload, child.score, child.mean, child.se, child.branch, parent, None)
+                if tracker is not None:
+                    tracker.log_node(child.payload, child.branch, child.concepts or [],
+                                     child.score, child.mean, child.se,
+                                     parent_payload=parent.payload if parent else None,
+                                     generation=len(all_nodes))
+                return child
+
+        concepts = extract_concepts_from_source(child_src) if concept_mode else []
+        child = Node(
+            payload=child_src, score=v, parent=parent, logs=lg,
+            mean=mean, se=se, branch=child_branch, concepts=concepts,
+            prior_prob=prior,
+        )
+        all_nodes.append(child)
+        if archive is not None and v > -1e6 + 1:
+            archive.save(child_src, v, mean, se, child_branch, parent, None)
+        if tracker is not None:
+            tracker.log_node(child_src, child_branch, concepts, v, mean, se,
+                             parent_payload=parent.payload if parent else None,
+                             generation=len(all_nodes))
+        return child
+
+    def expand(parent: Node) -> Node:
+        nonlocal _last_branch, _branch_depth
+
+        if parallel_expansions > 1:
+            # Generate N candidates in parallel, pick best
+            candidates = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=parallel_expansions) as ex:
+                futures = [ex.submit(_generate_single_candidate, parent)
+                           for _ in range(parallel_expansions)]
+                for fut in futures:
+                    try:
+                        candidates.append(fut.result())
+                    except Exception as e:
+                        print(f"[parallel expansion error] {e}")
+            if not candidates:
+                # Fallback: generate one synchronously
+                child_src, child_branch, prior = _generate_single_candidate(parent)
+                return _score_and_log(child_src, child_branch, prior, parent)
+
+            # Score all candidates (some may be cached, most won't be)
+            scored = []
+            for child_src, child_branch, prior in candidates:
+                node = _score_and_log(child_src, child_branch, prior, parent)
+                scored.append(node)
+            # Return best-scoring child for PUCT continuation
+            best = max(scored, key=lambda n: n.score)
+            return best
+        else:
+            child_src, child_branch, prior = _generate_single_candidate(parent)
             # Update branch-depth tracker
             if _last_branch == child_branch:
                 _branch_depth += 1
             else:
                 _last_branch = child_branch
                 _branch_depth = 1
-
-        v, mean, se, lg = scorer.score(child_src, "validation")
-        concepts = extract_concepts_from_source(child_src) if concept_mode else []
-        child = Node(
-            payload=child_src, score=v, parent=parent, logs=lg,
-            mean=mean, se=se, branch=child_branch, concepts=concepts,
-        )
-        all_nodes.append(child)
-        if archive is not None and v > -1e6 + 1:
-            archive.save(child_src, v, mean, se, child_branch, parent, None)
-        if tracker is not None:
-            parent_payload = parent.payload if parent else None
-            tracker.log_node(child_src, child_branch, concepts, v, mean, se, parent_payload, generation=len(all_nodes))
-        return child
+            return _score_and_log(child_src, child_branch, prior, parent)
 
     # Progress logging
     _expansion_count = 0
@@ -297,8 +401,9 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
             return select_thompson(ns, nprng)
     elif select_policy == "diversity":
         if warm_start and branch_priors:
+            selector = select_diversity_with_llm_prior if use_llm_prior else select_diversity_with_history
             def _select_fn(ns, c):
-                return select_diversity_with_history(
+                return selector(
                     ns, c_puct=c, c_branch=c_branch,
                     branch_priors=branch_priors,
                     concept_priors=concept_priors,
@@ -306,12 +411,19 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                     rng=nprng,
                 )
         else:
+            selector = select_diversity_with_llm_prior if use_llm_prior else select_diversity
             def _select_fn(ns, c):
-                return select_diversity(ns, c_puct=c, c_branch=c_branch, rng=nprng)
+                return selector(ns, c_puct=c, c_branch=c_branch, rng=nprng)
     else:
         _select_fn = None  # default rank-based select
 
-    return puct_search(forest, _expand_logged, budget=budget, c_puct=1.0, seed=seed, select_fn=_select_fn)
+    nodes = puct_search(forest, _expand_logged, budget=budget, c_puct=1.0, seed=seed, select_fn=_select_fn)
+
+    # Save tree state for resumption
+    if tracker is not None:
+        tracker.save_tree_state(nodes)
+
+    return nodes
 
 
 def holdout_verdict(src, split_holdout, symbol, fair_price_mode: bool = False):
@@ -373,6 +485,16 @@ def main() -> None:
                     help="load historical branch/concept priors from data/era_trees/ to bias selection")
     ap.add_argument("--concept-mode", action="store_true",
                     help="extract atomic concepts from programs and enable concept-level warm-start priors")
+    ap.add_argument("--dimension-locked", action="store_true",
+                    help="force LLM to make exactly ONE atomic tweak per proposal (cycles through concept dimensions)")
+    ap.add_argument("--self-correct", action="store_true",
+                    help="when sandbox rejects a candidate, send error log + parent back to LLM for repair")
+    ap.add_argument("--parallel-expansions", type=int, default=1,
+                    help="generate N candidates in parallel per PUCT step and keep the best (default 1)")
+    ap.add_argument("--use-llm-prior", action="store_true",
+                    help="ask LLM for self-assessed confidence (0-1) and use it in PUCT exploration bonus")
+    ap.add_argument("--resume-tree", action="store_true",
+                    help="resume from saved tree state instead of rebuilding from seeds")
     args = ap.parse_args()
     grid_h = GRID_H_SHORT if args.fair_price else GRID_H
     # For fair-price mode, score on all historical data (2018-2024) so the Bayesian
@@ -393,16 +515,22 @@ def main() -> None:
     else:
         seed_programs = None
     archive = WinnerArchive(args.symbol, threshold=args.archive_threshold)
-    tracker = TreeTracker(args.symbol) if (args.warm_start or args.concept_mode) else None
+    tracker = TreeTracker(args.symbol) if (args.warm_start or args.concept_mode or args.resume_tree) else None
     if tracker is not None:
-        tracker.start_run(budget=args.budget, seed=args.seed, mode="fair_price" if args.fair_price else "fade")
+        tracker.start_run(budget=args.budget, seed=args.seed, mode="fair_price" if args.fair_price else "fade",
+                          extra_meta={"dimension_locked": args.dimension_locked,
+                                      "parallel_expansions": args.parallel_expansions,
+                                      "use_llm_prior": args.use_llm_prior})
 
     nodes = run_search(sp, args.symbol, budget=args.budget, select_policy=args.policy,
                        seed=args.seed, seed_programs=seed_programs,
                        p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
                        c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit,
                        archive=archive, fair_price_mode=args.fair_price,
-                       tracker=tracker, warm_start=args.warm_start, concept_mode=args.concept_mode)
+                       tracker=tracker, warm_start=args.warm_start, concept_mode=args.concept_mode,
+                       dimension_locked=args.dimension_locked, self_correct=args.self_correct,
+                       parallel_expansions=args.parallel_expansions,
+                       use_llm_prior=args.use_llm_prior, resume_tree=args.resume_tree)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
     # Deduplicate by payload so the same generated program doesn't dominate the top-5 display.
     seen_payloads: set[str] = set()
@@ -412,8 +540,20 @@ def main() -> None:
             seen_payloads.add(nd.payload)
             unique_ranked.append(nd)
     mode_label = "fair-price" if args.fair_price else "cost-aware"
+    flags = []
+    if args.dimension_locked:
+        flags.append("dim-locked")
+    if args.self_correct:
+        flags.append("self-correct")
+    if args.use_llm_prior:
+        flags.append("llm-prior")
+    if args.parallel_expansions > 1:
+        flags.append(f"parallel={args.parallel_expansions}")
+    if args.resume_tree:
+        flags.append("resume")
+    flags_str = f" | {','.join(flags)}" if flags else ""
     lines = [f"# {mode_label} PUCT verdict — {args.symbol} (policy={args.policy}, "
-             f"seeds={'no' if args.no_seeds else 'yes'}, budget={args.budget})\n"]
+             f"seeds={'no' if args.no_seeds else 'yes'}, budget={args.budget}{flags_str})\n"]
     for nd in unique_ranked[:5]:
         hv = holdout_verdict(nd.payload, sp["holdout"], args.symbol, fair_price_mode=args.fair_price)
         tag = "SEED" if nd.parent is None else "evolved"
