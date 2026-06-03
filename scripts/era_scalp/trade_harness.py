@@ -93,3 +93,5 @@ def per_symbol_net(sigs: dict, mids: dict, costs: dict, tms: dict, pips: dict, q
         out[sym] = {"n": int(len(df)),
                     "mean_net": float(df["net"].mean()) if len(df) else float("nan")}
     return out
+
+
