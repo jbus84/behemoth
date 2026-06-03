@@ -57,6 +57,11 @@ BRANCH_TAXONOMY: dict[str, str] = {
     "glosten_milgrom": "Adverse-selection adjustment (Glosten-Milgrom 1985); fair = mid - lambda*|velocity|.",
     "cointegration_trend": "Online cointegration fair (Engle-Granger 1987); fair = intercept + beta*time.",
     "jump_robust": "Median-based fair (Bibinger 2024); robust to jump contamination.",
+    "kyle_informed": "Informed-trader permanent impact (Kyle 1985); fair = mid + lambda*cum(informed_flow).",
+    "pin_informed_flow": "PIN-informed-flow proxy (Easley-O'Hara 1987/92); high-volume+range = informed.",
+    "almgren_impact": "Permanent+temporary impact (Almgren-Chriss 2000); subtract propagator.",
+    "ow_propagator": "Resilience propagator (Obizhaeva-Wang 2013); impact decays at rate beta.",
+    "foucault_competition": "LOB competition proxy (Foucault 1999); tight spread = less edge.",
 }
 
 
@@ -74,6 +79,11 @@ SEED_BRANCH_TAGS: dict[str, str] = {
     "glosten_milgrom_fair": "glosten_milgrom",
     "cointegration_trend_fair": "cointegration_trend",
     "jump_robust_fair": "jump_robust",
+    "kyle_informed_fair": "kyle_informed",
+    "pin_informed_flow_fair": "pin_informed_flow",
+    "almgren_impact_fair": "almgren_impact",
+    "ow_propagator_fair": "ow_propagator",
+    "foucault_competition_fair": "foucault_competition",
 }
 
 
@@ -251,6 +261,83 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
         "    padded = np.concatenate([np.full(W - 1, np.nan), p])\n"
         "    fair = np.nanmedian(np.lib.stride_tricks.sliding_window_view(padded, W), axis=1)\n"
         "    return fair\n"
+    ),
+    "kyle_informed_fair": (
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    # Kyle (1985): informed traders cause permanent price impact.\n"
+        "    # Proxy: large bars with persistence = informed flow.\n"
+        "    sign_r = np.sign(np.where(np.isfinite(r), r, 0.0))\n"
+        "    abs_r = np.abs(np.where(np.isfinite(r), r, 0.0))\n"
+        "    informed = np.where(abs_r > np.quantile(abs_r, 0.75), sign_r, 0.0)\n"
+        "    lambda_k = 0.3\n"
+        "    return ew + lambda_k * np.cumsum(informed)\n"
+    ),
+    "pin_informed_flow_fair": (
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    vol = ctx.col('tick_volume'); n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    # Easley-O'Hara PIN: high-volume + large-range bars are more likely informed.\n"
+        "    vol_z = (vol - np.nanmean(vol)) / np.nanstd(vol) if np.nanstd(vol) > 0 else np.zeros_like(vol)\n"
+        "    range_z = (br - np.nanmean(br)) / np.nanstd(br) if np.nanstd(br) > 0 else np.zeros_like(br)\n"
+        "    pin_proxy = np.where((vol_z > 1) & (range_z > 1), np.sign(r), 0.0)\n"
+        "    pin_proxy = np.where(np.isfinite(pin_proxy), pin_proxy, 0.0)\n"
+        "    gamma = 0.001\n"
+        "    return ew + gamma * np.cumsum(pin_proxy)\n"
+    ),
+    "almgren_impact_fair": (
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    # Almgren-Chriss (2000): permanent + temporary impact.\n"
+        "    signed_r = np.where(np.isfinite(r), r, 0.0)\n"
+        "    perm = np.cumsum(signed_r)\n"
+        "    rho = 0.10; eta = 0.5\n"
+        "    temp = np.zeros(n)\n"
+        "    for i in range(1, n):\n"
+        "        temp[i] = (1 - rho) * temp[i-1] + eta * br[i-1]\n"
+        "    return ew - perm * 0.01 - temp\n"
+    ),
+    "ow_propagator_fair": (
+        "def estimate_fair(ctx):\n"
+        "    br = ctx.col('bar_range_pips'); n = br.shape[0]\n"
+        "    r = ctx.col('vel_pips_h1'); a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    # Obizhaeva-Wang (2013): resilience propagator.\n"
+        "    beta = 0.10; kappa = 0.5\n"
+        "    J = np.zeros(n); Q = np.zeros(n)\n"
+        "    for i in range(1, n):\n"
+        "        J[i] = (1 - beta) * J[i-1] + beta * kappa * br[i-1]\n"
+        "        Q[i] = Q[i-1] + J[i]\n"
+        "    return ew - Q\n"
+    ),
+    "foucault_competition_fair": (
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); sp = ctx.col('spread_pips')\n"
+        "    n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    # Foucault (1999): tight spread = intense competition = less room for edge.\n"
+        "    sp_z = (sp - np.nanmean(sp)) / np.nanstd(sp) if np.nanstd(sp) > 0 else np.zeros_like(sp)\n"
+        "    return ew - sp_z * 1.0\n"
     ),
 }
 # ── Rich prompt templates (one per branch) ────────────────────────────────────
@@ -566,6 +653,155 @@ RICH_TEMPLATES: dict[str, str] = {
         "```\n"
         "FAILURE PATTERN: W too small (<10) fair is noisy; too large (>100) fair lags badly.\n"
     ),
+    "kyle_informed": (
+        "BRANCH: kyle_informed — informed-trader permanent impact (Kyle 1985, Econometrica)\n"
+        "FORMULA: fair = EWMA(p) + lambda_k * cumsum(informed_flow_proxy)\n"
+        "RATIONALE: Kyle (1985) showed that informed traders trade into prices gradually,"
+        " causing permanent price impact.  The fair price should reflect not just the current"
+        " mid but also the accumulated informed flow.  We proxy informed flow using large"
+        " bars (top quartile of |return|) with sign persistence.  When informed traders buy,"
+        " the fair price rises above the current mid because the market hasn't fully absorbed"
+        " the information yet.\n"
+        "KEY INSIGHT: Unlike fading (mean-reversion), Kyle's model says informed moves are"
+        " PERMANENT — fair follows the informed direction, not reverses it.\n"
+        "ALLOWED VARIATIONS: lambda_k ∈ {0.1, 0.3, 0.5}\n"
+        "REFERENCE IMPLEMENTATION:\n"
+        "```python\n"
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    sign_r = np.sign(np.where(np.isfinite(r), r, 0.0))\n"
+        "    abs_r = np.abs(np.where(np.isfinite(r), r, 0.0))\n"
+        "    informed = np.where(abs_r > np.quantile(abs_r, 0.75), sign_r, 0.0)\n"
+        "    lambda_k = 0.3\n"
+        "    return ew + lambda_k * np.cumsum(informed)\n"
+        "```\n"
+        "FAILURE PATTERN: lambda_k too large (>1.0) makes fair diverge from mid permanently;"
+        " too small (<0.05) gives negligible informed-flow signal.\n"
+    ),
+    "pin_informed_flow": (
+        "BRANCH: pin_informed_flow — PIN-informed-flow proxy (Easley-O'Hara 1987/92, JFE)\n"
+        "FORMULA: fair = EWMA(p) + gamma * cumsum(PIN_proxy)\n"
+        "RATIONALE: Easley-O'Hara's PIN (Probability of Informed Trading) model shows that"
+        " order flow imbalance predicts price changes because informed traders trade before"
+        " news is public.  Without Level-2 data, we proxy PIN using simultaneous high volume"
+        " and large range: bars where both volume and range are above their 1-sigma thresholds"
+        " are more likely to contain informed trading.  The cumulative PIN proxy shifts"
+        " fair in the direction of informed pressure.\n"
+        "KEY INSIGHT: This is the OPPOSITE of noise-trader fade.  When PIN is high, fair"
+        " moves WITH the informed direction, not against it.\n"
+        "ALLOWED VARIATIONS: gamma ∈ {0.0005, 0.001, 0.002}\n"
+        "REFERENCE IMPLEMENTATION:\n"
+        "```python\n"
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    vol = ctx.col('tick_volume'); n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    vol_z = (vol - np.nanmean(vol)) / np.nanstd(vol) if np.nanstd(vol) > 0 else np.zeros_like(vol)\n"
+        "    range_z = (br - np.nanmean(br)) / np.nanstd(br) if np.nanstd(br) > 0 else np.zeros_like(br)\n"
+        "    pin_proxy = np.where((vol_z > 1) & (range_z > 1), np.sign(r), 0.0)\n"
+        "    pin_proxy = np.where(np.isfinite(pin_proxy), pin_proxy, 0.0)\n"
+        "    gamma = 0.001\n"
+        "    return ew + gamma * np.cumsum(pin_proxy)\n"
+        "```\n"
+        "FAILURE PATTERN: gamma too large (>0.01) makes fair diverge; too small (<0.0001)"
+        " gives negligible signal.\n"
+    ),
+    "almgren_impact": (
+        "BRANCH: almgren_impact — permanent+temporary market impact (Almgren-Chriss 2000, J. Risk)\n"
+        "FORMULA: fair = EWMA(p) - 0.01*perm - temp; temp decays at rate rho\n"
+        "RATIONALE: Almgren-Chriss decompose market impact into permanent (shifts the"
+        " efficient price) and temporary (mean-reverts as liquidity replenishes).  The observed"
+        " mid includes both.  By subtracting the estimated temporary impact, we get a cleansed"
+        " fair price closer to the true efficient price.  Permanent impact is proxied by"
+        " cumulative signed flow; temporary by exponentially decaying bar-range.\n"
+        "WHY FX: FX markets are deep and liquid, so temporary impact decays quickly (~10 bars)."
+        " Permanent impact is small but persistent.\n"
+        "ALLOWED VARIATIONS: rho ∈ {0.05, 0.10}, eta ∈ {0.3, 0.5}\n"
+        "REFERENCE IMPLEMENTATION:\n"
+        "```python\n"
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    signed_r = np.where(np.isfinite(r), r, 0.0)\n"
+        "    perm = np.cumsum(signed_r)\n"
+        "    rho = 0.10; eta = 0.5\n"
+        "    temp = np.zeros(n)\n"
+        "    for i in range(1, n):\n"
+        "        temp[i] = (1 - rho) * temp[i-1] + eta * br[i-1]\n"
+        "    return ew - perm * 0.01 - temp\n"
+        "```\n"
+        "FAILURE PATTERN: eta too large (>1.0) over-corrects; rho too small (<0.01) makes"
+        " temporary impact accumulate forever.\n"
+    ),
+    "ow_propagator": (
+        "BRANCH: ow_propagator — resilience propagator (Obizhaeva-Wang 2013, J. Financial Markets)\n"
+        "FORMULA: fair = EWMA(p) - Q; Q accumulates impact J that decays at rate beta\n"
+        "RATIONALE: Obizhaeva-Wang model the limit order book as having finite depth.  A trade"
+        " consumes liquidity, shifting the mid.  After the trade, new limit orders arrive at rate"
+        " beta, gradually restoring the book.  The observed mid includes the cumulative impact Q."
+        " By subtracting Q, we recover the pre-impact fair price.  This is a more nuanced model"
+        " than simple exponential decay because it tracks cumulative displacement, not just"
+        " current impact.\n"
+        "WHY FX: At 100-tick bars, the book has partially recovered between bars, so the"
+        " propagator captures the residual imbalance.\n"
+        "ALLOWED VARIATIONS: beta ∈ {0.05, 0.10}, kappa ∈ {0.3, 0.5}\n"
+        "REFERENCE IMPLEMENTATION:\n"
+        "```python\n"
+        "def estimate_fair(ctx):\n"
+        "    br = ctx.col('bar_range_pips'); n = br.shape[0]\n"
+        "    r = ctx.col('vel_pips_h1'); a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    beta = 0.10; kappa = 0.5\n"
+        "    J = np.zeros(n); Q = np.zeros(n)\n"
+        "    for i in range(1, n):\n"
+        "        J[i] = (1 - beta) * J[i-1] + beta * kappa * br[i-1]\n"
+        "        Q[i] = Q[i-1] + J[i]\n"
+        "    return ew - Q\n"
+        "```\n"
+        "FAILURE PATTERN: kappa too large (>1.0) makes Q diverge; beta too high (>0.50)"
+        " makes impact decay too fast to matter.\n"
+    ),
+    "foucault_competition": (
+        "BRANCH: foucault_competition — limit-order competition proxy (Foucault 1999, J. Financial Economics)\n"
+        "FORMULA: fair = EWMA(p) - z_spread * scale\n"
+        "RATIONALE: Foucault (1999) models competition among limit-order submitters."
+        " When competition is intense (tight spreads), the fair price is closer to the mid"
+        " because there's little room for edge.  When competition is relaxed (wide spreads),"
+        " the fair price can deviate more from mid because liquidity providers demand"
+        " compensation.  We proxy competition intensity using spread z-score.\n"
+        "KEY INSIGHT: This is NOT a spread-crossing strategy; it adjusts fair price for"
+        " the expected profit required by liquidity providers given current competition.\n"
+        "ALLOWED VARIATIONS: scale ∈ {0.5, 1.0, 2.0}\n"
+        "REFERENCE IMPLEMENTATION:\n"
+        "```python\n"
+        "def estimate_fair(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); sp = ctx.col('spread_pips')\n"
+        "    n = r.shape[0]; a = 0.02\n"
+        "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n):\n"
+        "        acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    sp_z = (sp - np.nanmean(sp)) / np.nanstd(sp) if np.nanstd(sp) > 0 else np.zeros_like(sp)\n"
+        "    return ew - sp_z * 1.0\n"
+        "```\n"
+        "FAILURE PATTERN: scale too large (>5.0) makes fair overshoot; too small (<0.1)"
+        " gives negligible adjustment.\n"
+    ),
 }
 
 # ── Cross-branch recombination prompts ───────────────────────────────────────
@@ -649,6 +885,54 @@ CROSS_BRANCH_PROMPTS: dict[tuple[str, str], str] = {
         " trend but is contaminated by short-term noise.  Hasbrouck is noise-free but trend-free."
         " Together: use Hasbrouck as the fair and add the cointegration trend as a slow drift"
         " adjustment.  This gives a fair price that both trends and filters noise.\n"
+        "Write a single `estimate_fair(ctx)` that combines both ideas.\n"
+    ),
+    ("kyle_informed", "pin_informed_flow"): (
+        "COMBINATION: kyle_informed + pin_informed_flow\n"
+        "SYNERGY: Kyle (1985) models permanent impact from informed trading; Easley-O'Hara"
+        " PIN identifies which bars are most likely informed.  Kyle gives the DIRECTION of"
+        " informed flow; PIN gives the INTENSITY.  Together: use PIN to weight Kyle's"
+        " informed-flow adjustment more heavily on high-PIN bars and less on noise bars.\n"
+        "Write a single `estimate_fair(ctx)` that combines both ideas.\n"
+    ),
+    ("almgren_impact", "ow_propagator"): (
+        "COMBINATION: almgren_impact + ow_propagator\n"
+        "SYNERGY: Almgren-Chriss (2000) decompose impact into permanent and temporary."
+        " Obizhaeva-Wang (2013) model the book as a propagator with resilience.  Both are"
+        " impact-correction models but at different granularities.  Almgren-Chriss is a"
+        " two-component model (perm vs temp); OW is a continuous propagator.  Together:"
+        " use OW as the fine-grained impact estimator and Almgren-Chriss as a coarse"
+        " calibration for the permanent component.\n"
+        "Write a single `estimate_fair(ctx)` that combines both ideas.\n"
+    ),
+    ("hasbrouck_efficient", "kyle_informed"): (
+        "COMBINATION: hasbrouck_efficient + kyle_informed\n"
+        "SYNERGY: Hasbrouck (1993) filters noise to find the random-walk efficient price."
+        " Kyle (1985) shows that informed trading causes PERMANENT shifts in the efficient"
+        " price.  Hasbrouck's filter is too slow to catch informed-driven regime shifts;"
+        " Kyle's model captures the direction but not the magnitude.  Together: use Hasbrouck"
+        " as the baseline fair and add Kyle's informed-flow as a drift adjustment when"
+        " informed activity is detected.\n"
+        "Write a single `estimate_fair(ctx)` that combines both ideas.\n"
+    ),
+    ("barzykin_propagator", "ow_propagator"): (
+        "COMBINATION: barzykin_propagator + ow_propagator\n"
+        "SYNERGY: Barzykin (2025/26) models transient impact decay from past trades."
+        " Obizhaeva-Wang (2013) model the limit order book as a resilience propagator."
+        " Both subtract estimated impact from mid to recover fair price.  Barzykin uses"
+        " a simple AR(1) on bar range; OW uses a two-state propagator (impact J and"
+        " cumulative displacement Q).  Together: use OW's more nuanced propagator as"
+        " the primary impact estimator and Barzykin's simpler model as a cross-check.\n"
+        "Write a single `estimate_fair(ctx)` that combines both ideas.\n"
+    ),
+    ("foucault_competition", "microprice_imbalance"): (
+        "COMBINATION: foucault_competition + microprice_imbalance\n"
+        "SYNERGY: Foucault (1999) adjusts fair for competition intensity (tight spread ="
+        " less edge).  Microprice imbalance (Madhavan 1997) measures order-flow pressure."
+        " When competition is tight AND imbalance is high, the fair should shift MORE because"
+        " the informed trader is overcoming competition.  When competition is tight AND"
+        " imbalance is low, the fair should shift LESS because there's no informed pressure."
+        " Let imbalance intensity scale the competition adjustment.\n"
         "Write a single `estimate_fair(ctx)` that combines both ideas.\n"
     ),
 }

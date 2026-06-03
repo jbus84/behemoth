@@ -17,6 +17,7 @@ class Node:
     se: float = 0.0
     # Branch-aware fields (optional — set by branch-aware drivers)
     branch: str | None = None  # literature branch tag, e.g. "mean_reversion_gate"
+    concepts: list[str] = field(default_factory=list)  # atomic concept tags
 
 
 def _rank_scores(nodes: list[Node]) -> dict[int, float]:
@@ -140,6 +141,63 @@ def select_diversity_with_priors(nodes: list[Node], c_puct: float = 1.0,
         # Prior boost: multiply normalised score by branch prior from Level 1
         prior = branch_priors.get(nd.branch, 1.0) if branch_priors else 1.0
         v = norm[i] * prior + explore + diversity
+        if v > best_v:
+            best_v, best_i = v, i
+    return nodes[best_i]
+
+
+def select_diversity_with_history(nodes: list[Node], c_puct: float = 1.0,
+                                   c_branch: float = 0.5,
+                                   branch_priors: dict[str, float] | None = None,
+                                   concept_priors: dict[str, float] | None = None,
+                                   concept_synergy_fn=None,
+                                   rng=None) -> Node:
+    """Branch-aware UCB selection with historical priors and concept synergy.
+
+    Combines:
+    - Normalised node score
+    - Standard PUCT exploration
+    - Branch diversity bonus
+    - Historical branch prior (from accumulated TreeTracker stats)
+    - Historical concept prior (from accumulated concept stats)
+    - Concept synergy bonus (concepts that co-occur in successful programs)
+
+    Parameters
+    ----------
+    branch_priors : dict[str, float] | None
+        Mapping branch -> prior weight from historical performance.
+    concept_priors : dict[str, float] | None
+        Mapping concept -> prior weight from historical performance.
+    concept_synergy_fn : callable | None
+        Function(concepts_list) -> float synergy bonus.
+    """
+    norm = _normalised_scores(nodes)
+    n_total = sum(n.visits for n in nodes)
+    branch_counts = _branch_counts(nodes)
+    total_nodes = sum(branch_counts.values())
+    best_i, best_v = 0, -1e18
+    for i, nd in enumerate(nodes):
+        p = 1.0 / len(nodes)
+        explore = c_puct * p * np.sqrt(n_total) / (1 + nd.visits)
+        branch_n = branch_counts.get(nd.branch, 1)
+        diversity = c_branch * np.sqrt(total_nodes) / (1 + branch_n)
+
+        # Historical branch prior
+        prior = branch_priors.get(nd.branch, 1.0) if branch_priors else 1.0
+
+        # Concept-level prior (if available)
+        concept_prior = 1.0
+        if concept_priors and hasattr(nd, 'concepts') and nd.concepts:
+            # Average concept prior for this node's concepts
+            cp = [concept_priors.get(c, 1.0) for c in nd.concepts]
+            concept_prior = float(np.mean(cp)) if cp else 1.0
+
+        # Concept synergy bonus
+        synergy = 0.0
+        if concept_synergy_fn and hasattr(nd, 'concepts') and nd.concepts:
+            synergy = concept_synergy_fn(nd.concepts)
+
+        v = norm[i] * prior * concept_prior + explore + diversity + synergy
         if v > best_v:
             best_v, best_i = v, i
     return nodes[best_i]
