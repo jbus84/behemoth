@@ -13,7 +13,9 @@ from scripts.era.llm import (
     propose_branch_program,
     recombine_branch_program,
 )
-from scripts.era.puct import Node, puct_search, select_diversity, select_thompson
+from scripts.era.puct import Node, puct_search, select_diversity, select_diversity_with_history, select_thompson
+from scripts.era_scalp.atomic_concepts import extract_concepts_from_source
+from scripts.era_scalp.tree_tracker import TreeTracker
 from scripts.era_scalp.bayes_edge import edge_verdict
 from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.cost_aware_score import GRID_H, GRID_H_SHORT, GRID_Q, CostAwarePerSymbolScorer
@@ -112,8 +114,11 @@ FAIR_TRIVIAL_ROOT = (
 def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                cache_dir="/tmp/era_eur_cache", p_recombine=0.25, p_cross_branch=0.35,
                c_branch=0.7, branch_depth_limit=3, seed_programs=None, archive=None,
-               fair_price_mode: bool = False):
-    """Branch-aware ERA-PUCT search.
+               fair_price_mode: bool = False,
+               tracker: TreeTracker | None = None,
+               warm_start: bool = False,
+               concept_mode: bool = False):
+    """Branch-aware ERA-PUCT search with optional persistent warm-start.
 
     Parameters
     ----------
@@ -142,6 +147,14 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     fair_price_mode : bool
         If True, programs define `estimate_fair(ctx)` and the harness trades on
         deviations from fair price using short horizons (h=1-20 bars).
+    tracker : TreeTracker | None
+        Persistent tracker for logging nodes and computing warm-start priors.
+    warm_start : bool
+        If True and tracker has historical data, use select_diversity_with_history
+        to bias selection toward historically successful branches/concepts.
+    concept_mode : bool
+        If True, extract atomic concepts from generated source and log them.
+        Enables concept-level priors and synergy bonuses when warm_start=True.
     """
     scorer = CostAwarePerSymbolScorer(splits, symbol, fair_price_mode=fair_price_mode)
     rng = random.Random(seed)
@@ -154,14 +167,16 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     rich_templates = FAIR_RICH_TEMPLATES if fair_price_mode else FADE_RICH_TEMPLATES
     cross_branch_index = FAIR_CROSS_BRANCH_INDEX if fair_price_mode else FADE_CROSS_BRANCH_INDEX
 
-    # Build forest with branch tags
+    # Build forest with branch tags and concepts
     forest = []
     for name, src in seed_programs.items():
         v, mean, se, lg = scorer.score(src, "validation")
         branch = seed_branch_tags.get(name, "baseline")
-        forest.append(
-            Node(payload=src, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch)
-        )
+        concepts = extract_concepts_from_source(src) if concept_mode else []
+        node = Node(payload=src, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch, concepts=concepts)
+        forest.append(node)
+        if tracker is not None:
+            tracker.log_node(src, branch, concepts, v, mean, se, None, 0)
     all_nodes = list(forest)
 
     # Collect branch list for cross-branch jumps
@@ -236,13 +251,17 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                 _branch_depth = 1
 
         v, mean, se, lg = scorer.score(child_src, "validation")
+        concepts = extract_concepts_from_source(child_src) if concept_mode else []
         child = Node(
             payload=child_src, score=v, parent=parent, logs=lg,
-            mean=mean, se=se, branch=child_branch,
+            mean=mean, se=se, branch=child_branch, concepts=concepts,
         )
         all_nodes.append(child)
         if archive is not None and v > -1e6 + 1:
             archive.save(child_src, v, mean, se, child_branch, parent, None)
+        if tracker is not None:
+            parent_payload = parent.payload if parent else None
+            tracker.log_node(child_src, child_branch, concepts, v, mean, se, parent_payload, generation=len(all_nodes))
         return child
 
     # Progress logging
@@ -264,12 +283,31 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
         return child
 
     # Selection function
+    branch_priors = None
+    concept_priors = None
+    synergy_fn = None
+    if warm_start and tracker is not None:
+        branch_priors = tracker.compute_branch_priors()
+        if concept_mode:
+            concept_priors = tracker.compute_concept_priors()
+            synergy_fn = tracker.concept_synergy_bonus
+
     if select_policy == "thompson":
         def _select_fn(ns, c):
             return select_thompson(ns, nprng)
     elif select_policy == "diversity":
-        def _select_fn(ns, c):
-            return select_diversity(ns, c_puct=c, c_branch=c_branch, rng=nprng)
+        if warm_start and branch_priors:
+            def _select_fn(ns, c):
+                return select_diversity_with_history(
+                    ns, c_puct=c, c_branch=c_branch,
+                    branch_priors=branch_priors,
+                    concept_priors=concept_priors,
+                    concept_synergy_fn=synergy_fn,
+                    rng=nprng,
+                )
+        else:
+            def _select_fn(ns, c):
+                return select_diversity(ns, c_puct=c, c_branch=c_branch, rng=nprng)
     else:
         _select_fn = None  # default rank-based select
 
@@ -331,6 +369,10 @@ def main() -> None:
                     help="save programs with validation score above this threshold to data/era_winners/ (default -0.5)")
     ap.add_argument("--fair-price", action="store_true",
                     help="fair-price mode: programs define estimate_fair(ctx) and we trade on deviations (h=1-20)")
+    ap.add_argument("--warm-start", action="store_true",
+                    help="load historical branch/concept priors from data/era_trees/ to bias selection")
+    ap.add_argument("--concept-mode", action="store_true",
+                    help="extract atomic concepts from programs and enable concept-level warm-start priors")
     args = ap.parse_args()
     grid_h = GRID_H_SHORT if args.fair_price else GRID_H
     # For fair-price mode, score on all historical data (2018-2024) so the Bayesian
@@ -351,11 +393,16 @@ def main() -> None:
     else:
         seed_programs = None
     archive = WinnerArchive(args.symbol, threshold=args.archive_threshold)
+    tracker = TreeTracker(args.symbol) if (args.warm_start or args.concept_mode) else None
+    if tracker is not None:
+        tracker.start_run(budget=args.budget, seed=args.seed, mode="fair_price" if args.fair_price else "fade")
+
     nodes = run_search(sp, args.symbol, budget=args.budget, select_policy=args.policy,
                        seed=args.seed, seed_programs=seed_programs,
                        p_recombine=args.p_recombine, p_cross_branch=args.p_cross_branch,
                        c_branch=args.c_branch, branch_depth_limit=args.branch_depth_limit,
-                       archive=archive, fair_price_mode=args.fair_price)
+                       archive=archive, fair_price_mode=args.fair_price,
+                       tracker=tracker, warm_start=args.warm_start, concept_mode=args.concept_mode)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
     # Deduplicate by payload so the same generated program doesn't dominate the top-5 display.
     seen_payloads: set[str] = set()
@@ -376,8 +423,24 @@ def main() -> None:
                          f"raw={hv['raw_mean']:+.3f} (q{hv['q']} h{hv['h']} n={hv['n_trades']})")
             # Archive top-5 holdout results as well
             archive.save(nd.payload, nd.score, nd.mean, nd.se, nd.branch, nd.parent, hv)
+            # Log holdout to tracker for concept-level posterior updates
+            if tracker is not None:
+                tracker.log_node(nd.payload, nd.branch or "unknown", nd.concepts or [],
+                                 nd.score, nd.mean, nd.se,
+                                 parent_payload=nd.parent.payload if nd.parent else None,
+                                 generation=0, holdout_p=hv.get("p_positive"), holdout_raw=hv.get("raw_mean"))
         else:
             lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout: program error")
+    if tracker is not None:
+        tracker.end_run(extra_meta={"best_val": float(unique_ranked[0].score) if unique_ranked else None})
+        summary = tracker.summary()
+        lines.append(f"\n## TreeTracker summary")
+        lines.append(f"- branches tracked: {summary['branches_tracked']}")
+        lines.append(f"- concepts tracked: {summary['concepts_tracked']}")
+        if summary['top_branches']:
+            lines.append("- top branches: " + ", ".join(f"{b}({s:.2f})" for b, s, _ in summary['top_branches']))
+        if summary['top_concepts']:
+            lines.append("- top concepts: " + ", ".join(f"{c}({s:.2f})" for c, s, _ in summary['top_concepts'][:5]))
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text("\n".join(lines) + "\n")
     print(f"wrote {args.out}")
