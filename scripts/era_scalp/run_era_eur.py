@@ -732,6 +732,11 @@ def _temporal_tiebreak(nodes, verdict_by_id):
     return sorted(nodes, key=key, reverse=True)
 
 
+def _velocity_path(tv_dir, symbol: str, bar: str = "100tick") -> Path:
+    """Path to a symbol's velocity parquet for a given bar length (e.g. '100tick', '1000tick')."""
+    return Path(tv_dir) / f"{symbol}_{bar}_velocity.parquet"
+
+
 def temporal_annotation(payload, sp, symbol, *, fair_price_mode: bool = False, min_trades=50,
                         num_warmup=400, num_samples=400, num_chains=2):
     """Per-symbol temporal-robustness verdict on the combined train+validation span at the
@@ -769,6 +774,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default=SYMBOL_DEFAULT)
     ap.add_argument("--tv-dir", default="data/analysis/tick_velocity")
+    ap.add_argument("--bar", default="100tick",
+                    help="bar-length suffix of the velocity parquet (e.g. 100tick, 1000tick, 2000tick)")
     ap.add_argument("--budget", type=int, default=40)
     ap.add_argument("--policy", default="diversity",
                     choices=["thompson", "rank", "diversity"],
@@ -815,14 +822,14 @@ def main() -> None:
     # monthly-net posterior has ~84 months of statistical power.  Holdout stays 2025-26.
     if args.fair_price:
         sp = build_trade_splits(
-            args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
+            args.symbol, _velocity_path(args.tv_dir, args.symbol, args.bar),
             embargo=max(grid_h),
             train=("2018", "2019", "2020", "2021", "2022", "2023"),
             validation=("2018", "2019", "2020", "2021", "2022", "2023", "2024"),
             holdout=("2025", "2026"),
         )
     else:
-        sp = build_trade_splits(args.symbol, Path(args.tv_dir) / f"{args.symbol}_100tick_velocity.parquet",
+        sp = build_trade_splits(args.symbol, _velocity_path(args.tv_dir, args.symbol, args.bar),
                                 embargo=max(grid_h))
     if args.no_seeds:
         seed_programs = {"_root": FAIR_TRIVIAL_ROOT if args.fair_price else TRIVIAL_ROOT}
