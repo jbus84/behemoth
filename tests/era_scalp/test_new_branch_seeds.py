@@ -65,6 +65,35 @@ def test_vpin_seed_runs_and_is_causal():
     assert ok, reason
 
 
+def test_vpin_gate_is_not_degenerate():
+    """The gate must actually discriminate: open under balanced flow, block under
+    sustained one-sided (toxic) flow. Guards against the |sign*vol|==vol degeneracy
+    where VPIN is always ~1 and the gate is a no-op (or blocks everything)."""
+    src = FADE_SEED_PROGRAMS["vpin_gated_fade"]
+    n = 1500
+
+    # Balanced flow: bar_return_sign alternates +/- -> net cancels -> low VPIN -> trades.
+    Xb = np.zeros((n, len(NAMES)))
+    Xb[:, NAMES.index("vel_pips_h1")] = np.tile([1.0, -1.0], n // 2)
+    Xb[:, NAMES.index("tick_volume")] = 50.0
+    Xb[:, NAMES.index("bar_return_sign")] = np.tile([1.0, -1.0], n // 2)
+    ctx_bal = FeatureContext(X=Xb, names=list(NAMES), hour=(np.arange(n) % 24).astype(float))
+    sig_bal, err, _ = run_program(src, ctx_bal)
+    assert err is None, err
+
+    # Toxic flow: one-sided buys -> |net| ~ total -> high VPIN -> gate blocks.
+    Xt = Xb.copy()
+    Xt[:, NAMES.index("bar_return_sign")] = 1.0
+    ctx_tox = FeatureContext(X=Xt, names=list(NAMES), hour=(np.arange(n) % 24).astype(float))
+    sig_tox, err, _ = run_program(src, ctx_tox)
+    assert err is None, err
+
+    bal_n = int(np.isfinite(sig_bal).sum())
+    tox_n = int(np.isfinite(sig_tox).sum())
+    assert bal_n > tox_n, f"gate not discriminating: balanced={bal_n} toxic={tox_n}"
+    assert bal_n > 0, "gate blocks even balanced flow (threshold too tight)"
+
+
 def test_new_branches_have_cross_prompts():
     assert ("microprice", "mean_reversion_gate") in CROSS_BRANCH_INDEX
     assert ("flow_toxicity", "mean_reversion_gate") in CROSS_BRANCH_INDEX
