@@ -1,6 +1,7 @@
 import numpy as np
 
 from scripts.era_scalp.context import FeatureContext
+from scripts.era_scalp.fade_seeds import FADE_SEED_PROGRAMS
 from scripts.era_scalp.sandbox import causality_probe, run_program
 
 NAMES = ["spread_z", "vel_z_h1", "vel_pips_h1", "bar_return_sign", "hour_utc", "bar_range_pips"]
@@ -85,9 +86,6 @@ def test_probe_accepts_nan_safe_causal():
     assert err is None
     ok, reason = causality_probe(CAUSAL_NAN_SAFE, ctx, sig)
     assert ok, reason
-
-
-from scripts.era_scalp.fade_seeds import FADE_SEED_PROGRAMS
 
 
 def test_seed_programs_pass_hardened_probe():
