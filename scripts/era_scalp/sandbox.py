@@ -72,9 +72,16 @@ def run_program(src: str, ctx: FeatureContext, timeout: float = 10.0,
         return np.load(out), None, logs
 
 
-def causality_probe(src, ctx, clean_signal, n_cuts: int = 2, seed: int = 0,
-                    required_fn: str = "signal"):
-    """Reject programs whose past output depends on future bars."""
+def causality_probe(src, ctx, clean_signal, n_cuts: int = 5, seed: int = 0,
+                    required_fn: str = "signal", nan_frac: float = 0.3):
+    """Reject programs whose past output depends on future bars.
+
+    For each of `n_cuts` interior cut points k, every row at index > k is
+    replaced with large finite noise AND a `nan_frac` fraction of those future
+    rows are set to NaN. This catches both value leakage and NaN-pattern
+    (finiteness) leakage: any op reading future rows perturbs a past output and
+    is rejected. Returns (ok, reason).
+    """
     n = ctx.n_bars
     if n < 6:
         return True, "too-short-to-probe"
@@ -83,7 +90,12 @@ def causality_probe(src, ctx, clean_signal, n_cuts: int = 2, seed: int = 0,
     cuts = [max(1, n * (i + 1) // (n_cuts + 1)) for i in range(n_cuts)]
     for k in cuts:
         X2 = ctx.X.copy()
-        X2[k + 1 :, :] = rng.standard_normal(X2[k + 1 :, :].shape) * 10.0
+        fut = X2[k + 1 :, :]
+        fut[:] = rng.standard_normal(fut.shape) * 10.0
+        if fut.size:
+            nan_mask = rng.random(fut.shape) < nan_frac
+            fut[nan_mask] = np.nan
+        X2[k + 1 :, :] = fut
         hour2 = None
         if ctx.hour is not None:
             hour2 = ctx.hour.copy()

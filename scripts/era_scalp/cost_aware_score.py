@@ -71,10 +71,7 @@ class CostAwarePerSymbolScorer:
         if not lbs:
             return -1e6, float("nan"), float("nan"), "no admissible (q,h) cell"
         arr = np.asarray(lbs, float)
-        if self.fair_price_mode:
-            # Fair-price programs are allowed to be specialised to one (q,h) cell.
-            value = float(arr.max())
-        else:
-            # Directional mode: penalise fragility across the (q,h) grid.
-            value = float(arr.mean() - arr.std())
+        # Fair-price programs may specialise to one (q,h) cell (max); directional mode
+        # penalises fragility across the (q,h) grid (mean - std).
+        value = float(arr.max()) if self.fair_price_mode else float(arr.mean() - arr.std())
         return value, best[1], best[2], logs
