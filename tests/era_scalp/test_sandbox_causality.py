@@ -44,3 +44,44 @@ def test_static_check_requires_signal():
     ctx = _ctx()
     _, err, _ = run_program("def residual(ctx):\n    return ctx.col('vel_z_h1')\n", ctx)
     assert err is not None and "signal" in err.lower()
+
+
+# A program that leaks the NaN-pattern of FUTURE rows into a PAST output.
+FINITENESS_LEAK = (
+    "def signal(ctx):\n"
+    "    x = ctx.col('spread_z')\n"
+    "    n = x.shape[0]\n"
+    "    out = np.empty(n)\n"
+    "    for i in range(n):\n"
+    "        out[i] = np.isfinite(x[i + 1:]).sum()  # reads future finiteness\n"
+    "    return out\n"
+)
+
+
+def test_probe_rejects_finiteness_leak():
+    ctx = _ctx()
+    sig, err, _ = run_program(FINITENESS_LEAK, ctx)
+    assert err is None
+    ok, reason = causality_probe(FINITENESS_LEAK, ctx, sig)
+    assert not ok and ("future" in reason.lower() or "causal" in reason.lower())
+
+
+def test_probe_default_uses_five_cuts():
+    import inspect
+    sig = inspect.signature(causality_probe)
+    assert sig.parameters["n_cuts"].default == 5
+
+
+CAUSAL_NAN_SAFE = (
+    "def signal(ctx):\n"
+    "    x = ctx.col('vel_z_h1')\n"
+    "    return np.where(np.isfinite(x), x, 0.0)\n"
+)
+
+
+def test_probe_accepts_nan_safe_causal():
+    ctx = _ctx()
+    sig, err, _ = run_program(CAUSAL_NAN_SAFE, ctx)
+    assert err is None
+    ok, reason = causality_probe(CAUSAL_NAN_SAFE, ctx, sig)
+    assert ok, reason
