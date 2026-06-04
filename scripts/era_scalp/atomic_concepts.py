@@ -731,15 +731,22 @@ def render_composition(
     skeleton = SKELETONS.get(upgraded, SKELETONS["simple"])
     params = params or {}
 
-    # Handle dual_base_switch edge case: if base is present but slow_base/fast_base
-    # are not, copy base code to both slots so the combination operator works.
+    # Handle dual_base_switch edge case: ensure both slow_base and fast_base are
+    # present.  If base is present, copy it to missing slots.  If only one of
+    # slow_base/fast_base is present, copy it to the other so the combination
+    # operator never falls back to the 0.0 default.
     _ops = dict(operators)
-    if upgraded == "dual_base_switch" and "base" in _ops and ("slow_base" not in _ops or "fast_base" not in _ops):
-        base_op = _ops.pop("base")
-        if "slow_base" not in _ops:
-            _ops["slow_base"] = base_op
-        if "fast_base" not in _ops:
-            _ops["fast_base"] = base_op
+    if upgraded == "dual_base_switch":
+        if "base" in _ops and ("slow_base" not in _ops or "fast_base" not in _ops):
+            base_op = _ops.pop("base")
+            if "slow_base" not in _ops:
+                _ops["slow_base"] = base_op
+            if "fast_base" not in _ops:
+                _ops["fast_base"] = base_op
+        if "slow_base" in _ops and "fast_base" not in _ops:
+            _ops["fast_base"] = _ops["slow_base"]
+        if "fast_base" in _ops and "slow_base" not in _ops:
+            _ops["slow_base"] = _ops["fast_base"]
         operators = _ops
 
     # Collect operator code for each slot
@@ -766,7 +773,12 @@ def render_composition(
                 code = code.replace(f"{{{{{ph}}}}}", "vol_adapted > 1.5")
             else:
                 code = code.replace(f"{{{{{ph}}}}}", "0.0")
-        slot_code[slot] = textwrap.indent(code.strip(), "    ")
+        code = textwrap.indent(code.strip(), "    ")
+        # For dual_base_switch, base estimators assign to `base`; copy to slot name
+        # so the combination operator can reference slow_base / fast_base distinctly.
+        if upgraded == "dual_base_switch" and slot in ("slow_base", "fast_base"):
+            code += f"\n    {slot} = base"
+        slot_code[slot] = code
 
     # Build zero-default declarations for slots that aren't present (so combination
     # operators like additive_blend can safely reference e.g. `calendar`).

@@ -264,15 +264,27 @@ def build_atomic_recombine_prompt(compA: dict, scoreA: float,
 
 
 def extract_composition(resp: str) -> dict:
-    """Parse a JSON composition from LLM response. Returns {} on failure."""
-    # Look for a JSON object
-    m = re.search(r"\{.*\}", resp, re.DOTALL)
-    if not m:
-        return {}
-    try:
-        return json.loads(m.group(0))
-    except json.JSONDecodeError:
-        return {}
+    """Parse a JSON composition from LLM response. Returns {} on failure.
+
+    Uses a brace-balancing scan so nested JSON objects are parsed correctly
+    even when the response contains multiple JSON blocks or prose.
+    """
+    # Try each '{' position with a simple brace counter
+    for start in range(len(resp)):
+        if resp[start] != "{":
+            continue
+        depth = 0
+        for end in range(start, len(resp)):
+            if resp[end] == "{":
+                depth += 1
+            elif resp[end] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(resp[start:end + 1])
+                    except json.JSONDecodeError:
+                        break  # malformed at this start; try next
+    return {}
 
 
 def extract_composition_with_prior(resp: str) -> tuple[dict, float]:
