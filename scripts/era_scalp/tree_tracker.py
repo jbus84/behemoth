@@ -16,8 +16,6 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-
 
 # ── Data structures ─────────────────────────────────────────────────────────
 
@@ -41,7 +39,7 @@ class NodeRecord:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "NodeRecord":
+    def from_dict(cls, d: dict) -> NodeRecord:
         return cls(**d)
 
 
@@ -71,7 +69,7 @@ class BranchStats:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "BranchStats":
+    def from_dict(cls, d: dict) -> BranchStats:
         return cls(**{k: v for k, v in d.items() if k in {f.name for f in cls.__dataclass_fields__.values()}})
 
 
@@ -109,7 +107,7 @@ class ConceptStats:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ConceptStats":
+    def from_dict(cls, d: dict) -> ConceptStats:
         return cls(
             concept=d["concept"],
             category=d.get("category", ""),
