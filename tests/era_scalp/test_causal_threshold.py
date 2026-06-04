@@ -53,3 +53,20 @@ def test_evaluate_trades_default_is_unchanged():
     tm = np.array(["2024-01"] * n)
     df = evaluate_trades(signal, mid, cost, tm, pip=1e-4, q=0.50, h=10)
     assert len(df) > 0 and df["net"].mean() > 0
+
+
+from scripts.era_scalp.ab_causal_threshold import ab_edge_delta
+
+
+def test_ab_edge_delta_reports_both_modes():
+    n = 4000
+    rng = np.random.default_rng(2)
+    signal = rng.standard_normal(n)
+    mid = 1.0 + np.cumsum(rng.standard_normal(n)) * 1e-5
+    cost = np.full(n, 0.0)
+    tm = np.array(["2024-%02d" % (1 + (i // 400) % 12) for i in range(n)])
+    out = ab_edge_delta(signal, mid, cost, tm, pip=1e-4, q=0.95, h=10,
+                        warmup=500, recompute_every=200)
+    assert set(out) >= {"full_mean_net", "causal_mean_net", "full_n", "causal_n", "delta"}
+    assert out["full_n"] >= out["causal_n"]
+    assert np.isclose(out["delta"], out["full_mean_net"] - out["causal_mean_net"])
