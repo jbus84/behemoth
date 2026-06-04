@@ -77,12 +77,12 @@ def pooled_task_score(frames: list[pd.DataFrame]) -> float:
 
 
 def evaluate_fair_price_trades(fair_price, mid, cost, test_month, pip, q, h,
-                                deviation_mode="absolute"):
+                                deviation_mode="absolute", causal_threshold=False, warmup=2000, recompute_every=500):
     """Trade when fair deviates from mid.
 
     The program's `fair_price` is a synthetic price index (e.g. cumsum of
     vel_pips_h1).  We align it with `mid` by converting mid to pips-from-start
-    so the two series are directly comparable.
+    so the two series are directly comparable. Supports opt-in causal expanding-quantile threshold.
 
     Parameters
     ----------
@@ -117,8 +117,12 @@ def evaluate_fair_price_trades(fair_price, mid, cost, test_month, pip, q, h,
     else:
         spread = cost_arr * 2.0  # cost = half-spread
         abs_dev = np.abs(deviation) / np.maximum(spread, 1e-12)
-    thr = np.quantile(abs_dev[fin], q)
-    entry = fin & (abs_dev >= thr)
+    if causal_threshold:
+        thr = expanding_quantile_threshold(abs_dev, q, warmup=warmup, recompute_every=recompute_every)
+        entry = fin & np.isfinite(thr) & (abs_dev >= thr)
+    else:
+        thr = np.quantile(abs_dev[fin], q)
+        entry = fin & (abs_dev >= thr)
     # Trade direction: buy when fair > mid (deviation > 0), sell when fair < mid
     net = np.sign(deviation) * fwd - cost_arr
     return pd.DataFrame({"net": net[entry], "test_month": np.asarray(test_month)[entry]})
