@@ -3,6 +3,7 @@ import numpy as np
 from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.fade_seeds import (
     BRANCH_TAXONOMY,
+    CROSS_BRANCH_INDEX,
     FADE_SEED_PROGRAMS,
     RICH_TEMPLATES,
     SEED_BRANCH_TAGS,
@@ -62,3 +63,9 @@ def test_vpin_seed_runs_and_is_causal():
     assert np.isfinite(sig).sum() > 0
     ok, reason = causality_probe(src, ctx, sig)
     assert ok, reason
+
+
+def test_new_branches_have_cross_prompts():
+    assert ("microprice", "mean_reversion_gate") in CROSS_BRANCH_INDEX
+    assert ("flow_toxicity", "mean_reversion_gate") in CROSS_BRANCH_INDEX
+    assert ("mean_reversion_gate", "microprice") in CROSS_BRANCH_INDEX

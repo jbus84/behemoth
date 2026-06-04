@@ -937,6 +937,22 @@ CROSS_BRANCH_PROMPTS: dict[tuple[str, str], str] = {
         " temporal protection against both predictable and surprise microstructure events.\n"
         "Write a single `signal(ctx)` that combines both ideas.\n"
     ),
+    ("microprice", "mean_reversion_gate"): (
+        "COMBINATION: microprice + mean_reversion_gate\n"
+        "SYNERGY: The variance-ratio gate decides WHEN to fade (mean-reverting regimes);"
+        " the microprice decides the unbiased fair value to fade TOWARD. Plain-mid fades"
+        " are biased by order-flow imbalance even inside a reverting regime; using the"
+        " microprice as the fair anchor removes that bias.\n"
+        "Write a single `signal(ctx)` that combines both ideas.\n"
+    ),
+    ("flow_toxicity", "mean_reversion_gate"): (
+        "COMBINATION: flow_toxicity + mean_reversion_gate\n"
+        "SYNERGY: The VR gate identifies mean-reverting regimes but is blind to WHO is"
+        " trading. A reverting window driven by toxic one-sided flow still loses to"
+        " adverse selection. The VPIN gate blocks high-toxicity bars so the fade only"
+        " fires when the regime reverts AND the flow is balanced.\n"
+        "Write a single `signal(ctx)` that combines both ideas.\n"
+    ),
 }
 
 # Convenience: all ordered cross-branch pairs (A,B) and (B,A) map to the same prompt.
