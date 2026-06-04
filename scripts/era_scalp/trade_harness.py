@@ -16,6 +16,33 @@ def forward_return(mid: np.ndarray, pip: float, h: int) -> np.ndarray:
     return out
 
 
+def expanding_quantile_threshold(
+    signal: np.ndarray, q: float, warmup: int = 2000, recompute_every: int = 500
+) -> np.ndarray:
+    """Causal per-bar conviction threshold.
+
+    At bar t the threshold is the q-quantile of |signal[:t+1]| over the finite
+    values seen so far. To bound cost it is recomputed every `recompute_every`
+    bars and held constant between recomputes. Returns NaN (no-trade) until at
+    least `warmup` finite samples have accrued. Uses only past data, so a future
+    perturbation can never change a past threshold value.
+    """
+    a = np.abs(np.asarray(signal, float))
+    n = a.shape[0]
+    thr = np.full(n, np.nan)
+    fin = np.isfinite(a)
+    cum_fin = np.cumsum(fin)
+    last = np.nan
+    for t in range(n):
+        if cum_fin[t] < warmup:
+            continue
+        if not np.isfinite(last) or (t % recompute_every == 0):
+            hist = a[: t + 1][fin[: t + 1]]
+            last = float(np.quantile(hist, q))
+        thr[t] = last
+    return thr
+
+
 def evaluate_trades(signal, mid, cost, test_month, pip, q, h):
     """Top-q |conviction| entries; side=sign(signal); exit at t+h; net = side*fwd - cost."""
     raw = np.asarray(signal, float)
