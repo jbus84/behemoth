@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -217,6 +218,157 @@ def build_self_correct_prompt(parent_src: str, error_log: str,
         f"FAILED PROGRAM:\n```python\n{parent_src}\n```\n\n"
         f"Output ONLY the corrected ```python block.\n"
     )
+
+
+# ---------------------------------------------------------------------------
+# Atomic composition helpers (new — for --atomic-mode)
+# ---------------------------------------------------------------------------
+
+def _composition_to_json(comp: dict) -> str:
+    return json.dumps(comp, indent=2, default=str)
+
+
+def build_atomic_propose_prompt(parent_comp: dict, parent_score: float,
+                                 target_slot: str, new_concept: str) -> str:
+    """Prompt LLM to change ONE operator slot in a composition."""
+    return (
+        "You are evolving a fair-price estimator by modifying atomic microstructure operators.\n"
+        "The current composition is a JSON object with skeleton, operators, and parameters.\n\n"
+        f"CURRENT COMPOSITION (score {parent_score:.3f}):\n"
+        f"```json\n{_composition_to_json(parent_comp)}\n```\n\n"
+        f"YOUR TASK:\n"
+        f"Change ONLY the '{target_slot}' operator to '{new_concept}'.\n"
+        f"Keep all other operators and the skeleton identical.\n"
+        f"Fill in sensible parameter values for the new operator (use the allowed ranges shown in comments).\n"
+        f"Output ONLY a JSON object with the updated composition — no prose, no markdown, no python.\n"
+        f"Format: {{\"skeleton\": \"...\", \"operators\": {{...}}, \"params\": {{...}}}}\n"
+    )
+
+
+def build_atomic_recombine_prompt(compA: dict, scoreA: float,
+                                    compB: dict, scoreB: float) -> str:
+    """Prompt LLM to merge two atomic compositions."""
+    return (
+        "You are combining two fair-price estimators into one better composition.\n\n"
+        f"PARENT A (score {scoreA:.3f}):\n"
+        f"```json\n{_composition_to_json(compA)}\n```\n\n"
+        f"PARENT B (score {scoreB:.3f}):\n"
+        f"```json\n{_composition_to_json(compB)}\n```\n\n"
+        f"YOUR TASK:\n"
+        f"Merge the best ideas from BOTH parents into a single composition.\n"
+        f"You may take the base from one parent and the correction from the other,\n"
+        f"or keep both corrections and blend them, or choose a new skeleton if needed.\n"
+        f"Output ONLY a JSON object — no prose, no markdown, no python.\n"
+        f"Format: {{\"skeleton\": \"...\", \"operators\": {{...}}, \"params\": {{...}}}}\n"
+    )
+
+
+def extract_composition(resp: str) -> dict:
+    """Parse a JSON composition from LLM response. Returns {} on failure."""
+    # Look for a JSON object
+    m = re.search(r"\{.*\}", resp, re.DOTALL)
+    if not m:
+        return {}
+    try:
+        return json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return {}
+
+
+def extract_composition_with_prior(resp: str) -> tuple[dict, float]:
+    """Parse both composition and confidence from LLM response."""
+    comp = extract_composition(resp)
+    prior = extract_prior_prob(resp)
+    return comp, prior
+
+
+def build_atomic_extract_prompt(source: str, original_comp: dict) -> str:
+    return (
+        "You are analyzing a Python function that estimates a fair price.\n"
+        "This function was originally generated from the following atomic composition:\n"
+        f"```json\n{_composition_to_json(original_comp)}\n```\n\n"
+        "Here is the corrected source code:\n"
+        f"```python\n{source}\n```\n\n"
+        "Your task: reverse-engineer the corrected source back into the atomic composition format.\n"
+        "Identify which operators from the original composition are still present (possibly with modified parameters), "
+        "and which new operators have been introduced. Output ONLY a JSON object in this exact format:\n"
+        '{"skeleton": "...", "operators": {"slot_name": "operator_name", ...}, "params": {"param_name": value, ...}}\n'
+    )
+
+
+def extract_composition_from_source(source: str, original_comp: dict, cache_dir, caller=None) -> dict | None:
+    """Attempt to recover an atomic composition dict from a corrected source string."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_atomic_extract_prompt(source, original_comp)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"atomic_extract_{key}.json"
+    if cached.exists():
+        try:
+            return json.loads(cached.read_text())
+        except json.JSONDecodeError:
+            pass
+    resp = caller(prompt)
+    comp = extract_composition(resp)
+    if comp:
+        cached.write_text(json.dumps(comp))
+    return comp if comp else None
+
+
+def propose_atomic_change(parent_comp, parent_score, target_slot: str,
+                          new_concept: str, cache_dir, caller=None) -> tuple[dict, float]:
+    """Ask LLM to change one operator slot in a composition."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_atomic_propose_prompt(parent_comp, parent_score, target_slot, new_concept)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"atomic_propose_{target_slot}_{new_concept}_{key}.json"
+    if cached.exists():
+        text = cached.read_text()
+        parts = text.split("\n---PRIOR---\n")
+        if len(parts) == 2:
+            try:
+                return json.loads(parts[0]), float(parts[1])
+            except (json.JSONDecodeError, ValueError):
+                pass
+        try:
+            return json.loads(text), 0.5
+        except json.JSONDecodeError:
+            pass
+    resp = caller(prompt)
+    comp, prior = extract_composition_with_prior(resp)
+    if comp:
+        cached.write_text(json.dumps(comp) + "\n---PRIOR---\n" + str(prior))
+    return comp, prior
+
+
+def recombine_atomic_compositions(compA, scoreA, compB, scoreB, cache_dir, caller=None) -> tuple[dict, float]:
+    """Ask LLM to merge two atomic compositions."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_atomic_recombine_prompt(compA, scoreA, compB, scoreB)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"atomic_recombine_{key}.json"
+    if cached.exists():
+        text = cached.read_text()
+        parts = text.split("\n---PRIOR---\n")
+        if len(parts) == 2:
+            try:
+                return json.loads(parts[0]), float(parts[1])
+            except (json.JSONDecodeError, ValueError):
+                pass
+        try:
+            return json.loads(text), 0.5
+        except json.JSONDecodeError:
+            pass
+    resp = caller(prompt)
+    comp, prior = extract_composition_with_prior(resp)
+    if comp:
+        cached.write_text(json.dumps(comp) + "\n---PRIOR---\n" + str(prior))
+    return comp, prior
 
 
 # ---------------------------------------------------------------------------
