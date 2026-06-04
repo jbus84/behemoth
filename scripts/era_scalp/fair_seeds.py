@@ -28,9 +28,6 @@ Literature basis:
 """
 from __future__ import annotations
 
-import numpy as np
-
-
 # ── Shared fair-price baseline ────────────────────────────────────────────────
 # Slow EWMA of cumulative mid (equivalent to EWMA of price level).
 _FAIR_BASELINE = (
