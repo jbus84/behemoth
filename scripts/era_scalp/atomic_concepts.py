@@ -536,6 +536,39 @@ COMBINATION_OPERATORS: dict[str, str] = {
         "    _fast = base\n"
         "fair = np.where(_vol > {{threshold}}, _fast, _slow)\n"
     ),
+    "clipped_blend": (
+        "# Combine: additive blend with correction clipped to +/- k * its own causal std\n"
+        "correction = correction * np.ones_like(base)\n"
+        "c_cum = np.cumsum(np.where(np.isfinite(correction), correction, 0.0))\n"
+        "c_cnt = np.cumsum(np.where(np.isfinite(correction), 1.0, 0.0))\n"
+        "c_mean = c_cum / np.maximum(c_cnt, 1.0)\n"
+        "c_sq = np.cumsum(np.where(np.isfinite(correction), correction * correction, 0.0))\n"
+        "c_std = np.sqrt(np.maximum(c_sq / np.maximum(c_cnt, 1.0) - c_mean * c_mean, 0.0))\n"
+        "cap = {{k}} * (c_std + 1e-9)\n"
+        "corr_clipped = np.clip(correction, -cap, cap)\n"
+        "fair = {{w_base}} * base + {{w_corr}} * corr_clipped + {{w_cal}} * calendar\n"
+    ),
+    "zscore_blend": (
+        "# Combine: blend the correction normalised by its own causal std (scale-invariant)\n"
+        "correction = correction * np.ones_like(base)\n"
+        "c_cum = np.cumsum(np.where(np.isfinite(correction), correction, 0.0))\n"
+        "c_cnt = np.cumsum(np.where(np.isfinite(correction), 1.0, 0.0))\n"
+        "c_mean = c_cum / np.maximum(c_cnt, 1.0)\n"
+        "c_sq = np.cumsum(np.where(np.isfinite(correction), correction * correction, 0.0))\n"
+        "c_std = np.sqrt(np.maximum(c_sq / np.maximum(c_cnt, 1.0) - c_mean * c_mean, 0.0))\n"
+        "corr_z = np.where(c_std > 0, (correction - c_mean) / (c_std + 1e-9), 0.0)\n"
+        "fair = {{w_base}} * base + {{w_corr}} * corr_z + {{w_cal}} * calendar\n"
+    ),
+    "soft_gate": (
+        "# Combine: sigmoid-weighted soft regime gate on the correction (smooth conditional_switch)\n"
+        "correction = correction * np.ones_like(base)\n"
+        "try:\n"
+        "    _g = vol_adapted * np.ones_like(base)\n"
+        "except NameError:\n"
+        "    _g = np.zeros_like(base)\n"
+        "w = 1.0 / (1.0 + np.exp(-{{gamma}} * (_g - {{threshold}})))\n"
+        "fair = base + w * correction + {{w_cal}} * calendar\n"
+    ),
 }
 
 
@@ -582,6 +615,9 @@ CONCEPT_TAXONOMY: dict[str, tuple[str, str]] = {
     "multiplicative_gate": ("combination", "Multiplicative scaling gate"),
     "conditional_switch": ("combination", "Conditional regime switch"),
     "vol_adaptive_base": ("combination", "Vol-adaptive base selection"),
+    "clipped_blend": ("combination", "Additive blend with the correction clipped to +/-k*its causal std (robust to runaway corrections)"),
+    "zscore_blend": ("combination", "Blend the correction normalised by its causal std (scale-invariant across symbols)"),
+    "soft_gate": ("combination", "Sigmoid-weighted soft regime gate on the correction (smooth conditional_switch)"),
 }
 
 
@@ -810,7 +846,7 @@ def render_composition(
         placeholders = set(re.findall(r"\{\{(\w+)\}\}", code))
         for ph in placeholders:
             # Numeric defaults
-            if ph in ("alpha", "alpha_min", "alpha_max", "lambda", "lam", "mult", "scale", "w_base", "w_corr", "w_cal", "gain", "threshold", "reversion", "beta"):
+            if ph in ("alpha", "alpha_min", "alpha_max", "lambda", "lam", "mult", "scale", "w_base", "w_corr", "w_cal", "gain", "gamma", "threshold", "reversion", "beta"):
                 code = code.replace(f"{{{{{ph}}}}}", "0.5")
             elif ph in ("W",):
                 code = code.replace(f"{{{{{ph}}}}}", "20")
