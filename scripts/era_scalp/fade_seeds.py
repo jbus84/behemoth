@@ -59,6 +59,8 @@ BRANCH_TAXONOMY: dict[str, str] = {
     "flow_intensity": "Gate fades during self-exciting directional flow episodes (Hawkes-style magnitude persistence).",
     "asymmetric_vol": "Gate fades when downside Parkinson volatility dominates upside (bad-volatility regime).",
     "seasonality": "Gate fades during FX fix windows where microstructure is distorted by fix-order flow.",
+    "microprice": "Imbalance-weighted fair value (Stoikov microprice proxy): shift fair toward the side the bar closed on; fade deviation from microprice rather than from a symmetric EWMA.",
+    "flow_toxicity": "Gate fades by order-flow toxicity (VPIN proxy): abstain when the EWMA of |signed flow| / total flow is high (informed/directional flow); fade only into balanced, uninformed flow.",
 }
 
 # ── Seed-to-branch mapping ───────────────────────────────────────────────────
@@ -81,6 +83,8 @@ SEED_BRANCH_TAGS: dict[str, str] = {
     "hawkes_gate": "flow_intensity",
     "asymmetric_vol_gate": "asymmetric_vol",
     "fix_window_gate": "seasonality",
+    "microprice_fade": "microprice",
+    "vpin_gated_fade": "flow_toxicity",
 }
 
 # ── Rich prompt templates (one per branch) ───────────────────────────────────
@@ -696,6 +700,33 @@ RICH_TEMPLATES: dict[str, str] = {
         "CROSS-BRIDGE: Can combine with ANY gate — use fix-window as a temporal first-pass\n"
         "  filter, then apply VR, OFI, or liquidity on the remaining bars.\n"
     ),
+    "microprice": (
+        "BRANCH: microprice — imbalance-weighted fair value (Stoikov 2018 proxy)\n"
+        "FORMULA: micro_fair = EWMA(cumsum(returns)) + k * imbalance * bar_range;\n"
+        "         dev = micro_fair - cumsum(returns); side = sign(dev) (fade).\n"
+        "RATIONALE: Stoikov (2018, 'The micro-price'). The mid is a biased estimate of"
+        " the short-horizon price; the microprice tilts toward the heavier side. We lack"
+        " L1 sizes at 100-tick bars, so we proxy imbalance by where the bar closed within"
+        " its high-low range (hl_pos_delta_tick): a close near the high = buy pressure.\n"
+        "PROXY LIMITATION: hl_pos_delta_tick is a coarse imbalance proxy; true microprice"
+        " needs quote sizes.\n"
+        "ALLOWED VARIATIONS: k in {0.25, 0.5, 1.0}; alpha in {0.03, 0.05, 0.10}\n"
+        "FAILURE PATTERN: k too large (>1.5) makes the adjustment dominate the EWMA fair"
+        " value, turning the signal into a pure close-position momentum proxy.\n"
+    ),
+    "flow_toxicity": (
+        "BRANCH: flow_toxicity — VPIN order-flow toxicity gate\n"
+        "FORMULA: VPIN ~= EWMA(|sign*volume|) / EWMA(volume); gate opens when VPIN <= thr.\n"
+        "RATIONALE: Easley, Lopez de Prado & O'Hara (2012, RFS, 'Flow Toxicity and"
+        " Liquidity'). High VPIN = one-sided/informed flow; fading into informed flow is"
+        " adverse selection and loses. We proxy bucketed VPIN with a causal EWMA of"
+        " |signed flow| over total flow from bar_return_sign * tick_volume, and fade only"
+        " when toxicity is low (balanced two-sided flow).\n"
+        "WHY thr=0.6: above ~0.6 marks sustained one-sided pressure with no fade edge.\n"
+        "ALLOWED VARIATIONS: thr in {0.5, 0.6, 0.7}; b (EWMA) in {0.02, 0.05, 0.10}\n"
+        "FAILURE PATTERN: thr too low (<0.4) gates out almost every bar (no trades); thr"
+        " too high (>0.85) is effectively no gate and reverts to the baseline fade.\n"
+    ),
 }
 
 # ── Cross-branch recombination prompts ───────────────────────────────────────
@@ -1201,6 +1232,40 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
         "    # Fix windows: London 16:00 UTC and ECB ~13:00 UTC (Krohn et al. 2024, JF)\n"
         "    in_fix = ((hr >= 15.5) & (hr <= 16.5)) | ((hr >= 12.0) & (hr <= 13.5))\n"
         "    gate_ok = ~in_fix\n"
+        "    out = np.where(gate_ok, dev, np.nan)\n"
+        "    return out\n"
+    ),
+    "microprice_fade": (
+        "def signal(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); imb = ctx.col('hl_pos_delta_tick')\n"
+        "    rng_ = ctx.col('bar_range_pips'); n = r.shape[0]\n"
+        "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n): acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    k = 0.5\n"
+        "    adj = np.where(np.isfinite(imb) & np.isfinite(rng_), k * imb * rng_, 0.0)\n"
+        "    micro_fair = ew + adj\n"
+        "    dev = micro_fair - p\n"
+        "    return dev\n"
+    ),
+    "vpin_gated_fade": (
+        "def signal(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); sgn = ctx.col('bar_return_sign')\n"
+        "    vol = ctx.col('tick_volume'); n = r.shape[0]\n"
+        "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n): acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    dev = ew - p\n"
+        "    v = np.where(np.isfinite(vol), vol, 0.0)\n"
+        "    sg = np.where(np.isfinite(sgn), sgn, 0.0)\n"
+        "    signed = np.abs(sg * v)\n"
+        "    b = 0.05\n"
+        "    es = np.empty(n); et = np.empty(n); accs = signed[0]; acct = v[0] + 1e-9\n"
+        "    for i in range(n):\n"
+        "        accs = (1 - b) * accs + b * signed[i]; es[i] = accs\n"
+        "        acct = (1 - b) * acct + b * v[i]; et[i] = acct\n"
+        "    vpin = es / (et + 1e-9)\n"
+        "    gate_ok = vpin <= 0.6\n"
         "    out = np.where(gate_ok, dev, np.nan)\n"
         "    return out\n"
     ),
