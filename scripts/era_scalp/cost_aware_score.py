@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from statistics import NormalDist
+
 import numpy as np
 
 from scripts.era_scalp.bayes_edge import monthly_net
@@ -23,6 +25,34 @@ def fast_lower_bound(net_frame, z: float = 1.645):
     mean = float(m.mean())
     se = float(m.std(ddof=1) / np.sqrt(len(m)))
     return mean - z * se, mean, se
+
+
+def _sidak_z(z_base: float, m: int) -> float:
+    """One-sided z inflated for selecting the best of m cells (Šidák correction).
+
+    m <= 1 returns z_base unchanged. Treats the m grid cells as independent
+    (deliberately conservative for correlated cells — the safe direction for an
+    otherwise over-optimistic max-over-grid score)."""
+    if m <= 1:
+        return float(z_base)
+    nd = NormalDist()
+    alpha = 1.0 - nd.cdf(z_base)
+    alpha = min(max(alpha, 1e-9), 0.5)
+    return float(nd.inv_cdf((1.0 - alpha) ** (1.0 / m)))
+
+
+def fair_node_value(cells, m, z_base: float = 1.645) -> float:
+    """Fair-price node score: max over admissible (q,h) cells of the multiplicity-
+    corrected one-sided lower bound (mean - z_corr*se), where z_corr (Šidák) accounts
+    for selecting the best of m searched cells. Removes the best-of-grid selection
+    bias of a plain max(lb) while still letting a program specialise to one cell.
+
+    cells: iterable of (mean, se) for admissible cells. m: total cells searched."""
+    cells = list(cells)
+    if not cells:
+        return float("nan")
+    zc = _sidak_z(z_base, m)
+    return max(mean - zc * se for mean, se in cells)
 
 
 class CostAwarePerSymbolScorer:
@@ -55,7 +85,7 @@ class CostAwarePerSymbolScorer:
         if not ok:
             return -1e6, float("nan"), float("nan"), f"causality_probe: {reason}"
         cost = realistic_cost(d.spread_pips)
-        lbs, best = [], None
+        lbs, cells, best = [], [], None
         for q in GRID_Q:
             for h in self.grid_h:
                 if self.fair_price_mode:
@@ -66,12 +96,18 @@ class CostAwarePerSymbolScorer:
                 if not np.isfinite(lb):
                     continue
                 lbs.append(lb)
+                cells.append((mean, se))
                 if best is None or lb > best[0]:
                     best = (lb, mean, se)
         if not lbs:
             return -1e6, float("nan"), float("nan"), "no admissible (q,h) cell"
-        arr = np.asarray(lbs, float)
-        # Fair-price programs may specialise to one (q,h) cell (max); directional mode
-        # penalises fragility across the (q,h) grid (mean - std).
-        value = float(arr.max()) if self.fair_price_mode else float(arr.mean() - arr.std())
+        if self.fair_price_mode:
+            n_grid = len(GRID_Q) * len(self.grid_h)
+            value = fair_node_value(cells, m=n_grid, z_base=self.z)
+            zc = _sidak_z(self.z, n_grid)
+            bi = int(np.argmax([mean - zc * se for mean, se in cells]))
+            best = (value, cells[bi][0], cells[bi][1])
+        else:
+            arr = np.asarray(lbs, float)
+            value = float(arr.mean() - arr.std())
         return value, best[1], best[2], logs
