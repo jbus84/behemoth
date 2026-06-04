@@ -340,6 +340,54 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
         "lam = {{lam}}  # e.g. 0.001\n"
         "correction = lam * inventory\n"
     ),
+    "amihud_illiquidity": (
+        "# Correction: Amihud (2002) illiquidity — fade low-volume overshoots\n"
+        "r = ctx.col('vel_pips_h1'); vol = ctx.col('tick_volume'); n = r.shape[0]\n"
+        "rc = np.where(np.isfinite(r), r, 0.0)\n"
+        "vc = np.maximum(np.where(np.isfinite(vol), vol, 0.0), 1.0)\n"
+        "illiq = np.abs(rc) / vc\n"
+        "csum = np.cumsum(illiq); cnt = np.arange(1, n + 1, dtype=float)\n"
+        "mean = csum / cnt\n"
+        "csq = np.cumsum(illiq * illiq)\n"
+        "std = np.sqrt(np.maximum(csq / cnt - mean * mean, 0.0))\n"
+        "illiq_z = np.where(std > 0, (illiq - mean) / std, 0.0)\n"
+        "lam = {{lam}}  # e.g. 0.5\n"
+        "correction = -lam * np.sign(rc) * np.maximum(illiq_z, 0.0)\n"
+    ),
+    "bouchaud_propagator": (
+        "# Correction: Bouchaud et al. (2004) power-law transient-impact propagator\n"
+        "r = ctx.col('vel_pips_h1'); n = r.shape[0]; W = {{W}}  # e.g. 50\n"
+        "beta = {{beta}}  # power-law exponent, e.g. 0.5\n"
+        "sgn = np.sign(np.where(np.isfinite(r), r, 0.0))\n"
+        "kernel = 1.0 / np.power(1.0 + np.arange(W, dtype=float), beta)\n"
+        "impact = np.convolve(sgn, kernel)[:n]  # causal: impact[i] uses past signs only\n"
+        "correction = -{{lam}} * impact\n"
+    ),
+    "kyle_lambda_regression": (
+        "# Correction: rolling Kyle (1985) lambda from return ~ signed-volume regression\n"
+        "r = ctx.col('vel_pips_h1'); vol = ctx.col('tick_volume'); n = r.shape[0]; W = {{W}}  # e.g. 100\n"
+        "rc = np.where(np.isfinite(r), r, 0.0); v = np.where(np.isfinite(vol), vol, 0.0)\n"
+        "sv = np.sign(rc) * v\n"
+        "rp = np.concatenate([np.full(W - 1, np.nan), rc])\n"
+        "svp = np.concatenate([np.full(W - 1, np.nan), sv])\n"
+        "rw = np.lib.stride_tricks.sliding_window_view(rp, W)\n"
+        "svw = np.lib.stride_tricks.sliding_window_view(svp, W)\n"
+        "mr = np.nanmean(rw, axis=1); msv = np.nanmean(svw, axis=1)\n"
+        "cov = np.nanmean((rw - mr[:, None]) * (svw - msv[:, None]), axis=1)\n"
+        "var = np.nanmean((svw - msv[:, None]) ** 2, axis=1)\n"
+        "lam_k = np.where(var > 0, cov / var, 0.0)\n"
+        "correction = -{{scale}} * lam_k * np.cumsum(sv)\n"
+    ),
+    "bns_bipower_jump": (
+        "# Correction: Barndorff-Nielsen-Shephard bipower-variation jump detection\n"
+        "r = ctx.col('vel_pips_h1'); n = r.shape[0]; W = {{W}}  # e.g. 50\n"
+        "rc = np.where(np.isfinite(r), r, 0.0); absr = np.abs(rc)\n"
+        "bp = absr * np.concatenate([[0.0], absr[:-1]])  # |r_i|*|r_{i-1}| (causal)\n"
+        "bpp = np.concatenate([np.full(W - 1, np.nan), bp])\n"
+        "bv = (np.pi / 2.0) * np.nanmean(np.lib.stride_tricks.sliding_window_view(bpp, W), axis=1)\n"
+        "jump = (rc * rc) > {{k}} * np.maximum(bv, 1e-12)  # k e.g. 3.0\n"
+        "correction = np.cumsum(np.where(jump, -rc, 0.0))\n"
+    ),
 }
 
 CALENDAR_CORRECTIONS: dict[str, str] = {
@@ -427,6 +475,15 @@ VOLATILITY_ADAPTATIONS: dict[str, str] = {
         "rv_ref = r_cum / np.maximum(r_cnt, 1.0)\n"
         "vol_adapted = rv / rv_ref\n"
     ),
+    "acd_intensity": (
+        "# Vol-adapt: Engle-Russell ACD trade-intensity adaptation (tick arrival rate)\n"
+        "tr = ctx.col('tick_rate_z'); n = tr.shape[0]\n"
+        "trc = np.where(np.isfinite(tr), tr, 0.0)\n"
+        "inten = np.empty(n); acc = trc[0]\n"
+        "for i in range(n):\n"
+        "    acc = 0.9 * acc + 0.1 * trc[i]; inten[i] = acc\n"
+        "vol_adapted = np.exp(np.clip(inten, -3.0, 3.0))\n"
+    ),
 }
 
 COMBINATION_OPERATORS: dict[str, str] = {
@@ -510,12 +567,17 @@ CONCEPT_TAXONOMY: dict[str, tuple[str, str]] = {
     "error_correction": ("microstructure", "Engle-Granger error-correction to trend"),
     "jump_replace": ("microstructure", "Jump detection + local median replacement (Bibinger 2024)"),
     "inventory_flow": ("microstructure", "Evans-Lyons cumulative inventory flow (2002)"),
+    "amihud_illiquidity": ("microstructure", "Amihud (2002) illiquidity-adjusted fade of low-volume overshoots"),
+    "bouchaud_propagator": ("microstructure", "Power-law transient-impact propagator (Bouchaud et al. 2004)"),
+    "kyle_lambda_regression": ("microstructure", "Rolling Kyle lambda from return~signed-volume regression (Kyle 1985)"),
+    "bns_bipower_jump": ("microstructure", "Bipower-variation jump detection (Barndorff-Nielsen-Shephard)"),
     "krohn_fix_adjusted": ("calendar", "Fix-window seasonal adjustment (Krohn et al. 2024)"),
     "hour_drift": ("calendar", "Hour-of-day drift correction"),
     "weekend_gap": ("calendar", "Weekend gap fade"),
     "taylor_adaptive_alpha": ("volatility", "Parkinson adaptive EWMA alpha (Taylor 2017)"),
     "parkinson_vol_gate": ("volatility", "Parkinson vol regime gate"),
     "realized_vol_gate": ("volatility", "Realized vol regime gate"),
+    "acd_intensity": ("volatility", "Trade-intensity adaptive EWMA (Engle-Russell ACD)"),
     "additive_blend": ("combination", "Weighted additive blend"),
     "multiplicative_gate": ("combination", "Multiplicative scaling gate"),
     "conditional_switch": ("combination", "Conditional regime switch"),
@@ -748,10 +810,12 @@ def render_composition(
         placeholders = set(re.findall(r"\{\{(\w+)\}\}", code))
         for ph in placeholders:
             # Numeric defaults
-            if ph in ("alpha", "alpha_min", "alpha_max", "lambda", "lam", "mult", "scale", "w_base", "w_corr", "w_cal", "gain", "threshold", "reversion"):
+            if ph in ("alpha", "alpha_min", "alpha_max", "lambda", "lam", "mult", "scale", "w_base", "w_corr", "w_cal", "gain", "threshold", "reversion", "beta"):
                 code = code.replace(f"{{{{{ph}}}}}", "0.5")
             elif ph in ("W",):
                 code = code.replace(f"{{{{{ph}}}}}", "20")
+            elif ph == "k":
+                code = code.replace(f"{{{{{ph}}}}}", "3.0")
             elif ph == "regime_signal":
                 code = code.replace(f"{{{{{ph}}}}}", "vol_adapted > 1.5")
             else:
