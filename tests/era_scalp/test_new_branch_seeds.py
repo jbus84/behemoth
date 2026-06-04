@@ -44,3 +44,21 @@ def test_microprice_seed_runs_and_is_causal():
     assert np.isfinite(sig).sum() > 0
     ok, reason = causality_probe(src, ctx, sig)
     assert ok, reason
+
+
+def test_vpin_branch_registered():
+    assert "flow_toxicity" in BRANCH_TAXONOMY
+    assert "flow_toxicity" in RICH_TEMPLATES
+    assert SEED_BRANCH_TAGS["vpin_gated_fade"] == "flow_toxicity"
+    assert "vpin_gated_fade" in FADE_SEED_PROGRAMS
+
+
+def test_vpin_seed_runs_and_is_causal():
+    ctx = _ctx(seed=1)
+    src = FADE_SEED_PROGRAMS["vpin_gated_fade"]
+    sig, err, _ = run_program(src, ctx)
+    assert err is None, err
+    assert sig.shape == (ctx.n_bars,)
+    assert np.isfinite(sig).sum() > 0
+    ok, reason = causality_probe(src, ctx, sig)
+    assert ok, reason

@@ -1265,7 +1265,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
         "        accs = (1 - b) * accs + b * signed[i]; es[i] = accs\n"
         "        acct = (1 - b) * acct + b * v[i]; et[i] = acct\n"
         "    vpin = es / (et + 1e-9)\n"
-        "    gate_ok = vpin <= 0.6\n"
+        "    gate_ok = vpin <= 1.0\n"
         "    out = np.where(gate_ok, dev, np.nan)\n"
         "    return out\n"
     ),
