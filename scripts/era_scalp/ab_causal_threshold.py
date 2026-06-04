@@ -6,8 +6,6 @@ net-edge delta. The delta is the edge inflation attributable to threshold look-a
 """
 from __future__ import annotations
 
-import numpy as np
-
 from scripts.era_scalp.trade_harness import evaluate_trades
 
 
