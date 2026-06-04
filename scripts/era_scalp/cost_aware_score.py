@@ -3,6 +3,7 @@ from __future__ import annotations
 from statistics import NormalDist
 
 import numpy as np
+import pandas as pd
 
 from scripts.era_scalp.bayes_edge import monthly_net
 from scripts.era_scalp.context import FeatureContext
@@ -55,6 +56,30 @@ def fair_node_value(cells, m, z_base: float = 1.645) -> float:
     return max(mean - zc * se for mean, se in cells)
 
 
+def effective_n_tests(monthly_series) -> float:
+    """Effective number of independent (q,h) cells = participation ratio of the
+    eigenvalues of the cells' monthly-return correlation matrix.
+
+    (sum(eig))**2 / sum(eig**2): perfectly-correlated cells collapse toward 1,
+    independent cells approach the raw count. Returns a float in [1, n_cells].
+    Used to de-conservatize the Šidák multiplicity correction, since the grid
+    cells share the same trades and are far from independent."""
+    series = [s for s in monthly_series if s is not None and len(s) >= 2]
+    k = len(series)
+    if k <= 1:
+        return float(max(k, 1))
+    df = pd.concat(series, axis=1)
+    corr = df.corr(min_periods=2).to_numpy(dtype=float).copy()
+    corr[~np.isfinite(corr)] = 0.0
+    np.fill_diagonal(corr, 1.0)
+    eig = np.clip(np.linalg.eigvalsh(corr), 0.0, None)
+    s1 = float(eig.sum())
+    s2 = float((eig * eig).sum())
+    if s2 <= 0.0:
+        return float(k)
+    return float(min(max((s1 * s1) / s2, 1.0), k))
+
+
 class CostAwarePerSymbolScorer:
     """Per-symbol, net-of-realistic-cost, robustness-gated, confidence-aware program scorer.
 
@@ -86,6 +111,7 @@ class CostAwarePerSymbolScorer:
             return -1e6, float("nan"), float("nan"), f"causality_probe: {reason}"
         cost = realistic_cost(d.spread_pips)
         lbs, cells, best = [], [], None
+        cell_series = []
         for q in GRID_Q:
             for h in self.grid_h:
                 if self.fair_price_mode:
@@ -97,14 +123,18 @@ class CostAwarePerSymbolScorer:
                     continue
                 lbs.append(lb)
                 cells.append((mean, se))
+                if self.fair_price_mode:
+                    _mn = monthly_net(frame)
+                    cell_series.append(pd.Series(_mn["mean_net"].to_numpy(float),
+                                                 index=_mn["test_month"].to_numpy()))
                 if best is None or lb > best[0]:
                     best = (lb, mean, se)
         if not lbs:
             return -1e6, float("nan"), float("nan"), "no admissible (q,h) cell"
         if self.fair_price_mode:
-            n_grid = len(GRID_Q) * len(self.grid_h)
-            value = fair_node_value(cells, m=n_grid, z_base=self.z)
-            zc = _sidak_z(self.z, n_grid)
+            m_eff = effective_n_tests(cell_series)
+            value = fair_node_value(cells, m=m_eff, z_base=self.z)
+            zc = _sidak_z(self.z, m_eff)
             bi = int(np.argmax([mean - zc * se for mean, se in cells]))
             best = (value, cells[bi][0], cells[bi][1])
         else:
