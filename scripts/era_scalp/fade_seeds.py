@@ -59,6 +59,8 @@ BRANCH_TAXONOMY: dict[str, str] = {
     "flow_intensity": "Gate fades during self-exciting directional flow episodes (Hawkes-style magnitude persistence).",
     "asymmetric_vol": "Gate fades when downside Parkinson volatility dominates upside (bad-volatility regime).",
     "seasonality": "Gate fades during FX fix windows where microstructure is distorted by fix-order flow.",
+    "order_flow_persistence": "Trade continuation when signed order flow shows persistent long-memory bias (Lillo-Farmer 2004).",
+    "liquidity_amihud": "Fade only in liquid regimes — Amihud (2002) illiquidity below its expanding mean.",
     "microprice": "Imbalance-weighted fair value (Stoikov microprice proxy): shift fair toward the side the bar closed on; fade deviation from microprice rather than from a symmetric EWMA.",
     "flow_toxicity": "Gate fades by order-flow toxicity (VPIN proxy): abstain when the EWMA of |signed flow| / total flow is high (informed/directional flow); fade only into balanced, uninformed flow.",
 }
@@ -83,6 +85,8 @@ SEED_BRANCH_TAGS: dict[str, str] = {
     "hawkes_gate": "flow_intensity",
     "asymmetric_vol_gate": "asymmetric_vol",
     "fix_window_gate": "seasonality",
+    "ofp_continuation": "order_flow_persistence",
+    "amihud_liquidity_gate": "liquidity_amihud",
     "microprice_fade": "microprice",
     "vpin_gated_fade": "flow_toxicity",
 }
@@ -700,6 +704,25 @@ RICH_TEMPLATES: dict[str, str] = {
         "CROSS-BRIDGE: Can combine with ANY gate — use fix-window as a temporal first-pass\n"
         "  filter, then apply VR, OFI, or liquidity on the remaining bars.\n"
     ),
+    "order_flow_persistence": (
+        "BRANCH: order_flow_persistence — long-memory order flow continuation (Lillo-Farmer 2004)\n"
+        "FORMULA: persistence = trailing mean of sign(returns) over W bars; trade WITH it when |persistence| high.\n"
+        "RATIONALE: Lillo & Farmer (2004) show signed order flow has long memory (slowly-decaying\n"
+        " autocorrelation). When recent flow is persistently one-sided, the move tends to continue\n"
+        " rather than revert. This is a CONTINUATION (momentum) branch, the opposite of the fade\n"
+        " branches, included so the search can discover trend regimes.\n"
+        "ALLOWED VARIATIONS: W in {30, 50, 100}; threshold in {0.2, 0.3, 0.4}\n"
+        "FAILURE PATTERN: threshold too low trades noise; spread costs dominate at 100-tick scale.\n"
+    ),
+    "liquidity_amihud": (
+        "BRANCH: liquidity_amihud — fade only in liquid regimes (Amihud 2002)\n"
+        "FORMULA: illiq = |return| / tick_volume; gate opens when illiq <= its expanding mean.\n"
+        "RATIONALE: Amihud (2002) illiquidity = price impact per unit volume. Low-volume moves\n"
+        " (high illiquidity) are noisier and costlier to fade; restricting the fade to liquid bars\n"
+        " (illiquidity below its causal running mean) keeps the net-of-cost edge cleaner.\n"
+        "ALLOWED VARIATIONS: gate multiplier on the expanding mean in {0.8, 1.0, 1.2}\n"
+        "FAILURE PATTERN: too tight a gate leaves too few trades; too loose is no gate.\n"
+    ),
     "microprice": (
         "BRANCH: microprice — imbalance-weighted fair value (Stoikov 2018 proxy)\n"
         "FORMULA: micro_fair = EWMA(cumsum(returns)) + k * imbalance * bar_range;\n"
@@ -954,6 +977,21 @@ CROSS_BRANCH_PROMPTS: dict[tuple[str, str], str] = {
         " trading. A reverting window driven by toxic one-sided flow still loses to"
         " adverse selection. The VPIN gate blocks high-toxicity bars so the fade only"
         " fires when the regime reverts AND the flow is balanced.\n"
+        "Write a single `signal(ctx)` that combines both ideas.\n"
+    ),
+    ("order_flow_persistence", "mean_reversion_gate"): (
+        "COMBINATION: order_flow_persistence + mean_reversion_gate\n"
+        "SYNERGY: The variance-ratio gate says WHEN the market mean-reverts vs trends; order-flow\n"
+        " persistence says which DIRECTION the trend runs. Use the VR gate to pick fade-vs-continue\n"
+        " and order-flow persistence to set the continuation side — one regime detector, one flow\n"
+        " direction.\n"
+        "Write a single `signal(ctx)` that combines both ideas.\n"
+    ),
+    ("liquidity_amihud", "mean_reversion_gate"): (
+        "COMBINATION: liquidity_amihud + mean_reversion_gate\n"
+        "SYNERGY: The VR gate finds mean-reverting regimes; the Amihud liquidity gate removes the\n"
+        " low-volume bars where reversion is noisiest and costliest. Together: fade only when the\n"
+        " regime reverts AND liquidity is adequate.\n"
         "Write a single `signal(ctx)` that combines both ideas.\n"
     ),
 }
@@ -1285,6 +1323,34 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
         "        acct = (1 - b) * acct + b * v[i]; et[i] = acct\n"
         "    vpin = np.abs(en) / (et + 1e-9)  # |net signed flow| / total flow in [0,1]\n"
         "    gate_ok = vpin <= 0.6  # fade only into balanced (low-toxicity) flow\n"
+        "    out = np.where(gate_ok, dev, np.nan)\n"
+        "    return out\n"
+    ),
+    "ofp_continuation": (
+        "def signal(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); n = r.shape[0]\n"
+        "    sgn = np.sign(np.where(np.isfinite(r), r, 0.0))\n"
+        "    W = 50\n"
+        "    sp = np.concatenate([np.full(W - 1, np.nan), sgn])\n"
+        "    sw = np.lib.stride_tricks.sliding_window_view(sp, W)\n"
+        "    persistence = np.nanmean(sw, axis=1)  # trailing net signed-flow bias in [-1,1]\n"
+        "    # Lillo-Farmer: order flow has long memory; go WITH persistent flow (continuation)\n"
+        "    out = np.where(np.abs(persistence) >= 0.3, persistence, np.nan)\n"
+        "    return out\n"
+    ),
+    "amihud_liquidity_gate": (
+        "def signal(ctx):\n"
+        "    r = ctx.col('vel_pips_h1'); vol = ctx.col('tick_volume'); n = r.shape[0]\n"
+        "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
+        "    ew = np.empty(n); acc = p[0]\n"
+        "    for i in range(n): acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
+        "    dev = ew - p\n"
+        "    rc = np.where(np.isfinite(r), r, 0.0)\n"
+        "    vc = np.maximum(np.where(np.isfinite(vol), vol, 0.0), 1.0)\n"
+        "    illiq = np.abs(rc) / vc\n"
+        "    csum = np.cumsum(illiq); cnt = np.arange(1, n + 1, dtype=float)\n"
+        "    mean = csum / cnt  # expanding-mean illiquidity (causal)\n"
+        "    gate_ok = illiq <= mean  # fade only in liquid (low-illiquidity) bars\n"
         "    out = np.where(gate_ok, dev, np.nan)\n"
         "    return out\n"
     ),
