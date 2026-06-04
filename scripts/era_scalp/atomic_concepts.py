@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import textwrap
 
-
 # ── Atomic operator templates ────────────────────────────────────────────────
 # Each template is a snippet of Python that operates on ctx and returns an array.
 # The LLM is asked to combine these snippets into a full estimate_fair(ctx).
