@@ -11,13 +11,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
-import json
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any
 
 
 def _run_tree(args: dict, tree_seed: int, out_dir: Path) -> dict | None:
@@ -88,7 +85,7 @@ def aggregate(trees: list[dict | None]) -> str:
     lines.append("## Top 10 programs across all trees\n")
     seen_payloads: set[str] = set()
     rank = 0
-    for score, seed, entry in scored:
+    for _score, seed, entry in scored:
         # Simple dedup by exact line content (payload not available here)
         if entry in seen_payloads:
             continue

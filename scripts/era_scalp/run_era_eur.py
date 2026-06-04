@@ -20,29 +20,59 @@ from scripts.era.llm import (
     recombine_branch_program,
     self_correct_program,
 )
-from scripts.era.puct import Node, puct_search, select_diversity, select_diversity_with_history, select_diversity_with_llm_prior, select_thompson
-from scripts.era_scalp.atomic_concepts import CONCEPT_TAXONOMY, composition_to_source, extract_concepts_from_composition, extract_concepts_from_source
-from scripts.era_scalp.tree_tracker import TreeTracker
+from scripts.era.puct import (
+    Node,
+    puct_search,
+    select_diversity,
+    select_diversity_with_history,
+    select_diversity_with_llm_prior,
+    select_thompson,
+)
+from scripts.era_scalp.atomic_concepts import (
+    CONCEPT_TAXONOMY,
+    composition_to_source,
+    extract_concepts_from_composition,
+    extract_concepts_from_source,
+)
 from scripts.era_scalp.bayes_edge import edge_verdict
 from scripts.era_scalp.context import FeatureContext
-from scripts.era_scalp.cost_aware_score import GRID_H, GRID_H_SHORT, GRID_Q, CostAwarePerSymbolScorer
+from scripts.era_scalp.cost_aware_score import (
+    GRID_H,
+    GRID_H_SHORT,
+    GRID_Q,
+    CostAwarePerSymbolScorer,
+)
 from scripts.era_scalp.cost_model import realistic_cost
 from scripts.era_scalp.fade_seeds import (
     CROSS_BRANCH_INDEX as FADE_CROSS_BRANCH_INDEX,
+)
+from scripts.era_scalp.fade_seeds import (
     FADE_SEED_PROGRAMS,
+)
+from scripts.era_scalp.fade_seeds import (
     RICH_TEMPLATES as FADE_RICH_TEMPLATES,
+)
+from scripts.era_scalp.fade_seeds import (
     SEED_BRANCH_TAGS as FADE_SEED_BRANCH_TAGS,
 )
 from scripts.era_scalp.fair_seeds import (
     CROSS_BRANCH_INDEX as FAIR_CROSS_BRANCH_INDEX,
+)
+from scripts.era_scalp.fair_seeds import (
     FAIR_SEED_COMPOSITIONS,
     FAIR_SEED_PROGRAMS,
+)
+from scripts.era_scalp.fair_seeds import (
     RICH_TEMPLATES as FAIR_RICH_TEMPLATES,
+)
+from scripts.era_scalp.fair_seeds import (
     SEED_BRANCH_TAGS as FAIR_SEED_BRANCH_TAGS,
 )
 from scripts.era_scalp.load_splits import _pip_size, build_trade_splits
 from scripts.era_scalp.sandbox import run_program
 from scripts.era_scalp.trade_harness import evaluate_fair_price_trades, evaluate_trades
+from scripts.era_scalp.tree_tracker import TreeTracker
+
 
 class WinnerArchive:
     """Persist evolved programs that score above a threshold.
@@ -254,7 +284,7 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
         # Atomic mode: compositions instead of source strings
         if atomic_mode and isinstance(parent.payload, dict):
             parent_comp = parent.payload
-            parent_src = _render_payload(parent_comp)
+            _parent_src = _render_payload(parent_comp)
 
             # Decide: recombine vs propose
             if rng.random() < p_recombine and len(all_nodes) >= 2:
@@ -610,9 +640,12 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
             return select_thompson(ns, nprng)
     elif select_policy == "diversity":
         if warm_start and branch_priors:
-            selector = select_diversity_with_llm_prior if use_llm_prior else select_diversity_with_history
+            # Both prior-aware variants accept branch_priors/concept_priors/concept_synergy_fn.
+            # Use a distinct name so the closure captures only this narrower type (not the
+            # plain select_diversity from the else-branch, which lacks those kwargs).
+            warm_selector = select_diversity_with_llm_prior if use_llm_prior else select_diversity_with_history
             def _select_fn(ns, c):
-                return selector(
+                return warm_selector(
                     ns, c_puct=c, c_branch=c_branch,
                     branch_priors=branch_priors,
                     concept_priors=concept_priors,
@@ -620,9 +653,9 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                     rng=nprng,
                 )
         else:
-            selector = select_diversity_with_llm_prior if use_llm_prior else select_diversity
+            plain_selector = select_diversity_with_llm_prior if use_llm_prior else select_diversity
             def _select_fn(ns, c):
-                return selector(ns, c_puct=c, c_branch=c_branch, rng=nprng)
+                return plain_selector(ns, c_puct=c, c_branch=c_branch, rng=nprng)
     else:
         _select_fn = None  # default rank-based select
 
@@ -790,7 +823,7 @@ def main() -> None:
     if tracker is not None:
         tracker.end_run(extra_meta={"best_val": float(unique_ranked[0].score) if unique_ranked else None})
         summary = tracker.summary()
-        lines.append(f"\n## TreeTracker summary")
+        lines.append("\n## TreeTracker summary")
         lines.append(f"- branches tracked: {summary['branches_tracked']}")
         lines.append(f"- concepts tracked: {summary['concepts_tracked']}")
         if summary['top_branches']:
