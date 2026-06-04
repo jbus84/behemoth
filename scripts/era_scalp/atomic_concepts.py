@@ -706,26 +706,10 @@ def render_composition(
     operators: dict[str, str],
     params: dict[str, float] | None = None,
 ) -> str:
-    """Render a composition (skeleton + operators + params) into complete source code.
-
-    Auto-upgrades the skeleton if operators contain slots not present in the
-    requested skeleton (e.g. a `calendar` operator forces promotion from
-    `base_plus_correction` to `base_plus_correction_plus_calendar`).
-
-    Parameters
-    ----------
-    skeleton_name : str
-        Key in SKELETONS.
-    operators : dict[str, str]
-        Mapping slot → concept name, e.g. {"base": "slow_ewma", "correction": "roll_bounce"}.
-    params : dict[str, float] | None
-        Parameter values to substitute into templates (e.g. {"alpha": 0.02, "W": 20}).
-
-    Returns
-    -------
-    str
-        Complete `estimate_fair(ctx)` source code.
-    """
+    """Render a composition (skeleton + operators + params) into complete source code."""
+    # Defensive: malformed LLM output may pass a list/string for operators
+    if not isinstance(operators, dict):
+        operators = {}
     # Auto-upgrade skeleton to richest one that covers all operator slots
     upgraded = _auto_upgrade_skeleton(skeleton_name, operators)
     skeleton = SKELETONS.get(upgraded, SKELETONS["simple"])
@@ -737,7 +721,7 @@ def render_composition(
     # operator never falls back to the 0.0 default.
     _ops = dict(operators)
     if upgraded == "dual_base_switch":
-        if "base" in _ops and ("slow_base" not in _ops or "fast_base" not in _ops):
+        if "base" in _ops:
             base_op = _ops.pop("base")
             if "slow_base" not in _ops:
                 _ops["slow_base"] = base_op
@@ -780,11 +764,12 @@ def render_composition(
             code += f"\n    {slot} = base"
         slot_code[slot] = code
 
-    # Build zero-default declarations for slots that aren't present (so combination
-    # operators like additive_blend can safely reference e.g. `calendar`).
+    # Build zero-default declarations for slots that aren't present or have no
+    # valid template (so combination operators can safely reference e.g. `calendar`).
     defaults: list[str] = []
     for slot in ("base", "correction", "calendar", "vol_adaptation", "slow_base", "fast_base"):
-        if slot not in operators:
+        has_valid = slot in slot_code and not slot_code[slot].strip().startswith("#")
+        if slot not in operators or not has_valid:
             defaults.append(f"    {slot} = 0.0")
     default_block = "\n".join(defaults)
 
