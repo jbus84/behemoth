@@ -569,6 +569,10 @@ COMBINATION_OPERATORS: dict[str, str] = {
         "w = 1.0 / (1.0 + np.exp(-{{gamma}} * (_g - {{threshold}})))\n"
         "fair = base + w * correction + {{w_cal}} * calendar\n"
     ),
+    "two_correction_additive": (
+        "# Combine: additive blend of base + two stacked corrections\n"
+        "fair = {{w_base}} * base + {{w_corr}} * correction_a + {{w_corr2}} * correction_b\n"
+    ),
 }
 
 
@@ -618,6 +622,7 @@ CONCEPT_TAXONOMY: dict[str, tuple[str, str]] = {
     "clipped_blend": ("combination", "Additive blend with the correction clipped to +/-k*its causal std (robust to runaway corrections)"),
     "zscore_blend": ("combination", "Blend the correction normalised by its causal std (scale-invariant across symbols)"),
     "soft_gate": ("combination", "Sigmoid-weighted soft regime gate on the correction (smooth conditional_switch)"),
+    "two_correction_additive": ("combination", "Additive blend of base + two stacked corrections"),
 }
 
 
@@ -668,6 +673,14 @@ SKELETONS: dict[str, str] = {
         "    {{base}}\n"
         "    {{correction}}\n"
         "    {{calendar}}\n"
+        "    {{combination}}\n"
+        "    return fair\n"
+    ),
+    "base_plus_two_corrections": (
+        "def estimate_fair(ctx):\n"
+        "    {{base}}\n"
+        "    {{correction}}\n"
+        "    {{correction2}}\n"
         "    {{combination}}\n"
         "    return fair\n"
     ),
@@ -775,6 +788,7 @@ def _auto_upgrade_skeleton(skeleton_name: str, operators: dict[str, str]) -> str
       dual_base_switch      : vol_adaptation, slow_base, fast_base, correction, combination
       vol_adaptive_calendar : vol_adaptation, base, correction, calendar, combination
       vol_adaptive          : vol_adaptation, base, correction, combination
+      base_plus_two_corrections : base, correction, correction2, combination
       base_plus_correction_plus_calendar : base, correction, calendar, combination
       base_plus_correction  : base, correction, combination
       simple                : base
@@ -784,6 +798,7 @@ def _auto_upgrade_skeleton(skeleton_name: str, operators: dict[str, str]) -> str
     has_vol = "vol_adaptation" in slots
     has_cal = "calendar" in slots
     has_corr = "correction" in slots
+    has_corr2 = "correction2" in slots
 
     if has_slow_fast:
         return "dual_base_switch"
@@ -791,6 +806,8 @@ def _auto_upgrade_skeleton(skeleton_name: str, operators: dict[str, str]) -> str
         return "vol_adaptive_calendar"
     if has_vol:
         return "vol_adaptive"
+    if has_corr2:
+        return "base_plus_two_corrections"
     if has_cal:
         return "base_plus_correction_plus_calendar"
     if has_corr:
@@ -846,7 +863,7 @@ def render_composition(
         placeholders = set(re.findall(r"\{\{(\w+)\}\}", code))
         for ph in placeholders:
             # Numeric defaults
-            if ph in ("alpha", "alpha_min", "alpha_max", "lambda", "lam", "mult", "scale", "w_base", "w_corr", "w_cal", "gain", "gamma", "threshold", "reversion", "beta"):
+            if ph in ("alpha", "alpha_min", "alpha_max", "lambda", "lam", "mult", "scale", "w_base", "w_corr", "w_corr2", "w_cal", "gain", "gamma", "threshold", "reversion", "beta"):
                 code = code.replace(f"{{{{{ph}}}}}", "0.5")
             elif ph in ("W",):
                 code = code.replace(f"{{{{{ph}}}}}", "20")
@@ -861,12 +878,16 @@ def render_composition(
         # so the combination operator can reference slow_base / fast_base distinctly.
         if upgraded == "dual_base_switch" and slot in ("slow_base", "fast_base"):
             code += f"\n    {slot} = base"
+        if slot == "correction":
+            code += "\n    correction_a = correction"
+        elif slot == "correction2":
+            code += "\n    correction_b = correction"
         slot_code[slot] = code
 
     # Build zero-default declarations for slots that aren't present or have no
     # valid template (so combination operators can safely reference e.g. `calendar`).
     defaults: list[str] = []
-    for slot in ("base", "correction", "calendar", "vol_adaptation", "slow_base", "fast_base"):
+    for slot in ("base", "correction", "correction2", "calendar", "vol_adaptation", "slow_base", "fast_base", "correction_a", "correction_b"):
         has_valid = slot in slot_code and not slot_code[slot].strip().startswith("#")
         if slot not in operators or not has_valid:
             defaults.append(f"    {slot} = 0.0")
@@ -877,7 +898,7 @@ def render_composition(
     for slot, code in slot_code.items():
         filled = filled.replace(f"{{{{{slot}}}}}", code)
     # Any unfilled slots become comments
-    for slot in ("base", "correction", "calendar", "vol_adaptation", "combination", "slow_base", "fast_base"):
+    for slot in ("base", "correction", "correction2", "calendar", "vol_adaptation", "combination", "slow_base", "fast_base"):
         filled = filled.replace(f"{{{{{slot}}}}}", f"    # (no {slot})")
 
     # Inject zero-defaults right after the function definition so they precede slot code
