@@ -39,6 +39,16 @@ def static_check(src: str, required_fn: str = "residual") -> tuple[bool, str]:
             return False, "imports are not allowed"
         if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             return False, f"dunder attribute access not allowed: {node.attr}"
+        # Forbid np.random.* — a program using it is non-deterministic (not
+        # reproducible live) and can defeat the causality probe (its past output
+        # varies run-to-run independent of the future perturbation).
+        if (
+            isinstance(node, ast.Attribute)
+            and node.attr == "random"
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "np"
+        ):
+            return False, "np.random is not allowed (non-deterministic)"
         if isinstance(node, ast.Name) and node.id in _FORBIDDEN_NAMES:
             return False, f"forbidden name: {node.id}"
         if isinstance(node, ast.FunctionDef) and node.name == required_fn:
@@ -121,13 +131,16 @@ def _arrays_match(a: np.ndarray, b: np.ndarray) -> bool:
     return bool(np.allclose(fa, fb, rtol=1e-9, atol=1e-9))
 
 
-def causality_probe(src, ctx, clean_resid, n_cuts: int = 2, seed: int = 0):
+def causality_probe(src, ctx, clean_resid, n_cuts: int = 5, seed: int = 0,
+                    nan_frac: float = 0.3):
     """Reject programs whose past residual depends on future bars.
 
-    For each cut k, replace every row at index > k with finite noise, re-run the
-    program, and require residual[:k+1] to be unchanged vs the clean run. Any
-    op that reads future rows (forward indexing, centered windows, full-split
-    statistics) perturbs a past value and is rejected. Returns (ok, reason).
+    For each of `n_cuts` interior cut points k, every row at index > k is
+    replaced with large finite noise AND a `nan_frac` fraction of those future
+    rows are set to NaN, then the program is re-run and residual[:k+1] is
+    required to be unchanged vs the clean run. Any op that reads future rows
+    (forward indexing, centered windows, full-split statistics, or future
+    NaN-pattern counts) perturbs a past value and is rejected. Returns (ok, reason).
     """
     n = ctx.n_bars
     if n < 6:
@@ -137,7 +150,11 @@ def causality_probe(src, ctx, clean_resid, n_cuts: int = 2, seed: int = 0):
     cuts = [max(1, n * (i + 1) // (n_cuts + 1)) for i in range(n_cuts)]
     for k in cuts:
         r2 = ctx.r.copy()
-        r2[k + 1 :, :] = rng.standard_normal(r2[k + 1 :, :].shape) * 10.0
+        fut = r2[k + 1 :, :]
+        fut[:] = rng.standard_normal(fut.shape) * 10.0
+        if fut.size:
+            fut[rng.random(fut.shape) < nan_frac] = np.nan
+        r2[k + 1 :, :] = fut
         hour2 = None
         if ctx.hour is not None:
             hour2 = ctx.hour.copy()
