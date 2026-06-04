@@ -732,22 +732,28 @@ def _temporal_tiebreak(nodes, verdict_by_id):
     return sorted(nodes, key=key, reverse=True)
 
 
-def temporal_annotation(src, sp, symbol, *, min_trades=50,
+def temporal_annotation(payload, sp, symbol, *, fair_price_mode: bool = False, min_trades=50,
                         num_warmup=400, num_samples=400, num_chains=2):
-    """Per-symbol temporal-robustness verdict on the combined train+validation span
-    at the program's best-by-(q,h) cell (directional). None on program error / no
-    admissible cell."""
+    """Per-symbol temporal-robustness verdict on the combined train+validation span at the
+    program's best-by-(q,h) cell. Renders atomic-composition dict payloads to source and uses
+    the correct entry fn / trade evaluator for the mode. None on program error / no admissible cell."""
+    src = composition_to_source(payload) if isinstance(payload, dict) else payload
+    required_fn = "estimate_fair" if fair_price_mode else "signal"
     tv = _concat_trade_splits(sp["train"], sp["validation"])
     ctx = FeatureContext(X=tv.X, names=tv.names, hour=tv.hour)
-    sig, err, _ = run_program(src, ctx, required_fn="signal")
+    out, err, _ = run_program(src, ctx, required_fn=required_fn)
     if err is not None:
         return None
     cost = realistic_cost(tv.spread_pips)
     pip = _pip_size(symbol)
+    grid_h = GRID_H_SHORT if fair_price_mode else GRID_H
     best_frame, best_lb = None, None
     for q in GRID_Q:
-        for h in GRID_H:
-            frame = evaluate_trades(sig, tv.mid, cost, tv.test_month, pip, q, h)
+        for h in grid_h:
+            if fair_price_mode:
+                frame = evaluate_fair_price_trades(out, tv.mid, cost, tv.test_month, pip, q, h)
+            else:
+                frame = evaluate_trades(out, tv.mid, cost, tv.test_month, pip, q, h)
             if len(frame) < min_trades:
                 continue
             lb, _, _ = fast_lower_bound(frame)
@@ -856,7 +862,7 @@ def main() -> None:
     tverdicts: dict = {}
     if temporal_on:
         for nd in top:
-            tverdicts[id(nd)] = temporal_annotation(nd.payload, sp, args.symbol)
+            tverdicts[id(nd)] = temporal_annotation(nd.payload, sp, args.symbol, fair_price_mode=args.fair_price)
         top = _temporal_tiebreak(top, tverdicts)
     mode_label = "fair-price" if args.fair_price else "cost-aware"
     flags = []
