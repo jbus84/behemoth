@@ -44,6 +44,10 @@ from scripts.era_scalp.cost_aware_score import (
     fast_lower_bound,
 )
 from scripts.era_scalp.cost_model import realistic_cost
+from scripts.era_scalp.deflated_selection import (
+    deflated_edge_prob,
+    is_significant_after_deflation,
+)
 from scripts.era_scalp.fade_seeds import (
     CROSS_BRANCH_INDEX as FADE_CROSS_BRANCH_INDEX,
 )
@@ -837,6 +841,8 @@ def main() -> None:
                        use_llm_prior=args.use_llm_prior, resume_tree=args.resume_tree,
                        verbose=args.verbose, atomic_mode=args.atomic_mode)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
+    trial_means = [n.mean for n in ranked if np.isfinite(n.mean) and np.isfinite(n.se)]
+    n_trials = len(trial_means)
     # Deduplicate by payload so the same generated program doesn't dominate the top-5 display.
     seen_payloads: set[str] = set()
     unique_ranked = []
@@ -867,6 +873,7 @@ def main() -> None:
     flags_str = f" | {','.join(flags)}" if flags else ""
     lines = [f"# {mode_label} PUCT verdict — {args.symbol} (policy={args.policy}, "
              f"seeds={'no' if args.no_seeds else 'yes'}, budget={args.budget}{flags_str})\n"]
+    lines.append(f"_search trials (admissible programs): {n_trials}_\n")
     for nd in top:
         src = composition_to_source(nd.payload) if isinstance(nd.payload, dict) else nd.payload
         hv = holdout_verdict(src, sp["holdout"], args.symbol, fair_price_mode=args.fair_price)
@@ -883,9 +890,12 @@ def main() -> None:
                 tstr = f" | temporal: {tv.get('status')}"
             else:
                 tstr = " | temporal: program error"
+        dsr = deflated_edge_prob(nd.mean, nd.se, trial_means)
+        dstr = ("" if not np.isfinite(dsr)
+                else f" | DSR={dsr:.2f} sig={is_significant_after_deflation(dsr)}")
         if hv:
             lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout P={hv['p_positive']:.3f} "
-                         f"raw={hv['raw_mean']:+.3f} (q{hv['q']} h{hv['h']} n={hv['n_trades']}){tstr}")
+                         f"raw={hv['raw_mean']:+.3f} (q{hv['q']} h{hv['h']} n={hv['n_trades']}){tstr}{dstr}")
             # Archive top-5 holdout results as well
             archive.save(src, nd.score, nd.mean, nd.se, nd.branch, nd.parent, hv)
             # Log holdout to tracker for concept-level posterior updates
@@ -895,7 +905,7 @@ def main() -> None:
                                  parent_payload=(composition_to_source(nd.parent.payload) if isinstance(nd.parent.payload, dict) else nd.parent.payload) if nd.parent else None,
                                  generation=0, holdout_p=hv.get("p_positive"), holdout_raw=hv.get("raw_mean"))
         else:
-            lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout: program error{tstr}")
+            lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout: program error{tstr}{dstr}")
     if tracker is not None:
         tracker.end_run(extra_meta={"best_val": float(unique_ranked[0].score) if unique_ranked else None})
         summary = tracker.summary()
