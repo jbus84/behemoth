@@ -41,6 +41,7 @@ from scripts.era_scalp.cost_aware_score import (
     GRID_H_SHORT,
     GRID_Q,
     CostAwarePerSymbolScorer,
+    fast_lower_bound,
 )
 from scripts.era_scalp.cost_model import realistic_cost
 from scripts.era_scalp.fade_seeds import (
@@ -68,8 +69,12 @@ from scripts.era_scalp.fair_seeds import (
 from scripts.era_scalp.fair_seeds import (
     SEED_BRANCH_TAGS as FAIR_SEED_BRANCH_TAGS,
 )
-from scripts.era_scalp.load_splits import _pip_size, build_trade_splits
+from scripts.era_scalp.load_splits import TradeSplitData, _pip_size, build_trade_splits
 from scripts.era_scalp.sandbox import run_program
+from scripts.era_scalp.temporal_robustness import (
+    is_temporally_robust,
+    temporal_robustness_verdict,
+)
 from scripts.era_scalp.trade_harness import evaluate_fair_price_trades, evaluate_trades
 from scripts.era_scalp.tree_tracker import TreeTracker
 
@@ -699,6 +704,57 @@ def holdout_verdict(src, split_holdout, symbol, fair_price_mode: bool = False):
     return best
 
 
+def _concat_trade_splits(a, b):
+    """Concatenate two TradeSplitData (time-ordered a then b) for the temporal gate."""
+    return TradeSplitData(
+        X=np.concatenate([a.X, b.X], axis=0),
+        names=a.names,
+        hour=None if (a.hour is None or b.hour is None) else np.concatenate([a.hour, b.hour]),
+        mid=np.concatenate([a.mid, b.mid]),
+        cost=np.concatenate([a.cost, b.cost]),
+        test_month=np.concatenate([a.test_month, b.test_month]),
+        spread_pips=None if (a.spread_pips is None or b.spread_pips is None)
+        else np.concatenate([a.spread_pips, b.spread_pips]),
+    )
+
+
+def _temporal_tiebreak(nodes, verdict_by_id):
+    """Sort nodes by (validation score rounded to 2 dp, then worst-window P(edge>0)),
+    so robustness breaks near-equal-score ties. Missing/insufficient verdicts sort last."""
+    def key(nd):
+        v = verdict_by_id.get(id(nd))
+        wwp = v["worst_window_p_positive"] if v and v.get("status") == "ok" else -1.0
+        return (round(nd.score, 2), wwp)
+    return sorted(nodes, key=key, reverse=True)
+
+
+def temporal_annotation(src, sp, symbol, *, min_trades=50,
+                        num_warmup=400, num_samples=400, num_chains=2):
+    """Per-symbol temporal-robustness verdict on the combined train+validation span
+    at the program's best-by-(q,h) cell (directional). None on program error / no
+    admissible cell."""
+    tv = _concat_trade_splits(sp["train"], sp["validation"])
+    ctx = FeatureContext(X=tv.X, names=tv.names, hour=tv.hour)
+    sig, err, _ = run_program(src, ctx, required_fn="signal")
+    if err is not None:
+        return None
+    cost = realistic_cost(tv.spread_pips)
+    pip = _pip_size(symbol)
+    best_frame, best_lb = None, None
+    for q in GRID_Q:
+        for h in GRID_H:
+            frame = evaluate_trades(sig, tv.mid, cost, tv.test_month, pip, q, h)
+            if len(frame) < min_trades:
+                continue
+            lb, _, _ = fast_lower_bound(frame)
+            if np.isfinite(lb) and (best_lb is None or lb > best_lb):
+                best_lb, best_frame = lb, frame
+    if best_frame is None:
+        return None
+    return temporal_robustness_verdict(best_frame, seed=0, num_warmup=num_warmup,
+                                       num_samples=num_samples, num_chains=num_chains)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default=SYMBOL_DEFAULT)
@@ -741,6 +797,8 @@ def main() -> None:
                     help="print detailed progress for every expansion (branch selected, score result, self-correction, etc.)")
     ap.add_argument("--atomic-mode", action="store_true",
                     help="store atomic concept compositions instead of full source; LLM tweaks one operator slot at a time")
+    ap.add_argument("--no-temporal-robustness", action="store_true",
+                    help="skip the per-symbol temporal-robustness annotation/tie-break on the top-K")
     args = ap.parse_args()
     grid_h = GRID_H_SHORT if args.fair_price else GRID_H
     # For fair-price mode, score on all historical data (2018-2024) so the Bayesian
@@ -787,6 +845,13 @@ def main() -> None:
         if payload_key not in seen_payloads:
             seen_payloads.add(payload_key)
             unique_ranked.append(nd)
+    top = unique_ranked[:5]
+    temporal_on = not args.no_temporal_robustness
+    tverdicts: dict = {}
+    if temporal_on:
+        for nd in top:
+            tverdicts[id(nd)] = temporal_annotation(nd.payload, sp, args.symbol)
+        top = _temporal_tiebreak(top, tverdicts)
     mode_label = "fair-price" if args.fair_price else "cost-aware"
     flags = []
     if args.dimension_locked:
@@ -802,14 +867,25 @@ def main() -> None:
     flags_str = f" | {','.join(flags)}" if flags else ""
     lines = [f"# {mode_label} PUCT verdict — {args.symbol} (policy={args.policy}, "
              f"seeds={'no' if args.no_seeds else 'yes'}, budget={args.budget}{flags_str})\n"]
-    for nd in unique_ranked[:5]:
+    for nd in top:
         src = composition_to_source(nd.payload) if isinstance(nd.payload, dict) else nd.payload
         hv = holdout_verdict(src, sp["holdout"], args.symbol, fair_price_mode=args.fair_price)
         tag = "SEED" if nd.parent is None else "evolved"
         branch_tag = f"[{nd.branch}]" if nd.branch else ""
+        tstr = ""
+        if temporal_on:
+            tv = tverdicts.get(id(nd))
+            if tv and tv.get("status") == "ok":
+                tstr = (f" | temporal: P(edge>0)={tv['p_positive']:.2f} "
+                        f"worst-win={tv['worst_window_p_positive']:.2f} "
+                        f"tau={tv['tau_mean']:.3f} robust={is_temporally_robust(tv)}")
+            elif tv:
+                tstr = f" | temporal: {tv.get('status')}"
+            else:
+                tstr = " | temporal: program error"
         if hv:
             lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout P={hv['p_positive']:.3f} "
-                         f"raw={hv['raw_mean']:+.3f} (q{hv['q']} h{hv['h']} n={hv['n_trades']})")
+                         f"raw={hv['raw_mean']:+.3f} (q{hv['q']} h{hv['h']} n={hv['n_trades']}){tstr}")
             # Archive top-5 holdout results as well
             archive.save(src, nd.score, nd.mean, nd.se, nd.branch, nd.parent, hv)
             # Log holdout to tracker for concept-level posterior updates
@@ -819,7 +895,7 @@ def main() -> None:
                                  parent_payload=(composition_to_source(nd.parent.payload) if isinstance(nd.parent.payload, dict) else nd.parent.payload) if nd.parent else None,
                                  generation=0, holdout_p=hv.get("p_positive"), holdout_raw=hv.get("raw_mean"))
         else:
-            lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout: program error")
+            lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout: program error{tstr}")
     if tracker is not None:
         tracker.end_run(extra_meta={"best_val": float(unique_ranked[0].score) if unique_ranked else None})
         summary = tracker.summary()
