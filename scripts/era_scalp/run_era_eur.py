@@ -11,14 +11,17 @@ from pathlib import Path
 import numpy as np
 
 from scripts.era.llm import (
+    extract_composition_from_source,
+    propose_atomic_change,
     propose_branch_program,
     propose_branch_program_with_prior,
     propose_dimension_locked_program,
+    recombine_atomic_compositions,
     recombine_branch_program,
     self_correct_program,
 )
 from scripts.era.puct import Node, puct_search, select_diversity, select_diversity_with_history, select_diversity_with_llm_prior, select_thompson
-from scripts.era_scalp.atomic_concepts import CONCEPT_TAXONOMY, extract_concepts_from_source
+from scripts.era_scalp.atomic_concepts import CONCEPT_TAXONOMY, composition_to_source, extract_concepts_from_composition, extract_concepts_from_source
 from scripts.era_scalp.tree_tracker import TreeTracker
 from scripts.era_scalp.bayes_edge import edge_verdict
 from scripts.era_scalp.context import FeatureContext
@@ -32,6 +35,7 @@ from scripts.era_scalp.fade_seeds import (
 )
 from scripts.era_scalp.fair_seeds import (
     CROSS_BRANCH_INDEX as FAIR_CROSS_BRANCH_INDEX,
+    FAIR_SEED_COMPOSITIONS,
     FAIR_SEED_PROGRAMS,
     RICH_TEMPLATES as FAIR_RICH_TEMPLATES,
     SEED_BRANCH_TAGS as FAIR_SEED_BRANCH_TAGS,
@@ -126,7 +130,9 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                self_correct: bool = False,
                parallel_expansions: int = 1,
                use_llm_prior: bool = False,
-               resume_tree: bool = False):
+               resume_tree: bool = False,
+               verbose: bool = False,
+               atomic_mode: bool = False):
     """Branch-aware ERA-PUCT search with zarrduck-inspired improvements.
 
     New features
@@ -149,6 +155,14 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     resume_tree : bool
         If tracker has a saved tree state (from a previous interrupted run), load
         it and resume search from the frontier instead of rebuilding from seeds.
+    verbose : bool
+        Print detailed progress messages for every expansion (branch selected,
+        score result, self-correction attempts, archive saves, etc.).
+    atomic_mode : bool
+        If True, Node payloads store atomic concept *compositions* (skeleton +
+        operators + params) instead of complete source code.  The LLM proposes by
+        swapping ONE operator slot; recombination merges slots from two parents.
+        Programs are rendered from compositions before scoring.
     """
     scorer = CostAwarePerSymbolScorer(splits, symbol, fair_price_mode=fair_price_mode)
     rng = random.Random(seed)
@@ -157,6 +171,21 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     seed_branch_tags = FAIR_SEED_BRANCH_TAGS if fair_price_mode else FADE_SEED_BRANCH_TAGS
     rich_templates = FAIR_RICH_TEMPLATES if fair_price_mode else FADE_RICH_TEMPLATES
     cross_branch_index = FAIR_CROSS_BRANCH_INDEX if fair_price_mode else FADE_CROSS_BRANCH_INDEX
+
+    # ── Payload rendering helper ────────────────────────────────────────────
+    def _render_payload(payload) -> str:
+        """Render node payload to source string (atomic mode = composition dict)."""
+        if atomic_mode and isinstance(payload, dict):
+            return composition_to_source(payload)
+        return str(payload)
+
+    def _extract_concepts(payload) -> list[str]:
+        """Extract concept tags from payload."""
+        if atomic_mode and isinstance(payload, dict):
+            return extract_concepts_from_composition(payload)
+        if concept_mode:
+            return extract_concepts_from_source(str(payload))
+        return []
 
     # ── Optional: resume from saved tree state ───────────────────────────────
     forest: list[Node] = []
@@ -167,16 +196,34 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
             print(f"[resume] loaded {len(resumed)} nodes ({len(forest)} roots) from tree state")
 
     if not forest:
-        if seed_programs is None:
-            seed_programs = FAIR_SEED_PROGRAMS if fair_price_mode else FADE_SEED_PROGRAMS
-        for name, src in seed_programs.items():
-            v, mean, se, lg = scorer.score(src, "validation")
-            branch = seed_branch_tags.get(name, "baseline")
-            concepts = extract_concepts_from_source(src) if concept_mode else []
-            node = Node(payload=src, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch, concepts=concepts)
-            forest.append(node)
-            if tracker is not None:
-                tracker.log_node(src, branch, concepts, v, mean, se, None, 0)
+        if atomic_mode and fair_price_mode:
+            # Atomic mode: load seed compositions
+            seed_compositions = FAIR_SEED_COMPOSITIONS
+            if seed_programs is not None:
+                # Map seed_programs dict keys to compositions
+                seed_compositions = {k: FAIR_SEED_COMPOSITIONS.get(k, {"skeleton": "simple", "operators": {"base": "slow_ewma"}, "params": {}})
+                                     for k in seed_programs}
+            for name, comp in seed_compositions.items():
+                src = composition_to_source(comp)
+                v, mean, se, lg = scorer.score(src, "validation")
+                branch = seed_branch_tags.get(name, "baseline")
+                concepts = _extract_concepts(comp)
+                node = Node(payload=comp, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch, concepts=concepts)
+                forest.append(node)
+                if tracker is not None:
+                    tracker.log_node(src, branch, concepts, v, mean, se, None, 0)
+        else:
+            # Legacy mode: load complete source strings
+            if seed_programs is None:
+                seed_programs = FAIR_SEED_PROGRAMS if fair_price_mode else FADE_SEED_PROGRAMS
+            for name, src in seed_programs.items():
+                v, mean, se, lg = scorer.score(src, "validation")
+                branch = seed_branch_tags.get(name, "baseline")
+                concepts = _extract_concepts(src)
+                node = Node(payload=src, score=v, parent=None, logs=lg, mean=mean, se=se, branch=branch, concepts=concepts)
+                forest.append(node)
+                if tracker is not None:
+                    tracker.log_node(src, branch, concepts, v, mean, se, None, 0)
 
     all_nodes: list[Node] = list(forest)
 
@@ -196,10 +243,125 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
 
     # ── Inner expansion logic ───────────────────────────────────────────────
 
-    def _generate_single_candidate(parent: Node) -> tuple[str, str, float]:
-        """Generate one candidate program. Returns (src, branch, prior_prob)."""
+    def _generate_single_candidate(parent: Node) -> tuple[object, str, float]:
+        """Generate one candidate program or composition.
+
+        Returns (payload, branch, prior_prob).
+        In atomic_mode payload is a composition dict; otherwise a source string.
+        """
         nonlocal _dim_idx
 
+        # Atomic mode: compositions instead of source strings
+        if atomic_mode and isinstance(parent.payload, dict):
+            parent_comp = parent.payload
+            parent_src = _render_payload(parent_comp)
+
+            # Decide: recombine vs propose
+            if rng.random() < p_recombine and len(all_nodes) >= 2:
+                cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
+                parent_a = cands[0]
+                parent_b = next(
+                    (n for n in cands[1:] if n.branch != parent_a.branch), cands[1]
+                )
+                branch_a = parent_a.branch or "baseline"
+                branch_b = parent_b.branch or "baseline"
+                if verbose:
+                    print(f"  [gen] atomic recombining {branch_a} + {branch_b}")
+                child_comp, prior = recombine_atomic_compositions(
+                    parent_a.payload, parent_a.score,
+                    parent_b.payload, parent_b.score,
+                    cache_dir=cache_dir,
+                )
+                child_branch = branch_a
+                if not child_comp:
+                    # Fallback: deterministic merge of operator dicts
+                    ops_a = parent_a.payload.get("operators", {})
+                    ops_b = parent_b.payload.get("operators", {})
+                    merged_ops = {**ops_a}
+                    for slot, op in ops_b.items():
+                        if slot not in merged_ops or rng.random() < 0.5:
+                            merged_ops[slot] = op
+                    child_comp = {
+                        "skeleton": parent_a.payload.get("skeleton", "simple"),
+                        "operators": merged_ops,
+                        "params": {**parent_a.payload.get("params", {}), **parent_b.payload.get("params", {})},
+                    }
+                    prior = 0.5
+                if verbose:
+                    print(f"  [gen] atomic recombination done → {child_branch}")
+                return child_comp, child_branch, prior
+
+            # Propose: change ONE operator slot
+            force_jump = (
+                _last_branch == parent.branch
+                and _branch_depth >= branch_depth_limit
+                and len(branch_pool) > 1
+            )
+            if force_jump or (rng.random() < p_cross_branch and len(branch_pool) > 1):
+                other_branches = [b for b in branch_pool if b != parent.branch]
+                target_branch = rng.choice(other_branches) if other_branches else parent.branch
+            else:
+                target_branch = parent.branch
+
+            if dimension_locked and concept_keys:
+                target_dim = concept_keys[_dim_idx % len(concept_keys)]
+                _dim_idx += 1
+                # Find which slot could hold this dimension
+                ops = parent_comp.get("operators", {})
+                cat = CONCEPT_TAXONOMY.get(target_dim, ("", ""))[0]
+                slot_map = {
+                    "base": "base", "microstructure": "correction",
+                    "calendar": "calendar", "volatility": "vol_adaptation",
+                    "combination": "combination",
+                }
+                target_slot = slot_map.get(cat, "correction")
+                if verbose:
+                    print(f"  [gen] atomic propose [{target_branch}] slot={target_slot}→{target_dim} parent_val={parent.score:+.3f}")
+                child_comp, prior = propose_atomic_change(
+                    parent_comp, parent.score, target_slot, target_dim,
+                    cache_dir=cache_dir,
+                )
+                if not child_comp:
+                    # Fallback: deterministic slot swap
+                    child_comp = {
+                        "skeleton": parent_comp.get("skeleton", "simple"),
+                        "operators": {**ops, target_slot: target_dim},
+                        "params": parent_comp.get("params", {}),
+                    }
+                    prior = 0.5
+                child_branch = target_branch
+                if verbose:
+                    print(f"  [gen] atomic proposal done → {child_branch} prior={prior:.2f}")
+                return child_comp, child_branch, prior
+
+            # Non-dimension-locked atomic propose: ask LLM to improve any slot
+            if verbose:
+                print(f"  [gen] atomic propose [{target_branch}] parent_val={parent.score:+.3f}")
+            # Pick a random slot to mutate
+            ops = parent_comp.get("operators", {})
+            slots = list(ops.keys()) or ["base"]
+            target_slot = rng.choice(slots)
+            # Pick a random concept from the same category
+            cat = CONCEPT_TAXONOMY.get(ops.get(target_slot, ""), ("", ""))[0]
+            candidates = [c for c, (cat2, _) in CONCEPT_TAXONOMY.items() if cat2 == cat and c != ops.get(target_slot)]
+            new_concept = rng.choice(candidates) if candidates else ops.get(target_slot)
+            child_comp, prior = propose_atomic_change(
+                parent_comp, parent.score, target_slot, new_concept,
+                cache_dir=cache_dir,
+            )
+            if not child_comp:
+                child_comp = {
+                    "skeleton": parent_comp.get("skeleton", "simple"),
+                    "operators": {**ops, target_slot: new_concept},
+                    "params": parent_comp.get("params", {}),
+                }
+                prior = 0.5
+            child_branch = target_branch
+            if verbose:
+                print(f"  [gen] atomic proposal done → {child_branch} prior={prior:.2f}")
+            return child_comp, child_branch, prior
+
+        # ── Legacy (non-atomic) path ──────────────────────────────────────────
         # Decide: recombine vs propose
         if rng.random() < p_recombine and len(all_nodes) >= 2:
             cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
@@ -217,12 +379,16 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                     f"Combine these two programs. Parent A is from the {branch_a} branch; "
                     f"Parent B is from the {branch_b} branch."
                 )
+            if verbose:
+                print(f"  [gen] recombining {branch_a} (val={parent_a.score:+.3f}) + {branch_b} (val={parent_b.score:+.3f})")
             child_src = recombine_branch_program(
                 parent_a.payload, parent_a.score, branch_a,
                 parent_b.payload, parent_b.score, branch_b,
                 cross_text, cache_dir=cache_dir,
             )
             child_branch = branch_a
+            if verbose:
+                print(f"  [gen] recombination done → {child_branch}")
             return child_src, child_branch, 0.5  # recombination has no LLM prior
 
         # Propose: stay in branch or jump
@@ -242,6 +408,8 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
         if dimension_locked and concept_keys:
             target_dim = concept_keys[_dim_idx % len(concept_keys)]
             _dim_idx += 1
+            if verbose:
+                print(f"  [gen] propose [{target_branch}] dim={target_dim} parent_val={parent.score:+.3f}")
             if use_llm_prior:
                 child_src, prior = propose_dimension_locked_program(
                     parent.payload, parent.score, parent.logs,
@@ -259,9 +427,13 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                     cache_dir=cache_dir,
                 )
             child_branch = target_branch
+            if verbose:
+                print(f"  [gen] proposal done → {child_branch} prior={prior:.2f}")
             return child_src, child_branch, prior
 
         if use_llm_prior:
+            if verbose:
+                print(f"  [gen] propose [{target_branch}] parent_val={parent.score:+.3f} (with LLM prior)")
             child_src, prior = propose_branch_program_with_prior(
                 parent.payload, parent.score, parent.logs,
                 branch=target_branch or "baseline",
@@ -269,6 +441,8 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                 cache_dir=cache_dir,
             )
         else:
+            if verbose:
+                print(f"  [gen] propose [{target_branch}] parent_val={parent.score:+.3f}")
             child_src = propose_branch_program(
                 parent.payload, parent.score, parent.logs,
                 branch=target_branch or "baseline",
@@ -277,57 +451,78 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
             )
             prior = 0.5
         child_branch = target_branch
+        if verbose:
+            print(f"  [gen] proposal done → {child_branch} prior={prior:.2f}")
         return child_src, child_branch, prior
 
-    def _try_self_correct(parent: Node, failed_src: str, error_log: str, branch: str) -> Node | None:
+    def _try_self_correct(parent: Node, failed_payload, error_log: str, branch: str) -> Node | None:
         """Ask LLM to repair a failed candidate. Returns new Node or None."""
         if not self_correct:
             return None
+        # Always work with source strings for self-correction
+        failed_src = _render_payload(failed_payload)
         template = _branch_template(branch)
         corrected = self_correct_program(failed_src, error_log, branch, template, cache_dir=cache_dir)
         if not corrected.strip():
             return None
+        # In atomic mode, try to preserve composition dicts so descendants remain atomic
+        child_payload = corrected
+        if atomic_mode and isinstance(failed_payload, dict):
+            recovered = extract_composition_from_source(corrected, failed_payload, cache_dir=cache_dir)
+            if recovered:
+                child_payload = recovered
         v, mean, se, lg = scorer.score(corrected, "validation")
-        concepts = extract_concepts_from_source(corrected) if concept_mode else []
+        concepts = _extract_concepts(child_payload)
         child = Node(
-            payload=corrected, score=v, parent=parent, logs=lg,
+            payload=child_payload, score=v, parent=parent, logs=lg,
             mean=mean, se=se, branch=branch, concepts=concepts,
         )
         return child
 
-    def _score_and_log(child_src: str, child_branch: str, prior: float,
+    def _score_and_log(child_payload, child_branch: str, prior: float,
                          parent: Node) -> Node:
-        """Score a candidate, apply self-correction if needed, log, and return Node."""
+        """Score a candidate (rendered from composition if atomic), apply self-correction, log, and return Node."""
+        child_src = _render_payload(child_payload)
         v, mean, se, lg = scorer.score(child_src, "validation")
 
         # Self-correction: if program failed, try once to fix it
         if v <= -1e6 + 1 and self_correct:
-            sc = _try_self_correct(parent, child_src, lg, child_branch)
+            if verbose:
+                print(f"    [score] FAILED → attempting self-correction [{child_branch}]")
+            sc = _try_self_correct(parent, child_payload, lg, child_branch)
             if sc is not None and sc.score > -1e6 + 1:
                 child = sc
                 child.prior_prob = prior
                 all_nodes.append(child)
+                if verbose:
+                    print(f"    [score] SELF-CORRECTED → val={child.score:+.3f} [{child.branch}]")
                 if archive is not None:
-                    archive.save(child.payload, child.score, child.mean, child.se, child.branch, parent, None)
+                    archive.save(_render_payload(child.payload), child.score, child.mean, child.se, child.branch, parent, None)
                 if tracker is not None:
-                    tracker.log_node(child.payload, child.branch, child.concepts or [],
+                    tracker.log_node(_render_payload(child.payload), child.branch, child.concepts or [],
                                      child.score, child.mean, child.se,
-                                     parent_payload=parent.payload if parent else None,
+                                     parent_payload=_render_payload(parent.payload) if parent else None,
                                      generation=len(all_nodes))
                 return child
+            if verbose:
+                print(f"    [score] self-correction FAILED, giving up [{child_branch}]")
 
-        concepts = extract_concepts_from_source(child_src) if concept_mode else []
+        concepts = _extract_concepts(child_payload)
         child = Node(
-            payload=child_src, score=v, parent=parent, logs=lg,
+            payload=child_payload, score=v, parent=parent, logs=lg,
             mean=mean, se=se, branch=child_branch, concepts=concepts,
             prior_prob=prior,
         )
         all_nodes.append(child)
-        if archive is not None and v > -1e6 + 1:
+        valid = v > -1e6 + 1
+        if verbose:
+            status = "VALID" if valid else "INVALID"
+            print(f"    [score] {status} val={v:+.3f} [{child_branch}] concepts={concepts}")
+        if archive is not None and valid:
             archive.save(child_src, v, mean, se, child_branch, parent, None)
         if tracker is not None:
             tracker.log_node(child_src, child_branch, concepts, v, mean, se,
-                             parent_payload=parent.payload if parent else None,
+                             parent_payload=_render_payload(parent.payload) if parent else None,
                              generation=len(all_nodes))
         return child
 
@@ -335,6 +530,8 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
         nonlocal _last_branch, _branch_depth
 
         if parallel_expansions > 1:
+            if verbose:
+                print(f"  [expand] parallel={parallel_expansions} from [{parent.branch}] val={parent.score:+.3f}")
             # Generate N candidates in parallel, pick best
             candidates = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=parallel_expansions) as ex:
@@ -347,26 +544,35 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                         print(f"[parallel expansion error] {e}")
             if not candidates:
                 # Fallback: generate one synchronously
-                child_src, child_branch, prior = _generate_single_candidate(parent)
-                return _score_and_log(child_src, child_branch, prior, parent)
+                child_payload, child_branch, prior = _generate_single_candidate(parent)
+                return _score_and_log(child_payload, child_branch, prior, parent)
 
             # Score all candidates (some may be cached, most won't be)
             scored = []
-            for child_src, child_branch, prior in candidates:
-                node = _score_and_log(child_src, child_branch, prior, parent)
+            for child_payload, child_branch, prior in candidates:
+                node = _score_and_log(child_payload, child_branch, prior, parent)
                 scored.append(node)
             # Return best-scoring child for PUCT continuation
             best = max(scored, key=lambda n: n.score)
+            if verbose:
+                scores = ", ".join(f"{n.score:+.3f}" for n in scored)
+                print(f"  [expand] parallel results: [{scores}] → best={best.score:+.3f} [{best.branch}]")
+            # Update branch-depth tracker so parallel expansions count toward depth limits
+            if _last_branch == best.branch:
+                _branch_depth += 1
+            else:
+                _last_branch = best.branch
+                _branch_depth = 1
             return best
         else:
-            child_src, child_branch, prior = _generate_single_candidate(parent)
+            child_payload, child_branch, prior = _generate_single_candidate(parent)
             # Update branch-depth tracker
             if _last_branch == child_branch:
                 _branch_depth += 1
             else:
                 _last_branch = child_branch
                 _branch_depth = 1
-            return _score_and_log(child_src, child_branch, prior, parent)
+            return _score_and_log(child_payload, child_branch, prior, parent)
 
     # Progress logging
     _expansion_count = 0
@@ -374,16 +580,19 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     def _expand_logged(parent: Node) -> Node:
         nonlocal _expansion_count
         _expansion_count += 1
+        if verbose:
+            print(f"[{_expansion_count}/{budget}] SELECT [{parent.branch}] val={parent.score:+.3f} visits={parent.visits} concepts={getattr(parent, 'concepts', [])}")
         child = expand(parent)
         if _expansion_count % 10 == 0 or _expansion_count == budget:
             valid = [n for n in all_nodes if n.score > -1e6 + 1]
             best = max((n.score for n in valid), default=float("-inf"))
+            best_node = max(valid, key=lambda n: n.score) if valid else None
             branches = {}
             for n in all_nodes:
                 b = n.branch or "unknown"
                 branches[b] = branches.get(b, 0) + 1
-            print(f"[ERA progress] expansions={_expansion_count}/{budget}  nodes={len(all_nodes)}  "
-                  f"valid={len(valid)}  best_score={best:.3f}  branches={branches}")
+            print(f"\n[ERA progress] expansions={_expansion_count}/{budget}  nodes={len(all_nodes)}  "
+                  f"valid={len(valid)}  best_score={best:.3f}  best_branch={best_node.branch if best_node else 'n/a'}  branches={branches}\n")
         return child
 
     # Selection function
@@ -495,6 +704,10 @@ def main() -> None:
                     help="ask LLM for self-assessed confidence (0-1) and use it in PUCT exploration bonus")
     ap.add_argument("--resume-tree", action="store_true",
                     help="resume from saved tree state instead of rebuilding from seeds")
+    ap.add_argument("--verbose", action="store_true",
+                    help="print detailed progress for every expansion (branch selected, score result, self-correction, etc.)")
+    ap.add_argument("--atomic-mode", action="store_true",
+                    help="store atomic concept compositions instead of full source; LLM tweaks one operator slot at a time")
     args = ap.parse_args()
     grid_h = GRID_H_SHORT if args.fair_price else GRID_H
     # For fair-price mode, score on all historical data (2018-2024) so the Bayesian
@@ -530,14 +743,16 @@ def main() -> None:
                        tracker=tracker, warm_start=args.warm_start, concept_mode=args.concept_mode,
                        dimension_locked=args.dimension_locked, self_correct=args.self_correct,
                        parallel_expansions=args.parallel_expansions,
-                       use_llm_prior=args.use_llm_prior, resume_tree=args.resume_tree)
+                       use_llm_prior=args.use_llm_prior, resume_tree=args.resume_tree,
+                       verbose=args.verbose, atomic_mode=args.atomic_mode)
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
     # Deduplicate by payload so the same generated program doesn't dominate the top-5 display.
     seen_payloads: set[str] = set()
     unique_ranked = []
     for nd in ranked:
-        if nd.payload not in seen_payloads:
-            seen_payloads.add(nd.payload)
+        payload_key = json.dumps(nd.payload, sort_keys=True) if isinstance(nd.payload, dict) else nd.payload
+        if payload_key not in seen_payloads:
+            seen_payloads.add(payload_key)
             unique_ranked.append(nd)
     mode_label = "fair-price" if args.fair_price else "cost-aware"
     flags = []
@@ -549,25 +764,26 @@ def main() -> None:
         flags.append("llm-prior")
     if args.parallel_expansions > 1:
         flags.append(f"parallel={args.parallel_expansions}")
-    if args.resume_tree:
-        flags.append("resume")
+    if args.atomic_mode:
+        flags.append("atomic")
     flags_str = f" | {','.join(flags)}" if flags else ""
     lines = [f"# {mode_label} PUCT verdict — {args.symbol} (policy={args.policy}, "
              f"seeds={'no' if args.no_seeds else 'yes'}, budget={args.budget}{flags_str})\n"]
     for nd in unique_ranked[:5]:
-        hv = holdout_verdict(nd.payload, sp["holdout"], args.symbol, fair_price_mode=args.fair_price)
+        src = composition_to_source(nd.payload) if isinstance(nd.payload, dict) else nd.payload
+        hv = holdout_verdict(src, sp["holdout"], args.symbol, fair_price_mode=args.fair_price)
         tag = "SEED" if nd.parent is None else "evolved"
         branch_tag = f"[{nd.branch}]" if nd.branch else ""
         if hv:
             lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout P={hv['p_positive']:.3f} "
                          f"raw={hv['raw_mean']:+.3f} (q{hv['q']} h{hv['h']} n={hv['n_trades']})")
             # Archive top-5 holdout results as well
-            archive.save(nd.payload, nd.score, nd.mean, nd.se, nd.branch, nd.parent, hv)
+            archive.save(src, nd.score, nd.mean, nd.se, nd.branch, nd.parent, hv)
             # Log holdout to tracker for concept-level posterior updates
             if tracker is not None:
-                tracker.log_node(nd.payload, nd.branch or "unknown", nd.concepts or [],
+                tracker.log_node(src, nd.branch or "unknown", nd.concepts or [],
                                  nd.score, nd.mean, nd.se,
-                                 parent_payload=nd.parent.payload if nd.parent else None,
+                                 parent_payload=(composition_to_source(nd.parent.payload) if isinstance(nd.parent.payload, dict) else nd.parent.payload) if nd.parent else None,
                                  generation=0, holdout_p=hv.get("p_positive"), holdout_raw=hv.get("raw_mean"))
         else:
             lines.append(f"- [{tag}] {branch_tag} val={nd.score:+.3f} | holdout: program error")

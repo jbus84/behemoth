@@ -87,6 +87,98 @@ SEED_BRANCH_TAGS: dict[str, str] = {
 }
 
 
+# ── Seed compositions (atomic-mode) ───────────────────────────────────────────
+# Each seed decomposed into skeleton + operators + params for the atomic
+# composition engine.  The LLM proposes by swapping ONE operator slot.
+FAIR_SEED_COMPOSITIONS: dict[str, dict] = {
+    "slow_ewma_fair": {
+        "skeleton": "simple",
+        "operators": {"base": "slow_ewma"},
+        "params": {"alpha": 0.02},
+    },
+    "roll_bounce_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "roll_bounce", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "mult": 0.5, "w_base": 1.0, "w_corr": -1.0},
+    },
+    "hasbrouck_efficient_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "price_level", "correction": "transitory_fade", "combination": "additive_blend"},
+        "params": {"W": 100, "w_base": 1.0, "w_corr": -1.0},
+    },
+    "evans_lyons_inventory_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "inventory_flow", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "lam": 0.001, "w_base": 1.0, "w_corr": 1.0},
+    },
+    "barzykin_propagator_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "barzykin_impact", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "rho": 0.1, "lambda": 0.5, "w_base": 1.0, "w_corr": -1.0},
+    },
+    "stoikov_ofi_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "ofi_imbalance", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "mult": 0.5, "w_base": 1.0, "w_corr": 1.0},
+    },
+    "krohn_fix_adjusted_fair": {
+        "skeleton": "base_plus_correction_plus_calendar",
+        "operators": {"base": "slow_ewma", "correction": "roll_bounce", "calendar": "krohn_fix_adjusted", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "mult": 0.5, "scale": 0.3, "w_base": 1.0, "w_corr": -1.0, "w_cal": 1.0},
+    },
+    "taylor_adaptive_fair": {
+        "skeleton": "vol_adaptive",
+        "operators": {"vol_adaptation": "parkinson_vol_gate", "base": "adaptive_ewma", "combination": "additive_blend"},
+        "params": {"W": 20, "alpha_min": 0.02, "alpha_max": 0.10, "w_base": 1.0, "w_corr": 0.0, "w_cal": 0.0},
+    },
+    "microprice_imbalance_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "microprice_imbalance", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "mult": 1.0, "w_base": 1.0, "w_corr": 1.0},
+    },
+    "glosten_milgrom_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "glosten_adverse", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "mult": 1.0, "w_base": 1.0, "w_corr": -1.0},
+    },
+    "cointegration_trend_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "expanding_ols", "correction": "error_correction", "combination": "additive_blend"},
+        "params": {"speed": 0.1, "w_base": 1.0, "w_corr": 1.0},
+    },
+    "jump_robust_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "price_level", "correction": "jump_replace", "combination": "additive_blend"},
+        "params": {"W": 20, "k": 3.0, "w_base": 1.0, "w_corr": 1.0},
+    },
+    "kyle_informed_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "kyle_informed", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "W": 100, "lambda_k": 0.3, "w_base": 1.0, "w_corr": 1.0},
+    },
+    "pin_informed_flow_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "pin_flow", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "gamma": 0.001, "w_base": 1.0, "w_corr": 1.0},
+    },
+    "almgren_impact_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "almgren_impact", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "rho": 0.10, "eta": 0.5, "w_base": 1.0, "w_corr": -1.0},
+    },
+    "ow_propagator_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "ow_propagator", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "beta": 0.10, "kappa": 0.5, "w_base": 1.0, "w_corr": -1.0},
+    },
+    "foucault_competition_fair": {
+        "skeleton": "base_plus_correction",
+        "operators": {"base": "slow_ewma", "correction": "foucault_competition", "combination": "additive_blend"},
+        "params": {"alpha": 0.02, "scale": 1.0, "w_base": 1.0, "w_corr": -1.0},
+    },
+}
+
+
 # ── Seed programs (estimate_fair returns fair price, NOT signal) ─────────────
 FAIR_SEED_PROGRAMS: dict[str, str] = {
     "slow_ewma_fair": (
