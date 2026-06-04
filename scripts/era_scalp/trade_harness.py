@@ -16,8 +16,41 @@ def forward_return(mid: np.ndarray, pip: float, h: int) -> np.ndarray:
     return out
 
 
-def evaluate_trades(signal, mid, cost, test_month, pip, q, h):
-    """Top-q |conviction| entries; side=sign(signal); exit at t+h; net = side*fwd - cost."""
+def expanding_quantile_threshold(
+    signal: np.ndarray, q: float, warmup: int = 2000, recompute_every: int = 500
+) -> np.ndarray:
+    """Causal per-bar conviction threshold.
+
+    At bar t the threshold is the q-quantile of |signal[:t+1]| over the finite
+    values seen so far. To bound cost it is recomputed every `recompute_every`
+    bars and held constant between recomputes. Returns NaN (no-trade) until at
+    least `warmup` finite samples have accrued. Uses only past data, so a future
+    perturbation can never change a past threshold value.
+    """
+    a = np.abs(np.asarray(signal, float))
+    n = a.shape[0]
+    thr = np.full(n, np.nan)
+    fin = np.isfinite(a)
+    cum_fin = np.cumsum(fin)
+    last = np.nan
+    for t in range(n):
+        if cum_fin[t] < warmup:
+            continue
+        if not np.isfinite(last) or (t % recompute_every == 0):
+            hist = a[: t + 1][fin[: t + 1]]
+            last = float(np.quantile(hist, q))
+        thr[t] = last
+    return thr
+
+
+def evaluate_trades(signal, mid, cost, test_month, pip, q, h,
+                    causal_threshold=False, warmup=2000, recompute_every=500):
+    """Top-q |conviction| entries; side=sign(signal); exit at t+h; net = side*fwd - cost.
+
+    causal_threshold=False (default): conviction cutoff is the full-sample q-quantile
+    of |scaled signal| (legacy; uses look-ahead, kept for A/B and backward compat).
+    causal_threshold=True: cutoff is a causal expanding-window quantile (no look-ahead).
+    """
     raw = np.asarray(signal, float)
     s = scale_signal(raw)
     fwd = forward_return(mid, pip, h)
@@ -25,8 +58,13 @@ def evaluate_trades(signal, mid, cost, test_month, pip, q, h):
     fin = np.isfinite(s)
     if fin.sum() < 2:
         return pd.DataFrame({"net": np.array([]), "test_month": np.array([])})
-    thr = np.quantile(np.abs(s[fin]), q)
-    entry = fin & np.isfinite(fwd) & np.isfinite(cost) & (np.abs(s) >= thr)
+    if causal_threshold:
+        thr = expanding_quantile_threshold(s, q, warmup=warmup, recompute_every=recompute_every)
+        armed = np.isfinite(thr)
+        entry = fin & np.isfinite(fwd) & np.isfinite(cost) & armed & (np.abs(s) >= thr)
+    else:
+        thr = np.quantile(np.abs(s[fin]), q)
+        entry = fin & np.isfinite(fwd) & np.isfinite(cost) & (np.abs(s) >= thr)
     net = np.sign(raw) * fwd - cost
     return pd.DataFrame({"net": net[entry], "test_month": np.asarray(test_month)[entry]})
 
