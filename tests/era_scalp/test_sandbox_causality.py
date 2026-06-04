@@ -89,7 +89,13 @@ def test_probe_accepts_nan_safe_causal():
 
 
 def test_seed_programs_pass_hardened_probe():
-    ctx = _ctx(n=2000, seed=3)
+    # Build a full-whitelist context: fade seeds reference many feature columns
+    # (e.g. hl_pos_delta_tick, tick_volume), not just the minimal set in NAMES.
+    from scripts.era_scalp.load_splits import WHITELIST
+
+    rng = np.random.default_rng(3)
+    X = rng.standard_normal((2000, len(WHITELIST)))
+    ctx = FeatureContext(X=X, names=list(WHITELIST), hour=(np.arange(2000) % 24).astype(float))
     for name, src in FADE_SEED_PROGRAMS.items():
         sig, err, _ = run_program(src, ctx)
         assert err is None, f"{name}: {err}"
