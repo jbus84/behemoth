@@ -1,6 +1,6 @@
 import numpy as np
 
-from scripts.era_scalp.trade_harness import expanding_quantile_threshold
+from scripts.era_scalp.trade_harness import expanding_quantile_threshold, evaluate_trades
 
 
 def test_threshold_is_nan_before_warmup():
@@ -27,3 +27,29 @@ def test_threshold_handles_nan_signal():
     thr = expanding_quantile_threshold(s, q=0.5, warmup=3, recompute_every=1)
     assert np.isnan(thr[0]) and np.isnan(thr[1])
     assert np.isfinite(thr[4])
+
+
+def test_evaluate_trades_causal_flag_changes_entries():
+    n = 5000
+    rng = np.random.default_rng(1)
+    signal = rng.standard_normal(n)
+    mid = 1.0 + np.cumsum(rng.standard_normal(n)) * 1e-5
+    cost = np.full(n, 0.0)
+    tm = np.array(["2024-01"] * n)
+    full = evaluate_trades(signal, mid, cost, tm, pip=1e-4, q=0.95, h=10)
+    causal = evaluate_trades(
+        signal, mid, cost, tm, pip=1e-4, q=0.95, h=10,
+        causal_threshold=True, warmup=500, recompute_every=200,
+    )
+    assert len(causal) < len(full)
+    assert len(causal) > 0
+
+
+def test_evaluate_trades_default_is_unchanged():
+    n = 100
+    signal = np.concatenate([np.full(50, 2.0), np.full(50, 0.0)])
+    mid = 1.0 + np.arange(n) * 1e-4
+    cost = np.full(n, 0.4)
+    tm = np.array(["2024-01"] * n)
+    df = evaluate_trades(signal, mid, cost, tm, pip=1e-4, q=0.50, h=10)
+    assert len(df) > 0 and df["net"].mean() > 0
