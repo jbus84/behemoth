@@ -69,6 +69,50 @@ def test_scorer_rejects_noncausal_program():
     assert "causal" in logs.lower()
 
 
+# A program that leaks the NaN-pattern of FUTURE rows into a PAST output.
+FINITENESS_LEAK = (
+    "def residual(ctx):\n"
+    "    x = ctx.target_col(); n = x.shape[0]\n"
+    "    out = np.empty(n)\n"
+    "    for i in range(n):\n"
+    "        out[i] = np.isfinite(x[i + 1:]).sum()  # reads future finiteness\n"
+    "    return out\n"
+)
+
+
+def test_probe_default_uses_five_cuts():
+    import inspect
+
+    sig = inspect.signature(causality_probe)
+    assert sig.parameters["n_cuts"].default == 5
+
+
+def test_probe_rejects_finiteness_leak():
+    ctx = _ctx()
+    resid, err, _ = run_program(FINITENESS_LEAK, ctx)
+    assert err is None
+    ok, reason = causality_probe(FINITENESS_LEAK, ctx, resid)
+    assert not ok and ("future" in reason.lower() or "causal" in reason.lower())
+
+
+def test_static_check_forbids_np_random():
+    from scripts.era.sandbox import static_check
+
+    ok, reason = static_check(
+        "def residual(ctx):\n    return np.random.standard_normal(ctx.n_bars)\n"
+    )
+    assert not ok and "random" in reason.lower()
+
+
+def test_static_check_accepts_np_without_random():
+    from scripts.era.sandbox import static_check
+
+    ok, reason = static_check(
+        "def residual(ctx):\n    return ctx.target_col() * 2.0\n"
+    )
+    assert ok, reason
+
+
 def test_all_seeds_are_causal():
     from scripts.era.seeds import SEED_PROGRAMS
 
