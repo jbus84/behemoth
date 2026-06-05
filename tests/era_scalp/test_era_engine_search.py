@@ -65,7 +65,8 @@ def test_engine_verdict_annotates_topk():
     splits = {"validation": _Split(3000, 3), "holdout": _Split(2500, 4)}
     nodes = run_era_search(spec, splits, budget=0, seed=0)
     rows = engine_verdict(spec, nodes, splits, top_k=3, temporal=True,
-                          num_warmup=80, num_samples=80, num_chains=1)
+                          num_warmup=80, num_samples=80, num_chains=1,
+                          holdout_warmup=60, holdout_samples=60, holdout_chains=1)
     assert 1 <= len(rows) <= 3
     r = rows[0]
     for k in ("val", "dsr", "temporal", "holdout"):
