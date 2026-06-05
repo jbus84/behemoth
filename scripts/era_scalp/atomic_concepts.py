@@ -828,6 +828,8 @@ def render_composition(
     upgraded = _auto_upgrade_skeleton(skeleton_name, operators)
     skeleton = SKELETONS.get(upgraded, SKELETONS["simple"])
     params = params or {}
+    if not isinstance(params, dict):
+        params = {}
 
     # Handle dual_base_switch edge case: ensure both slow_base and fast_base are
     # present.  If base is present, copy it to missing slots.  If only one of
@@ -850,7 +852,7 @@ def render_composition(
     # Collect operator code for each slot
     slot_code: dict[str, str] = {}
     for slot, op_name in operators.items():
-        tmpl = _ALL_OPERATORS.get(op_name, "")
+        tmpl = _ALL_OPERATORS.get(op_name, "") if isinstance(op_name, str) else ""
         if not tmpl:
             slot_code[slot] = f"    # (no {slot})"
             continue
