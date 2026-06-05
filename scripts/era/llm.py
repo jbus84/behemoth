@@ -384,6 +384,109 @@ def recombine_atomic_compositions(compA, scoreA, compB, scoreB, cache_dir, calle
 
 
 # ---------------------------------------------------------------------------
+# Cross-symbol atomic composition helpers (xs-specific prompts)
+# ---------------------------------------------------------------------------
+
+XS_ATOMIC_RULES = (
+    "You write a cross-symbol residual scalper.  A residual measures how far a target "
+    "currency pair is from its peer basket.  Positive residual = target is rich "
+    "(should be faded short); negative residual = target is cheap (should be faded long). "
+    "Operators are drawn from four slots: base (the raw residual), gate (when to trade), "
+    "smoothing (EWMA or trailing mean), and normalization (vol scaling or dispersion scaling). "
+    "All operators must be causal — never use future rows.  Return a JSON object only."
+)
+
+
+def build_xs_atomic_propose_prompt(parent_comp: dict, parent_score: float,
+                                    target_slot: str, new_concept: str) -> str:
+    """XS-specific prompt for changing one operator slot."""
+    return (
+        f"{XS_ATOMIC_RULES}\n\n"
+        f"CURRENT COMPOSITION (score {parent_score:.3f}):\n"
+        f"```json\n{_composition_to_json(parent_comp)}\n```\n\n"
+        f"YOUR TASK:\n"
+        f"Change ONLY the '{target_slot}' operator to '{new_concept}'.\n"
+        f"Keep all other operators and the skeleton identical.\n"
+        f"Fill in sensible parameter values for the new operator.\n"
+        f"Output ONLY a JSON object — no prose, no markdown, no python.\n"
+        f'Format: {{"skeleton": "...", "operators": {{...}}, "params": {{...}}}}\n'
+    )
+
+
+def build_xs_atomic_recombine_prompt(compA: dict, scoreA: float,
+                                        compB: dict, scoreB: float) -> str:
+    """XS-specific prompt for merging two atomic compositions."""
+    return (
+        f"{XS_ATOMIC_RULES}\n\n"
+        f"PARENT A (score {scoreA:.3f}):\n"
+        f"```json\n{_composition_to_json(compA)}\n```\n\n"
+        f"PARENT B (score {scoreB:.3f}):\n"
+        f"```json\n{_composition_to_json(compB)}\n```\n\n"
+        f"YOUR TASK:\n"
+        f"Merge the best ideas from BOTH parents into a single cross-symbol residual composition.\n"
+        f"You may take the base from one parent and the gate from the other,\n"
+        f"or blend smoothing/normalization approaches.\n"
+        f"Output ONLY a JSON object — no prose, no markdown, no python.\n"
+        f'Format: {{"skeleton": "...", "operators": {{...}}, "params": {{...}}}}\n'
+    )
+
+
+def propose_xs_atomic_change(parent_comp, parent_score, target_slot: str,
+                             new_concept: str, cache_dir, caller=None) -> tuple[dict, float]:
+    """XS-specific atomic propose using cross-symbol framing."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_xs_atomic_propose_prompt(parent_comp, parent_score, target_slot, new_concept)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"xs_atomic_propose_{target_slot}_{new_concept}_{key}.json"
+    if cached.exists():
+        text = cached.read_text()
+        parts = text.split("\n---PRIOR---\n")
+        if len(parts) == 2:
+            try:
+                return json.loads(parts[0]), float(parts[1])
+            except (json.JSONDecodeError, ValueError):
+                pass
+        try:
+            return json.loads(text), 0.5
+        except json.JSONDecodeError:
+            pass
+    resp = caller(prompt)
+    comp, prior = extract_composition_with_prior(resp)
+    if comp:
+        cached.write_text(json.dumps(comp) + "\n---PRIOR---\n" + str(prior))
+    return comp, prior
+
+
+def recombine_xs_atomic_compositions(compA, scoreA, compB, scoreB, cache_dir, caller=None) -> tuple[dict, float]:
+    """XS-specific atomic recombine using cross-symbol framing."""
+    caller = caller or _ollama_caller
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_xs_atomic_recombine_prompt(compA, scoreA, compB, scoreB)
+    key = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    cached = cache_dir / f"xs_atomic_recombine_{key}.json"
+    if cached.exists():
+        text = cached.read_text()
+        parts = text.split("\n---PRIOR---\n")
+        if len(parts) == 2:
+            try:
+                return json.loads(parts[0]), float(parts[1])
+            except (json.JSONDecodeError, ValueError):
+                pass
+        try:
+            return json.loads(text), 0.5
+        except json.JSONDecodeError:
+            pass
+    resp = caller(prompt)
+    comp, prior = extract_composition_with_prior(resp)
+    if comp:
+        cached.write_text(json.dumps(comp) + "\n---PRIOR---\n" + str(prior))
+    return comp, prior
+
+
+# ---------------------------------------------------------------------------
 # Branch-aware wrappers (new)
 # ---------------------------------------------------------------------------
 

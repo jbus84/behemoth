@@ -273,11 +273,17 @@ def engine_verdict(spec: RunSpec, nodes: list, splits: dict, top_k: int = 5,
     val = splits["validation"]
     hold = splits.get("holdout")
     rows = []
+    def _render_payload(payload):
+        if spec.atomic_mode and isinstance(payload, dict) and spec.render_payload is not None:
+            return spec.render_payload(payload)
+        return str(payload)
+
     for nd in ranked[:top_k]:
         holdout = None
         if hold is not None:
             ctx = spec.context_factory(hold)
-            out, err, _ = spec.run_program(nd.payload, ctx, timeout=spec.timeout,
+            src = _render_payload(nd.payload)
+            out, err, _ = spec.run_program(src, ctx, timeout=spec.timeout,
                                            required_fn=spec.required_fn)
             if err is None:
                 holdout = _holdout_edge(spec, out, hold, name=spec.name,
@@ -286,7 +292,8 @@ def engine_verdict(spec: RunSpec, nodes: list, splits: dict, top_k: int = 5,
         tv = None
         if temporal:
             ctx = spec.context_factory(val)
-            out, err, _ = spec.run_program(nd.payload, ctx, timeout=spec.timeout,
+            src = _render_payload(nd.payload)
+            out, err, _ = spec.run_program(src, ctx, timeout=spec.timeout,
                                            required_fn=spec.required_fn)
             if err is None:
                 frame = _best_cell_frame(spec, out, val)
