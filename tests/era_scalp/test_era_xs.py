@@ -50,3 +50,24 @@ def test_crosssym_spec_shape():
     assert callable(spec.propose) and callable(spec.recombine)
     # adapters must accept (and ignore) required_fn without error
     assert callable(spec.run_program) and callable(spec.causality_probe)
+
+
+def test_crosssym_spec_atomic_mode():
+    spec = crosssym_spec(atomic_mode=True)
+    assert spec.atomic_mode is True
+    assert spec.seed_programs is None
+    assert spec.seed_compositions is not None
+    assert "loo_z" in spec.seed_compositions
+    assert "factor_resid" in spec.seed_compositions
+    assert spec.render_payload is not None
+    assert spec.propose_atomic is not None
+    assert spec.recombine_atomic is not None
+    assert spec.concept_taxonomy is not None
+    assert spec.sanitize_composition is not None
+    assert spec.extract_concepts is not None
+    assert spec.dimension_locked is True
+    assert spec.self_correct is False
+    assert spec.parallel_expansions == 2
+    # branch tags should map to concept categories, not seed names
+    assert spec.branch_tags["loo_z"] == "base"
+    assert spec.branch_tags["loo_z_asia"] == "base"
