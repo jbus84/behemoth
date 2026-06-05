@@ -1,7 +1,7 @@
 import numpy as np
 
 from scripts.era.puct import Node
-from scripts.era_scalp.run_era_eur import _recombination_parents
+from scripts.era_scalp.era_engine import _recombination_parents
 
 
 def _node(score, branch, visits=1):
