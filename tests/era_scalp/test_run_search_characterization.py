@@ -65,3 +65,88 @@ def test_run_search_golden_best(tmp_path, monkeypatch):
     best = max(valid, key=lambda n: n.score)
     assert best.branch == "mean_reversion_gate"
     assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
+
+
+# ── Rich-branch coverage ─────────────────────────────────────────────────────
+# The default-path tests above leave the atomic / self-correct / dimension-locked /
+# llm-prior branches (~60% of run_search) unexercised. These pin them with deterministic
+# writer stubs so the engine port (run_search_rich) reproduces each branch faithfully.
+
+_GOOD = "```python\ndef signal(ctx):\n    return ctx.col('vel_z_h2')\n```"
+_BAD = "```python\ndef signal(ctx):\n    return undefined_name_xyz\n```"
+_COMP = {"skeleton": "simple", "operators": {"base": "slow_ewma"}, "params": {"alpha": 0.02}}
+
+
+def _run_rich(tmp_path, monkeypatch, stubs, **kw):
+    """Run run_search with the era.llm writers (imported into run_era_eur) replaced by
+    deterministic stubs. `stubs` maps writer attr name -> replacement callable."""
+    import scripts.era_scalp.run_era_eur as R
+    monkeypatch.setattr("scripts.era.llm._ollama_caller", lambda prompt: _GOOD)  # safety net
+    for attr, fn in stubs.items():
+        monkeypatch.setattr(R, attr, fn)
+    splits = {"validation": _val_split()}
+    return R.run_search(splits, "EURUSD", budget=4, seed=0,
+                        cache_dir=str(tmp_path), select_policy="diversity", **kw)
+
+
+def _best(nodes):
+    valid = [n for n in nodes if n.score > -1e6 + 1]
+    return valid, max(valid, key=lambda n: n.score)
+
+
+def test_run_search_atomic_mode(tmp_path, monkeypatch):
+    """Atomic mode (fair-price): compositions instead of source; propose/recombine return
+    composition dicts. Distinct seed set + distinct best from the legacy path."""
+    from scripts.era_scalp.fair_seeds import FAIR_SEED_COMPOSITIONS
+    nodes = _run_rich(
+        tmp_path, monkeypatch,
+        {"propose_atomic_change": lambda *a, **k: (dict(_COMP), 0.5),
+         "recombine_atomic_compositions": lambda *a, **k: (dict(_COMP), 0.5)},
+        atomic_mode=True, fair_price_mode=True,
+    )
+    assert len(nodes) == len(FAIR_SEED_COMPOSITIONS) + 4
+    valid, best = _best(nodes)
+    assert best.branch == "hasbrouck_efficient"
+    assert np.isclose(best.score, 3.413275, atol=1e-3), best.score
+
+
+def test_run_search_self_correct(tmp_path, monkeypatch):
+    """Self-correction: every proposal fails to compile, the repair writer returns a
+    valid program → the corrected expansions are admitted (not stuck at the -1e6 floor)."""
+    nodes = _run_rich(
+        tmp_path, monkeypatch,
+        {"propose_branch_program": lambda *a, **k: _BAD,
+         "self_correct_program": lambda *a, **k: _GOOD},
+        self_correct=True,
+    )
+    assert len(nodes) == len(_seed_count()) + 4
+    valid, best = _best(nodes)
+    assert len(valid) == 21
+    assert best.branch == "mean_reversion_gate"
+    assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
+
+
+def test_run_search_dimension_locked(tmp_path, monkeypatch):
+    """Dimension-locked proposals (legacy path): one tweak per CONCEPT_TAXONOMY dimension."""
+    nodes = _run_rich(
+        tmp_path, monkeypatch,
+        {"propose_dimension_locked_program": lambda *a, **k: (_GOOD, 0.5)},
+        dimension_locked=True,
+    )
+    assert len(nodes) == len(_seed_count()) + 4
+    _valid, best = _best(nodes)
+    assert best.branch == "mean_reversion_gate"
+    assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
+
+
+def test_run_search_llm_prior(tmp_path, monkeypatch):
+    """LLM-prior proposals: writer returns (src, confidence); prior feeds the PUCT bonus."""
+    nodes = _run_rich(
+        tmp_path, monkeypatch,
+        {"propose_branch_program_with_prior": lambda *a, **k: (_GOOD, 0.8)},
+        use_llm_prior=True,
+    )
+    assert len(nodes) == len(_seed_count()) + 4
+    _valid, best = _best(nodes)
+    assert best.branch == "mean_reversion_gate"
+    assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
