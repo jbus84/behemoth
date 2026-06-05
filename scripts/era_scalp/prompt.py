@@ -5,7 +5,10 @@ FEATURE_NAMES: list[str] = [
     "tick_burst", "tick_burst_score", "high_pos_tick", "low_pos_tick",
     "hl_pos_delta_tick", "bar_return_sign", "vel_pips_h1", "vel_pips_h2",
     "vel_pips_h5", "vel_pips_h10", "vel_z_h1", "vel_z_h2", "vel_z_h5",
-    "vel_z_h10", "accel_pips", "hour_utc",
+    "vel_z_h10", "accel_pips", "hour_utc", "range_pips",
+    "signed_flow_24", "directional_persistence_8", "intra_bar_momentum",
+    "quote_revision_rate_z", "vol_cluster_score", "slip_proxy_pips",
+    "hl_pos_frac",
 ]
 
 SCALP_RULES = (
