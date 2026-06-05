@@ -173,6 +173,28 @@ def _recombination_parents(all_nodes, c_branch, rng):
     return parent_a, parent_b
 
 
+def _sanitize_composition(comp):
+    """Coerce a composition's operator values to op-name strings.
+
+    LLM recombination occasionally emits a list (or other non-string) for a slot's
+    operator; a list value is unhashable and crashes CONCEPT_TAXONOMY / _ALL_OPERATORS
+    lookups downstream. Keep string values, flatten a non-empty list/tuple to its first
+    string element, drop anything else. Non-dict payloads (source strings) pass through."""
+    if not isinstance(comp, dict):
+        return comp
+    ops = comp.get("operators")
+    if isinstance(ops, dict):
+        clean = {}
+        for slot, val in ops.items():
+            if isinstance(val, str):
+                clean[slot] = val
+            elif isinstance(val, (list, tuple)) and val and isinstance(val[0], str):
+                clean[slot] = val[0]
+            # else: drop the slot
+        comp = {**comp, "operators": clean}
+    return comp
+
+
 def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                cache_dir="/tmp/era_eur_cache", p_recombine=0.25, p_cross_branch=0.35,
                c_branch=0.7, branch_depth_limit=3, seed_programs=None, archive=None,
@@ -307,7 +329,7 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
 
         # Atomic mode: compositions instead of source strings
         if atomic_mode and isinstance(parent.payload, dict):
-            parent_comp = parent.payload
+            parent_comp = _sanitize_composition(parent.payload)
             _parent_src = _render_payload(parent_comp)
 
             # Decide: recombine vs propose
@@ -528,6 +550,7 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
     def _score_and_log(child_payload, child_branch: str, prior: float,
                          parent: Node) -> Node:
         """Score a candidate (rendered from composition if atomic), apply self-correction, log, and return Node."""
+        child_payload = _sanitize_composition(child_payload)
         child_src = _render_payload(child_payload)
         v, mean, se, lg = scorer.score(child_src, "validation")
 
