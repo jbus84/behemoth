@@ -158,6 +158,21 @@ FAIR_TRIVIAL_ROOT = (
 )
 
 
+def _recombination_parents(all_nodes, c_branch, rng):
+    """Diversity-aware recombination parents.
+
+    parent_a is chosen via the branch-diversity selector (select_diversity) rather than the
+    greedy global top scorer, so recombination does not funnel the search budget into one
+    lucky incumbent branch. parent_b is the best-scoring node from a DIFFERENT branch (falls
+    back to the next-best distinct node if only one branch is present)."""
+    parent_a = select_diversity(all_nodes, c_puct=1.0, c_branch=c_branch, rng=rng)
+    cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
+    parent_b = next((n for n in cands if n.branch != parent_a.branch), None)
+    if parent_b is None:
+        parent_b = next((n for n in cands if n is not parent_a), parent_a)
+    return parent_a, parent_b
+
+
 def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
                cache_dir="/tmp/era_eur_cache", p_recombine=0.25, p_cross_branch=0.35,
                c_branch=0.7, branch_depth_limit=3, seed_programs=None, archive=None,
@@ -297,11 +312,7 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
 
             # Decide: recombine vs propose
             if rng.random() < p_recombine and len(all_nodes) >= 2:
-                cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
-                parent_a = cands[0]
-                parent_b = next(
-                    (n for n in cands[1:] if n.branch != parent_a.branch), cands[1]
-                )
+                parent_a, parent_b = _recombination_parents(all_nodes, c_branch, nprng)
                 branch_a = parent_a.branch or "baseline"
                 branch_b = parent_b.branch or "baseline"
                 if verbose:
@@ -403,11 +414,7 @@ def run_search(splits, symbol, budget, select_policy="diversity", seed=0,
         # ── Legacy (non-atomic) path ──────────────────────────────────────────
         # Decide: recombine vs propose
         if rng.random() < p_recombine and len(all_nodes) >= 2:
-            cands = sorted(all_nodes, key=lambda n: n.score, reverse=True)
-            parent_a = cands[0]
-            parent_b = next(
-                (n for n in cands[1:] if n.branch != parent_a.branch), cands[1]
-            )
+            parent_a, parent_b = _recombination_parents(all_nodes, c_branch, nprng)
             branch_a = parent_a.branch or "baseline"
             branch_b = parent_b.branch or "baseline"
 
