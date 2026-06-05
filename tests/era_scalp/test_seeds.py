@@ -6,7 +6,9 @@ from scripts.era_scalp.seeds import BASELINE_SEED_NAMES, RESEARCH_IDEAS, SEED_PR
 
 NAMES = ["spread_z", "spread_pips", "tick_volume", "tick_rate_z", "tick_burst_score",
          "bar_return_sign", "vel_pips_h1", "vel_z_h1", "vel_z_h2", "vel_z_h5",
-         "vel_z_h10", "hour_utc"]
+         "vel_z_h10", "hour_utc", "signed_flow_24", "directional_persistence_8",
+         "intra_bar_momentum", "quote_revision_rate_z", "vol_cluster_score",
+         "slip_proxy_pips", "hl_pos_frac", "range_pips"]
 
 
 def _ctx(n=400, seed=1):
@@ -19,7 +21,9 @@ def _ctx(n=400, seed=1):
 
 def test_expected_seeds_present():
     for name in ("ofi_flow", "ofi_multihorizon", "ou_sscore", "roll_bounce_fade",
-                 "hawkes_cont", "spread_gated_flow"):
+                 "hawkes_cont", "spread_gated_flow", "signed_flow_momentum",
+                 "quote_revision_flow", "persistence_conditional", "noise_reversion",
+                 "vol_cluster_gate", "range_exhaustion"):
         assert name in SEED_PROGRAMS
     for b in BASELINE_SEED_NAMES:
         assert b in SEED_PROGRAMS
@@ -41,5 +45,7 @@ def test_all_seeds_run_and_are_causal():
 
 def test_research_ideas_cite_modern_streams():
     blob = " ".join(RESEARCH_IDEAS).lower()
-    for kw in ["ornstein", "hawkes", "order flow", "multi-horizon", "half-life"]:
+    for kw in ["ornstein", "hawkes", "order flow", "multi-horizon", "half-life",
+               "signed_flow_24", "quote_revision_rate_z", "directional_persistence_8",
+               "slip_proxy_pips", "vol_cluster_score", "hl_pos_frac"]:
         assert kw in blob, f"missing idea keyword: {kw}"

@@ -63,7 +63,10 @@ WHITELIST: list[str] = [
     "tick_burst", "tick_burst_score", "high_pos_tick", "low_pos_tick",
     "hl_pos_delta_tick", "bar_return_sign", "vel_pips_h1", "vel_pips_h2",
     "vel_pips_h5", "vel_pips_h10", "vel_z_h1", "vel_z_h2", "vel_z_h5",
-    "vel_z_h10", "accel_pips", "hour_utc", "bar_range_pips",
+    "vel_z_h10", "accel_pips", "hour_utc", "range_pips",
+    "signed_flow_24", "directional_persistence_8", "intra_bar_momentum",
+    "quote_revision_rate_z", "vol_cluster_score", "slip_proxy_pips",
+    "hl_pos_frac",
 ]
 
 
@@ -131,11 +134,9 @@ def build_range_splits(
     validation=("2024",),
     holdout=("2025", "2026"),
 ) -> dict[str, RangeSplitData]:
-    pip = _pip_size(symbol)
     df = pd.read_parquet(parquet_path)
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     df = df[df["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
-    df["bar_range_pips"] = (df["high_bid"] - df["low_bid"]).abs() / pip
     df["year"] = df["close_ts"].dt.strftime("%Y")
     df["test_month"] = df["close_ts"].dt.strftime("%Y-%m")
 
@@ -183,9 +184,6 @@ def build_fair_splits(
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     df = df[df["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
     df["mid"] = (df["close_bid"] + df["close_ask"]) / 2.0
-    # bar_range_pips is a derived causal feature in WHITELIST (not a raw column).
-    if "bar_range_pips" not in df.columns:
-        df["bar_range_pips"] = (df["high_bid"] - df["low_bid"]).abs() / _pip_size(symbol)
     df["year"] = df["close_ts"].dt.strftime("%Y")
     df["test_month"] = df["close_ts"].dt.strftime("%Y-%m")
 
@@ -231,9 +229,6 @@ def build_trade_splits(
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     df = df[df["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
     df["mid"] = (df["close_bid"] + df["close_ask"]) / 2.0
-    # bar_range_pips is a derived causal feature in WHITELIST (not a raw column).
-    if "bar_range_pips" not in df.columns:
-        df["bar_range_pips"] = (df["high_bid"] - df["low_bid"]).abs() / _pip_size(symbol)
     df["year"] = df["close_ts"].dt.strftime("%Y")
     df["test_month"] = df["close_ts"].dt.strftime("%Y-%m")
 
