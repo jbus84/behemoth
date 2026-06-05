@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,7 +41,7 @@ from scripts.era_scalp.deflated_selection import (
     deflated_edge_prob,
     is_significant_after_deflation,
 )
-from scripts.era_scalp.era_engine import RunSpec, run_search_rich
+from scripts.era_scalp.era_engine import run_search_rich, scoring_spec
 from scripts.era_scalp.fade_seeds import (
     CROSS_BRANCH_INDEX as FADE_CROSS_BRANCH_INDEX,
 )
@@ -67,7 +68,7 @@ from scripts.era_scalp.fair_seeds import (
     SEED_BRANCH_TAGS as FAIR_SEED_BRANCH_TAGS,
 )
 from scripts.era_scalp.load_splits import TradeSplitData, _pip_size, build_trade_splits
-from scripts.era_scalp.sandbox import causality_probe, run_program
+from scripts.era_scalp.sandbox import run_program
 from scripts.era_scalp.temporal_robustness import (
     is_temporally_robust,
     temporal_robustness_verdict,
@@ -238,22 +239,13 @@ def _build_run_spec(splits, symbol, *, fair_price_mode, seed_programs, tracker, 
                     atomic_mode, dimension_locked, self_correct, use_llm_prior,
                     parallel_expansions, branch_depth_limit, p_cross_branch, p_recombine,
                     c_branch, concept_mode, verbose):
-    """Wire run_era_eur's writers / seeds / constants / flags into a RunSpec that the
-    shared engine (run_search_rich) drives. score_program over this spec is parity-
-    equivalent to CostAwarePerSymbolScorer (#316), for both directional and fair modes."""
-    pip = _pip_size(symbol)
+    """Layer run_era_eur's writers / seeds / constants / flags onto the shared scoring spec
+    (era_engine.scoring_spec) so the engine (run_search_rich) drives the search. Scoring is
+    parity-equivalent to the retired CostAwarePerSymbolScorer (#316)."""
     if fair_price_mode:
-        def score_frame(out, split, q, h):
-            return evaluate_fair_price_trades(out, split.mid, realistic_cost(split.spread_pips),
-                                              split.test_month, pip, q, h)
-        grid_h, aggregate, required_fn = list(GRID_H_SHORT), "best_cell", "estimate_fair"
         rich_templates, cross_branch_index = FAIR_RICH_TEMPLATES, FAIR_CROSS_BRANCH_INDEX
         seed_branch_tags = FAIR_SEED_BRANCH_TAGS
     else:
-        def score_frame(out, split, q, h):
-            return evaluate_trades(out, split.mid, realistic_cost(split.spread_pips),
-                                   split.test_month, pip, q, h)
-        grid_h, aggregate, required_fn = list(GRID_H), "robust", "signal"
         rich_templates, cross_branch_index = FADE_RICH_TEMPLATES, FADE_CROSS_BRANCH_INDEX
         seed_branch_tags = FADE_SEED_BRANCH_TAGS
 
@@ -278,11 +270,8 @@ def _build_run_spec(splits, symbol, *, fair_price_mode, seed_programs, tracker, 
             return extract_concepts_from_source(str(payload))
         return []
 
-    return RunSpec(
-        name=symbol, required_fn=required_fn, run_program=run_program,
-        causality_probe=causality_probe,
-        context_factory=lambda s: FeatureContext(X=s.X, names=s.names, hour=s.hour),
-        score_frame=score_frame, grid_h=grid_h, aggregate=aggregate,
+    return replace(
+        scoring_spec(symbol, fair_price_mode=fair_price_mode),
         seed_programs=spec_seed_programs, seed_compositions=seed_compositions,
         branch_tags=seed_branch_tags, rich_templates=rich_templates,
         cross_branch_index=cross_branch_index, concept_taxonomy=CONCEPT_TAXONOMY,

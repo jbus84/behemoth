@@ -18,22 +18,28 @@ from scripts.era.puct import (
     select_thompson,
 )
 from scripts.era_scalp.bayes_edge import edge_verdict, monthly_net
+from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.cost_aware_score import (
     GRID_H,
+    GRID_H_SHORT,
     GRID_Q,
     _sidak_z,
     effective_n_tests,
     fair_node_value,
     fast_lower_bound,
 )
+from scripts.era_scalp.cost_model import realistic_cost
 from scripts.era_scalp.deflated_selection import (
     deflated_edge_prob,
     is_significant_after_deflation,
 )
+from scripts.era_scalp.load_splits import _pip_size
+from scripts.era_scalp.sandbox import causality_probe, run_program
 from scripts.era_scalp.temporal_robustness import (
     is_temporally_robust,
     temporal_robustness_verdict,
 )
+from scripts.era_scalp.trade_harness import evaluate_fair_price_trades, evaluate_trades
 
 
 @dataclass
@@ -98,6 +104,35 @@ class RunSpec:
             self.grid_q = list(GRID_Q)
         if self.grid_h is None:
             self.grid_h = list(GRID_H)
+
+
+def scoring_spec(symbol: str, *, fair_price_mode: bool = False) -> RunSpec:
+    """Build the scoring half of a RunSpec for per-symbol directional / fair-price search.
+
+    This is the single definition of net-of-realistic-cost scoring — `score_program` over
+    this spec replaces the retired CostAwarePerSymbolScorer (parity-proven, #316).
+    Directional: robust (mean-std) aggregation over GRID_H with required_fn='signal'.
+    Fair-price: best-cell (Šidák/effective-m) over GRID_H_SHORT with required_fn='estimate_fair'.
+    Callers (run_era_eur) layer the loop hooks on top via dataclasses.replace."""
+    pip = _pip_size(symbol)
+
+    def _ctx(s):
+        return FeatureContext(X=s.X, names=s.names, hour=s.hour)
+
+    if fair_price_mode:
+        def score_frame(out, split, q, h):
+            return evaluate_fair_price_trades(out, split.mid, realistic_cost(split.spread_pips),
+                                              split.test_month, pip, q, h)
+        return RunSpec(name=symbol, required_fn="estimate_fair", run_program=run_program,
+                       causality_probe=causality_probe, context_factory=_ctx,
+                       score_frame=score_frame, grid_h=list(GRID_H_SHORT), aggregate="best_cell")
+
+    def score_frame(out, split, q, h):
+        return evaluate_trades(out, split.mid, realistic_cost(split.spread_pips),
+                               split.test_month, pip, q, h)
+    return RunSpec(name=symbol, required_fn="signal", run_program=run_program,
+                   causality_probe=causality_probe, context_factory=_ctx,
+                   score_frame=score_frame, grid_h=list(GRID_H), aggregate="robust")
 
 
 def score_program(src: str, spec: RunSpec, split) -> tuple[float, float, float, str]:
