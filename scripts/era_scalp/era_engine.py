@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from scripts.era.puct import Node, puct_search, select_diversity
-from scripts.era_scalp.bayes_edge import monthly_net
+from scripts.era_scalp.bayes_edge import edge_verdict, monthly_net
 from scripts.era_scalp.cost_aware_score import (
     GRID_H,
     GRID_Q,
@@ -166,11 +166,36 @@ def _best_cell_frame(spec: RunSpec, out, split):
     return best[1] if best is not None else None
 
 
+def _holdout_edge(spec: RunSpec, out, split, name: str = "program", min_trades: int = 50,
+                  num_warmup: int = 500, num_samples: int = 500, num_chains: int = 2):
+    """Holdout edge at the best-by-P(edge>0) (q,h) cell via the hierarchical MCMC
+    edge_verdict — mirrors run_era_eur.holdout_verdict so the engine is a faithful
+    superset. Returns the pooled posterior + q/h/n_trades/raw_mean, or None."""
+    best = None
+    for q in spec.grid_q:
+        for h in spec.grid_h:
+            frame = spec.score_frame(out, split, q, h)
+            if len(frame) < min_trades:
+                continue
+            try:
+                post = edge_verdict({name: frame}, num_warmup=num_warmup,
+                                    num_samples=num_samples, num_chains=num_chains)
+            except ValueError:
+                continue
+            p = post.pooled["p_positive"]
+            if best is None or p > best["p_positive"]:
+                best = {**post.pooled, "q": q, "h": h, "n_trades": int(len(frame)),
+                        "raw_mean": float(frame["net"].mean())}
+    return best
+
+
 def engine_verdict(spec: RunSpec, nodes: list, splits: dict, top_k: int = 5,
                    temporal: bool = True, num_warmup: int = 400, num_samples: int = 400,
-                   num_chains: int = 2) -> list:
+                   num_chains: int = 2, holdout_warmup: int = 500, holdout_samples: int = 500,
+                   holdout_chains: int = 2) -> list:
     """Annotate the top-K ranked nodes with holdout edge, temporal robustness, and DSR.
-    Returns a list of dicts (one per ranked node), reusing the guard modules."""
+    Holdout uses the MCMC edge_verdict at the best-by-P(edge>0) cell (faithful to
+    run_era_eur). Returns a list of dicts (one per ranked node)."""
     ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=lambda n: n.score, reverse=True)
     trial_means = [n.mean for n in ranked if np.isfinite(n.mean) and np.isfinite(n.se)]
     val = splits["validation"]
@@ -183,10 +208,9 @@ def engine_verdict(spec: RunSpec, nodes: list, splits: dict, top_k: int = 5,
             out, err, _ = spec.run_program(nd.payload, ctx, timeout=spec.timeout,
                                            required_fn=spec.required_fn)
             if err is None:
-                frame = _best_cell_frame(spec, out, hold)
-                if frame is not None and len(frame):
-                    lb, mean, se = fast_lower_bound(frame, z=spec.z)
-                    holdout = {"lb": lb, "mean": mean, "se": se, "n": int(len(frame))}
+                holdout = _holdout_edge(spec, out, hold, name=spec.name,
+                                        num_warmup=holdout_warmup, num_samples=holdout_samples,
+                                        num_chains=holdout_chains)
         tv = None
         if temporal:
             ctx = spec.context_factory(val)
