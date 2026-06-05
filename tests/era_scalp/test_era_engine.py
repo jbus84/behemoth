@@ -1,12 +1,9 @@
 import numpy as np
 
 from scripts.era_scalp.context import FeatureContext
-from scripts.era_scalp.cost_aware_score import (
-    CostAwarePerSymbolScorer,
-)
 from scripts.era_scalp.cost_model import realistic_cost
-from scripts.era_scalp.era_engine import RunSpec, score_program
-from scripts.era_scalp.load_splits import WHITELIST, TradeSplitData, _pip_size
+from scripts.era_scalp.era_engine import RunSpec, score_program, scoring_spec
+from scripts.era_scalp.load_splits import WHITELIST, _pip_size
 from scripts.era_scalp.sandbox import causality_probe, run_program
 from scripts.era_scalp.trade_harness import evaluate_trades
 
@@ -52,25 +49,25 @@ def test_runspec_defaults():
     assert spec.grid_q and spec.grid_h        # defaulted to GRID_Q / GRID_H
 
 
-def test_score_program_matches_cost_aware_scorer_directional():
-    split = _Split(3000, seed=1)
-    spec = _directional_spec()
-    val, mean, se, _ = score_program(SIG, spec, split)
+# Frozen golden: score_program's directional output, captured at parity with the
+# (now-retired) CostAwarePerSymbolScorer (#316). Pins net-of-cost scoring numerically.
+_GOLDEN_DIRECTIONAL = (-7.56506721600773, -0.19022051312333085, 0.655184610847353)
 
-    # Convert _Split to TradeSplitData for CostAwarePerSymbolScorer
-    trade_split = TradeSplitData(
-        X=split.X,
-        names=split.names,
-        hour=split.hour,
-        mid=split.mid,
-        cost=realistic_cost(split.spread_pips),
-        test_month=split.test_month,
-        spread_pips=split.spread_pips,
-    )
-    ref = CostAwarePerSymbolScorer({"validation": trade_split}, "EURUSD", fair_price_mode=False)
-    rval, rmean, rse, _ = ref.score(SIG, "validation")
-    assert np.isclose(val, rval, atol=1e-9), (val, rval)
-    assert np.isclose(mean, rmean, atol=1e-9) and np.isclose(se, rse, atol=1e-9)
+
+def test_score_program_directional_golden():
+    val, mean, se, _ = score_program(SIG, scoring_spec("EURUSD"), _Split(3000, seed=1))
+    gval, gmean, gse = _GOLDEN_DIRECTIONAL
+    assert np.isclose(val, gval, atol=1e-9), (val, gval)
+    assert np.isclose(mean, gmean, atol=1e-9) and np.isclose(se, gse, atol=1e-9)
+
+
+def test_scoring_spec_matches_directional_spec():
+    # scoring_spec is the canonical scoring builder — it must score identically to a
+    # hand-built directional RunSpec.
+    split = _Split(3000, seed=1)
+    a = score_program(SIG, scoring_spec("EURUSD"), split)[:3]
+    b = score_program(SIG, _directional_spec(), split)[:3]
+    assert np.allclose(a, b, atol=1e-12)
 
 
 def test_score_program_rejects_noncausal():

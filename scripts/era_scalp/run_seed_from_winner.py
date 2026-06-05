@@ -11,8 +11,9 @@ from scripts.era.llm import propose_branch_program, recombine_branch_program
 from scripts.era.puct import Node, puct_search, select_diversity
 from scripts.era_scalp.bayes_edge import edge_verdict
 from scripts.era_scalp.context import FeatureContext
-from scripts.era_scalp.cost_aware_score import GRID_H, GRID_Q, CostAwarePerSymbolScorer
+from scripts.era_scalp.cost_aware_score import GRID_H, GRID_Q
 from scripts.era_scalp.cost_model import realistic_cost
+from scripts.era_scalp.era_engine import score_program, scoring_spec
 from scripts.era_scalp.fade_seeds import (
     CROSS_BRANCH_INDEX,
     RICH_TEMPLATES,
@@ -32,7 +33,11 @@ def run_search(splits, symbol, budget, seed=0, cache_dir="/tmp/era_eur_cache",
     If winner_src is provided, it replaces the seed library as the starting point.
     The LLM is tasked with refining/improving this specific program.
     """
-    scorer = CostAwarePerSymbolScorer(splits, symbol)
+    spec = scoring_spec(symbol)
+
+    def _score(src):
+        return score_program(src, spec, splits["validation"])
+
     rng = random.Random(seed)
     nprng = np.random.default_rng(seed)
 
@@ -40,7 +45,7 @@ def run_search(splits, symbol, budget, seed=0, cache_dir="/tmp/era_eur_cache",
         raise ValueError("winner_src is required for seed-from-winner search")
 
     # Score the winner to establish baseline
-    v, mean, se, lg = scorer.score(winner_src, "validation")
+    v, mean, se, lg = _score(winner_src)
     print(f"[seed-from-winner] baseline val={v:+.3f} mean={mean:.3f} se={se:.3f}")
 
     # Build single-node forest with the winner
@@ -57,7 +62,7 @@ def run_search(splits, symbol, budget, seed=0, cache_dir="/tmp/era_eur_cache",
         # Skip if identical to winner
         if src.strip() == winner_src.strip():
             continue
-        v2, mean2, se2, lg2 = scorer.score(src, "validation")
+        v2, mean2, se2, lg2 = _score(src)
         branch = SEED_BRANCH_TAGS.get(name, "baseline")
         forest.append(
             Node(payload=src, score=v2, parent=None, logs=lg2,
@@ -127,7 +132,7 @@ def run_search(splits, symbol, budget, seed=0, cache_dir="/tmp/era_eur_cache",
                 _last_branch = child_branch
                 _branch_depth = 1
 
-        v, mean, se, lg = scorer.score(child_src, "validation")
+        v, mean, se, lg = _score(child_src)
         child = Node(
             payload=child_src, score=v, parent=parent, logs=lg,
             mean=mean, se=se, branch=child_branch,
