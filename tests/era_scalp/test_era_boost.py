@@ -1,7 +1,7 @@
 import numpy as np
 from scripts.era_scalp.load_splits import TradeSplitData
 from scripts.era_scalp.feature_concepts import FEATURE_SEED_COMPOSITIONS, composition_to_features_source
-from scripts.era_scalp.era_boost import boost_spec
+from scripts.era_scalp.era_boost import boost_spec, mutate_composition, recombine_compositions
 from scripts.era_scalp.era_engine import score_program
 
 
@@ -36,3 +36,21 @@ def test_score_program_runs_end_to_end():
     val = _split(seed=2)
     value, mean, se, logs = score_program(_seed_src(), spec, val)
     assert np.isfinite(value) and value > -1e6, logs
+
+
+def test_mutate_returns_valid_composition():
+    base = FEATURE_SEED_COMPOSITIONS["flow_vol"]
+    comp, prior = mutate_composition(base, 0.0, [], None, seed=1)
+    assert isinstance(comp, dict) and "operators" in comp and isinstance(prior, float)
+
+
+def test_recombine_merges_operators():
+    a = FEATURE_SEED_COMPOSITIONS["flow_vol"]
+    b = FEATURE_SEED_COMPOSITIONS["reversal_liquidity"]
+    comp, prior = recombine_compositions(a, 0.0, b, 0.0)
+    assert "operators" in comp and len(comp["operators"]) >= 1
+
+
+def test_spec_carries_seeds():
+    spec = boost_spec(None, symbol="EURUSD", seed_only=True)
+    assert spec.seed_compositions and spec.render_payload is not None

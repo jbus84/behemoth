@@ -19,6 +19,14 @@ from scripts.era_scalp.era_engine import RunSpec
 from scripts.era_scalp.load_splits import _pip_size
 from scripts.era_scalp.trade_harness import evaluate_fair_price_trades, evaluate_trades
 
+import random as _random
+
+from scripts.era_scalp.feature_concepts import (
+    FEATURE_CONCEPT_TAXONOMY,
+    FEATURE_SEED_COMPOSITIONS,
+    composition_to_features_source,
+)
+
 
 def _forward_target(mid: np.ndarray, h: int, pip: float) -> np.ndarray:
     """Forward h-bar return in pips (label for the GBDT). NaN in the last h rows."""
@@ -28,15 +36,49 @@ def _forward_target(mid: np.ndarray, h: int, pip: float) -> np.ndarray:
     return fwd
 
 
+def _sanitize(comp):
+    if not isinstance(comp, dict):
+        return {"skeleton": "default", "operators": {}, "params": {"w": 20}}
+    ops = comp.get("operators", {})
+    ops = {k: v for k, v in ops.items() if isinstance(v, str) and v in FEATURE_CONCEPT_TAXONOMY}
+    return {"skeleton": "default", "operators": ops, "params": comp.get("params", {"w": 20})}
+
+
+def mutate_composition(parent, score, logs, idea, *, cache_dir=None, seed=0):
+    """Deterministic mutation: add/swap/drop one feature operator. Returns (comp, prior)."""
+    rng = _random.Random(hash((repr(parent), seed)) & 0xFFFFFFFF)
+    comp = _sanitize(parent)
+    ops = dict(comp["operators"])
+    concepts = list(FEATURE_CONCEPT_TAXONOMY)
+    action = rng.choice(["add", "swap", "drop"]) if ops else "add"
+    if action == "add":
+        ops[f"s{len(ops)}"] = rng.choice(concepts)
+    elif action == "swap" and ops:
+        ops[rng.choice(list(ops))] = rng.choice(concepts)
+    elif action == "drop" and len(ops) > 1:
+        del ops[rng.choice(list(ops))]
+    w = int(comp["params"].get("w", 20))
+    params = {"w": max(2, w + rng.choice([-8, 0, 8]))}
+    return {"skeleton": "default", "operators": ops, "params": params}, 0.5
+
+
+def recombine_compositions(comp_a, score_a, comp_b, score_b, *, cache_dir=None):
+    """Union the two parents' operators (favouring the higher-scoring parent's window)."""
+    a, b = _sanitize(comp_a), _sanitize(comp_b)
+    ops = {**a["operators"], **b["operators"]}
+    params = a["params"] if score_a >= score_b else b["params"]
+    return {"skeleton": "default", "operators": ops, "params": params}, 0.5
+
+
 def boost_spec(train_split, *, symbol: str = "EURUSD", target: str = "forward",
                horizon: int = 12, grid_q=None, complexity_per_feat: float = 0.02,
-               seed: int = 0, timeout: float = 20.0) -> RunSpec:
+               seed: int = 0, timeout: float = 20.0, seed_only: bool = False) -> RunSpec:
     """RunSpec where PUCT searches feature compositions feeding a fixed CatBoost.
 
     target='forward' (lower-turnover real shot) or 'fair' (intraday calibration)."""
     pip = _pip_size(symbol)
     grid_q = grid_q or [0.80, 0.90, 0.95]
-    y_train = _forward_target(train_split.mid, horizon, pip)
+    y_train = _forward_target(train_split.mid, horizon, pip) if train_split is not None else None
     _cache: dict[str, np.ndarray] = {}
 
     def _features(src, ctx):
@@ -84,7 +126,7 @@ def boost_spec(train_split, *, symbol: str = "EURUSD", target: str = "forward",
     return RunSpec(
         name=f"boost_{target}_h{horizon}",
         required_fn="build_features",
-        run_program=run_program,
+        run_program=(None if seed_only else run_program),
         causality_probe=causality_probe,
         context_factory=context_factory,
         score_frame=score_frame,
@@ -92,4 +134,12 @@ def boost_spec(train_split, *, symbol: str = "EURUSD", target: str = "forward",
         grid_h=[horizon],
         aggregate="robust",
         atomic_mode=True,
+        seed_compositions=dict(FEATURE_SEED_COMPOSITIONS),
+        render_payload=lambda comp: composition_to_features_source(
+            "default", _sanitize(comp)["operators"], _sanitize(comp)["params"]),
+        branch_tags={k: k for k in FEATURE_SEED_COMPOSITIONS},
+        propose_atomic=mutate_composition,
+        recombine_atomic=recombine_compositions,
+        ideas=["Compose causal microstructure features (flow, vol regime, reversal, "
+               "liquidity, quote-revision) for a boosted forward-return model."],
     )
