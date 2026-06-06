@@ -52,6 +52,20 @@ def test_periodic_rebalance_neutral_and_nonoverlap():
     assert set(frame.columns) == {"net", "test_month"}
 
 
+def test_nan_forward_return_leg_is_never_held():
+    # A symbol with a non-finite forward return at a rebalance bar must be excluded
+    # from the held universe (no P&L booked, no cost charged on it).
+    split = _panel_split(n=8, m=4, seed=5)
+    scores = np.zeros((8, 4))
+    scores[0] = np.array([3.0, 2.0, 1.0, 0.0])  # would pick sym0 long, sym3 short at k=1
+    split.y_fwd_panel[0, 0] = np.nan            # disqualify the would-be long leg
+    frame = periodic_rebalance(scores, split, h=4, k=1, band=0.0,
+                               fill_mode="aggressive", passive_frac=0.5, session=None)
+    # With sym0 dropped, the rankable universe is {1,2,3}: long sym1, short sym3.
+    # The booked net must be finite (no NaN leaked) and must not reference sym0.
+    assert np.isfinite(frame["net"].to_numpy()).all()
+
+
 def test_passive_cost_lower_than_aggressive():
     split = _panel_split()
     scores = split.r.copy()

@@ -56,7 +56,11 @@ def periodic_rebalance(scores, split, h, *, k, band, fill_mode, passive_frac, se
     for t in range(0, n - h, h):
         if session is not None and (hour is None or not _session_ok(hour[t], session)):
             continue
-        s = scores[t]
+        # Restrict the rankable universe to symbols we can actually evaluate this bar:
+        # a leg with a non-finite forward return or cost must never be held (otherwise
+        # nansum would silently drop its P&L while still charging — or skipping — its cost).
+        s = scores[t].copy()
+        s[~(np.isfinite(y[t]) & np.isfinite(cost[t]))] = np.nan
         if not np.isfinite(s).any():
             continue
         target = rank_to_weights(s, k)
