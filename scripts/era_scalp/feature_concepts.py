@@ -63,6 +63,71 @@ FEATURE_CONCEPT_TAXONOMY: dict[str, str] = {
         "            _ls[t] = (_c[t] - (_c[lo-1] if lo > 0 else 0.0)) / _w\n"
         "    feats.append(_ls)\n"
     ),
+    # --- deep scan additions (literature-grounded, causal) ---
+    # OFI acceleration: change in signed flow over w bars (flow regime shift)
+    "flow_acceleration": (
+        "    _x = np.nan_to_num(ctx.col('signed_flow_24'))\n"
+        "    _w = {w}\n"
+        "    _d = np.full(n, np.nan)\n"
+        "    _d[_w:] = _x[_w:] - _x[:-_w]\n"
+        "    feats.append(_d)\n"
+    ),
+    # vol-normalised OFI (Deep-OFI stresses stationary inputs)
+    "vol_normalized_flow": (
+        "    _x = np.nan_to_num(ctx.col('signed_flow_24'))\n"
+        "    _r = np.nan_to_num(ctx.col('range_pips'))\n"
+        "    _cx = np.cumsum(_x); _cr = np.cumsum(_r)\n"
+        "    _w = {w}\n"
+        "    _o = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _sx = _cx[t] - (_cx[lo-1] if lo > 0 else 0.0)\n"
+        "            _sr = _cr[t] - (_cr[lo-1] if lo > 0 else 0.0)\n"
+        "            _o[t] = _sx / (_sr + 1e-9)\n"
+        "    feats.append(_o)\n"
+    ),
+    # trading-intensity-scaled OFI (short-horizon gains)
+    "intensity_weighted_flow": (
+        "    _x = np.nan_to_num(ctx.col('signed_flow_24'))\n"
+        "    _i = np.nan_to_num(ctx.col('tick_rate_z'))\n"
+        "    feats.append(_x * _i)\n"
+    ),
+    # multi-horizon momentum (return persistence across horizons)
+    "momentum_h5": "    feats.append(np.nan_to_num(ctx.col('vel_z_h5')))\n",
+    "momentum_h10": "    feats.append(np.nan_to_num(ctx.col('vel_z_h10')))\n",
+    # jump indicator: short move vs trailing range (self-exciting jumps)
+    "jump_indicator": (
+        "    _v = np.abs(np.nan_to_num(ctx.col('vel_pips_h1')))\n"
+        "    _r = np.nan_to_num(ctx.col('range_pips'))\n"
+        "    _cr = np.cumsum(_r)\n"
+        "    _w = {w}\n"
+        "    _j = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _mr = (_cr[t] - (_cr[lo-1] if lo > 0 else 0.0)) / _w\n"
+        "            _j[t] = _v[t] / (_mr + 1e-9)\n"
+        "    feats.append(_j)\n"
+    ),
+    # volatility-cluster regime (GARCH-like conditioning)
+    "vol_cluster": "    feats.append(np.nan_to_num(ctx.col('vol_cluster_score')))\n",
+    # directional persistence (trend autocorrelation proxy)
+    "directional_persistence": "    feats.append(np.nan_to_num(ctx.col('directional_persistence_8')))\n",
+    # intrabar momentum (within-bar drift)
+    "intra_bar_momentum_feat": "    feats.append(np.nan_to_num(ctx.col('intra_bar_momentum')))\n",
+    # microprice position: where close sits in the bar range (reversion anchor)
+    "microprice_position": "    feats.append(np.nan_to_num(ctx.col('hl_pos_frac')))\n",
+    # spread / liquidity regime (cost & toxicity state)
+    "spread_regime": "    feats.append(np.nan_to_num(ctx.col('spread_z')))\n",
+    # tick-burst toxicity (informed-flow proxy; Easley-O'Hara VPIN-like)
+    "burst_toxicity": "    feats.append(np.nan_to_num(ctx.col('tick_burst_score')))\n",
+    # flow x persistence interaction (informed directional flow)
+    "flow_persistence_interaction": (
+        "    _f = np.nan_to_num(ctx.col('signed_flow_24'))\n"
+        "    _p = np.nan_to_num(ctx.col('directional_persistence_8'))\n"
+        "    feats.append(_f * _p)\n"
+    ),
 }
 
 FEATURE_SKELETON = (
@@ -103,5 +168,16 @@ FEATURE_SEED_COMPOSITIONS: dict[str, dict] = {
         "skeleton": "default",
         "operators": {"a": "trailing_reversal", "b": "liquidity_state", "c": "quote_revision_intensity"},
         "params": {"w": 16},
+    },
+    # deep seed spanning OFI / momentum / vol-regime / microstructure (literature mix)
+    "deep_microstructure": {
+        "skeleton": "default",
+        "operators": {
+            "a": "vol_normalized_flow", "b": "flow_acceleration", "c": "intensity_weighted_flow",
+            "d": "momentum_h5", "e": "momentum_h10", "f": "jump_indicator",
+            "g": "vol_cluster", "h": "directional_persistence", "i": "microprice_position",
+            "j": "burst_toxicity", "k": "flow_persistence_interaction",
+        },
+        "params": {"w": 24},
     },
 }
