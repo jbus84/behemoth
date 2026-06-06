@@ -82,11 +82,12 @@ def _halve(split):
 
 def run_boost_search(splits, *, symbol="EURUSD", target="forward", horizon=12,
                      budget=20, seed=0, cache_dir=".era_boost_cache",
-                     complexity_per_feat=0.02):
+                     complexity_per_feat=0.02, k_folds=4, embargo=50):
     """PUCT feature search: select on V1, confirm on V2, holdout once."""
     v1, v2 = _halve(splits["validation"])
     spec = boost_spec(splits["train"], symbol=symbol, target=target, horizon=horizon,
-                      complexity_per_feat=complexity_per_feat, seed=seed)
+                      complexity_per_feat=complexity_per_feat, seed=seed,
+                      k_folds=k_folds, embargo=embargo)
     nodes = run_search_rich(spec, {"validation": v1}, budget=budget, seed=seed,
                             cache_dir=cache_dir)
     # apply complexity penalty to node value using logged n_feat (fallback: len(operators))
@@ -116,7 +117,8 @@ def run_boost_search(splits, *, symbol="EURUSD", target="forward", horizon=12,
 
 def boost_spec(train_split, *, symbol: str = "EURUSD", target: str = "forward",
                horizon: int = 12, grid_q=None, complexity_per_feat: float = 0.02,
-               seed: int = 0, timeout: float = 20.0, seed_only: bool = False) -> RunSpec:
+               seed: int = 0, timeout: float = 20.0, seed_only: bool = False,
+               k_folds: int = 4, embargo: int = 50) -> RunSpec:
     """RunSpec where PUCT searches feature compositions feeding a fixed CatBoost.
 
     target='forward' (lower-turnover real shot) or 'fair' (intraday calibration)."""
@@ -147,7 +149,8 @@ def boost_spec(train_split, *, symbol: str = "EURUSD", target: str = "forward",
             _cache[key] = ("model", Xtr)
         _, Xtr = _cache[key]
         try:
-            preds = train_predict(Xtr, y_train, Xpred, seed=seed)
+            preds = train_predict(Xtr, y_train, Xpred, seed=seed,
+                                  k_folds=k_folds, embargo=embargo)
         except Exception as e:  # catboost failure -> reject node
             return None, f"catboost: {e}", ""
         # stash feature count on the array for the complexity penalty via score_frame
