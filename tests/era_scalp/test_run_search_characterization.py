@@ -63,8 +63,8 @@ def test_run_search_golden_best(tmp_path, monkeypatch):
     assert len(nodes) == len(_seed_count()) + 4
     valid = [n for n in nodes if n.score > -1e6 + 1]
     best = max(valid, key=lambda n: n.score)
-    assert best.branch == "mean_reversion_gate"
-    assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
+    assert best.branch == "order_flow_persistence"
+    assert np.isclose(best.score, -12.596777, atol=1e-3), best.score
 
 
 # ── Rich-branch coverage ─────────────────────────────────────────────────────
@@ -106,8 +106,8 @@ def test_run_search_atomic_mode(tmp_path, monkeypatch):
     )
     assert len(nodes) == len(FAIR_SEED_COMPOSITIONS) + 4
     valid, best = _best(nodes)
-    assert best.branch == "hasbrouck_efficient"
-    assert np.isclose(best.score, 3.413275, atol=1e-3), best.score
+    assert best.branch == "glosten_milgrom"
+    assert np.isclose(best.score, 4.330937, atol=1e-3), best.score
 
 
 def test_run_search_self_correct(tmp_path, monkeypatch):
@@ -121,9 +121,9 @@ def test_run_search_self_correct(tmp_path, monkeypatch):
     )
     assert len(nodes) == len(_seed_count()) + 4
     valid, best = _best(nodes)
-    assert len(valid) == 21
+    assert len(valid) == 22
     assert best.branch == "mean_reversion_gate"
-    assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
+    assert np.isclose(best.score, -13.028338, atol=1e-3), best.score
 
 
 def test_run_search_dimension_locked(tmp_path, monkeypatch):
@@ -136,7 +136,7 @@ def test_run_search_dimension_locked(tmp_path, monkeypatch):
     assert len(nodes) == len(_seed_count()) + 4
     _valid, best = _best(nodes)
     assert best.branch == "mean_reversion_gate"
-    assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
+    assert np.isclose(best.score, -13.028338, atol=1e-3), best.score
 
 
 def test_run_search_llm_prior(tmp_path, monkeypatch):
@@ -149,4 +149,4 @@ def test_run_search_llm_prior(tmp_path, monkeypatch):
     assert len(nodes) == len(_seed_count()) + 4
     _valid, best = _best(nodes)
     assert best.branch == "mean_reversion_gate"
-    assert np.isclose(best.score, -5.5959, atol=1e-3), best.score
+    assert np.isclose(best.score, -13.028338, atol=1e-3), best.score

@@ -10,7 +10,7 @@ Hawkes burst veto (Bacry-Mastromatteo-Muzy), spread-harvest (Avellaneda-Stoikov)
 DEPLOY_SEED_PROGRAMS: dict[str, str] = {
     "range_vol_deploy": (
         "def deploy(ctx):\n"
-        "    rng = ctx.col('bar_range_pips'); n = rng.shape[0]; W = 120\n"
+        "    rng = ctx.col('range_pips'); n = rng.shape[0]; W = 120\n"
         "    x = np.where(np.isfinite(rng), rng, 0.0)\n"
         "    k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
         "    ms = np.where(m > 0, m, 1.0)\n"
@@ -36,7 +36,7 @@ DEPLOY_SEED_PROGRAMS: dict[str, str] = {
     ),
     "toxicity_gate_deploy": (
         "def deploy(ctx):\n"
-        "    rng = ctx.col('bar_range_pips'); sgn = ctx.col('bar_return_sign')\n"
+        "    rng = ctx.col('range_pips'); sgn = ctx.col('bar_return_sign')\n"
         "    vol = ctx.col('tick_volume'); n = rng.shape[0]; a = 0.1\n"
         "    flow = np.where(np.isfinite(sgn) & np.isfinite(vol), sgn * vol, 0.0)\n"
         "    acc = 0.0; ewma = np.empty(n)\n"
@@ -52,7 +52,7 @@ DEPLOY_SEED_PROGRAMS: dict[str, str] = {
     ),
     "burst_veto_deploy": (
         "def deploy(ctx):\n"
-        "    inten = ctx.col('tick_burst_score'); rng = ctx.col('bar_range_pips')\n"
+        "    inten = ctx.col('tick_burst_score'); rng = ctx.col('range_pips')\n"
         "    n = inten.shape[0]; a = 0.2; acc = 0.0; ew = np.empty(n)\n"
         "    for i in range(n):\n"
         "        xi = inten[i] if np.isfinite(inten[i]) else 0.0\n"
@@ -75,7 +75,7 @@ BASELINE_SEED_NAMES = ("range_vol_deploy", "meanrev_regime_deploy",
 
 RESEARCH_IDEAS: list[str] = [
     "Realized range / volatility (Parkinson 1980; Yang-Zhang; HAR-RV Corsi 2009): deploy "
-    "when the trailing realized range (bar_range_pips) or multi-scale realized vol is large "
+    "when the trailing realized range (range_pips) or multi-scale realized vol is large "
     "vs cost - the band must be wide enough to harvest.",
     "Mean-reversion regime (variance ratio, Lo-MacKinlay 1988; Hurst; OU half-life): deploy "
     "when a causal trailing variance-ratio < 1 or lag-1 return autocorrelation is negative - "

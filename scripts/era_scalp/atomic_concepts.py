@@ -107,7 +107,7 @@ BASE_ESTIMATORS: dict[str, str] = {
         "try:\n"
         "    _vol = vol_adapted\n"
         "except NameError:\n"
-        "    br = ctx.col('bar_range_pips'); W = {{W}}\n"
+        "    br = ctx.col('range_pips'); W = {{W}}\n"
         "    c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
         "    k = np.arange(n); lo = np.maximum(0, k - W)\n"
         "    m = (k - lo).astype(float); ms = np.where(m > 0, m, 1.0)\n"
@@ -135,7 +135,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "barzykin_impact": (
         "# Correction: transient impact decay (Barzykin 2025/26)\n"
-        "br = ctx.col('bar_range_pips'); n = br.shape[0]\n"
+        "br = ctx.col('range_pips'); n = br.shape[0]\n"
         "rho = {{rho}}; lam = {{lam}}  # rho ∈ {0.05,0.10,0.20}, lam ∈ {0.3,0.5,0.8}\n"
         "impact = np.zeros(n)\n"
         "for i in range(1, n):\n"
@@ -151,7 +151,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "ofi_imbalance": (
         "# Correction: order-flow imbalance proxy (Stoikov-Kercheval 2010)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "ofi = np.where(br > 0, r - 0.5 * br, r)\n"
         "ofi = np.where(np.isfinite(ofi), ofi, 0.0)\n"
         "alpha = {{alpha}}  # e.g. 0.5\n"
@@ -159,7 +159,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "microprice_imbalance": (
         "# Correction: microprice order-imbalance proxy (Madhavan 1997)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "imb = np.where(br > 0, r / br, 0.0)\n"
         "imb = np.where(np.isfinite(imb), imb, 0.0)\n"
         "k = {{k}}  # e.g. 0.5\n"
@@ -167,7 +167,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "kyle_informed": (
         "# Correction: Kyle informed-trader permanent impact (Kyle 1985)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips'); n = r.shape[0]\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips'); n = r.shape[0]\n"
         "# Informed flow proxy: large bars with same-direction persistence\n"
         "sign_r = np.sign(np.where(np.isfinite(r), r, 0.0))\n"
         "abs_r = np.abs(np.where(np.isfinite(r), r, 0.0))\n"
@@ -182,7 +182,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "pin_flow": (
         "# Correction: Easley-O'Hara PIN-informed-flow proxy (1987/1992)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips'); n = r.shape[0]\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips'); n = r.shape[0]\n"
         "vol = ctx.col('tick_volume')\n"
         "# Proxy: high-volume + large-range bars = more likely informed\n"
         "# Causal expanding mean/std\n"
@@ -204,7 +204,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "almgren_impact": (
         "# Correction: Almgren-Chriss permanent+temporary impact (2000)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips'); n = r.shape[0]\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips'); n = r.shape[0]\n"
         "# Permanent impact: cumulative signed flow\n"
         "signed_r = np.where(np.isfinite(r), r, 0.0)\n"
         "perm = np.cumsum(signed_r)\n"
@@ -217,7 +217,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "ow_propagator": (
         "# Correction: Obizhaeva-Wang resilience propagator (2013)\n"
-        "br = ctx.col('bar_range_pips'); n = br.shape[0]\n"
+        "br = ctx.col('range_pips'); n = br.shape[0]\n"
         "# Resilience model: impact decays to zero at rate beta\n"
         "beta = {{beta}}; kappa = {{kappa}}  # beta ∈ {0.05,0.10}, kappa ∈ {0.3,0.5}\n"
         "J = np.zeros(n); Q = np.zeros(n)\n"
@@ -228,7 +228,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "csk_impact": (
         "# Correction: Cont-Stoikov-Kukanov order-book impact (2014)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "vol = ctx.col('tick_volume')\n"
         "# Price impact proportional to signed order flow / market depth proxy\n"
         "depth_proxy = np.maximum(vol, 1.0)\n"
@@ -251,7 +251,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "rosu_dynamic": (
         "# Correction: Rosu dynamic LOB equilibrium (2009)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips'); n = r.shape[0]\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips'); n = r.shape[0]\n"
         "# Dynamic equilibrium: fair price drifts toward where supply=demand\n"
         "# Proxy: if range is expanding, market is imbalanced\n"
         "range_ma = np.empty(n); acc = br[0] if np.isfinite(br[0]) else 0.0\n"
@@ -265,7 +265,7 @@ MICROSTRUCTURE_CORRECTIONS: dict[str, str] = {
     ),
     "bhs_book_depth": (
         "# Correction: Biais-Hillion-Spatt order-book depth dynamics (1995)\n"
-        "r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips'); n = r.shape[0]\n"
+        "r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips'); n = r.shape[0]\n"
         "# Depth proxy: inverse of range (tight range = deep book)\n"
         "depth = 1.0 / np.maximum(br, 1e-6)\n"
         "depth_ew = np.empty(n); acc = depth[0] if np.isfinite(depth[0]) else 0.0\n"
@@ -432,7 +432,7 @@ CALENDAR_CORRECTIONS: dict[str, str] = {
 VOLATILITY_ADAPTATIONS: dict[str, str] = {
     "taylor_adaptive_alpha": (
         "# Vol-adapt: Parkinson-based adaptive EWMA alpha (Taylor 2017)\n"
-        "br = ctx.col('bar_range_pips'); n = br.shape[0]; W = {{W}}  # e.g. 20\n"
+        "br = ctx.col('range_pips'); n = br.shape[0]; W = {{W}}  # e.g. 20\n"
         "c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
         "k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
         "ms = np.where(m > 0, m, 1.0)\n"
@@ -449,7 +449,7 @@ VOLATILITY_ADAPTATIONS: dict[str, str] = {
     ),
     "parkinson_vol_gate": (
         "# Vol-adapt: gate based on Parkinson vol vs reference\n"
-        "br = ctx.col('bar_range_pips'); n = br.shape[0]; W = {{W}}  # e.g. 20\n"
+        "br = ctx.col('range_pips'); n = br.shape[0]; W = {{W}}  # e.g. 20\n"
         "c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
         "k = np.arange(n); lo = np.maximum(0, k - W)\n"
         "m = (k - lo).astype(float); ms = np.where(m > 0, m, 1.0)\n"
