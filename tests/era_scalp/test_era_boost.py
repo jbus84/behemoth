@@ -54,3 +54,14 @@ def test_recombine_merges_operators():
 def test_spec_carries_seeds():
     spec = boost_spec(None, symbol="EURUSD", seed_only=True)
     assert spec.seed_compositions and spec.render_payload is not None
+
+
+from scripts.era_scalp.era_boost import run_boost_search
+
+
+def test_run_boost_search_smoke(tmp_path):
+    splits = {"train": _split(seed=1), "validation": _split(seed=2), "holdout": _split(seed=3)}
+    res = run_boost_search(splits, symbol="EURUSD", target="forward", horizon=12,
+                           budget=3, seed=0, cache_dir=str(tmp_path))
+    assert "survivor" in res and "holdout" in res
+    assert np.isfinite(res["survivor"]["val_v1"])

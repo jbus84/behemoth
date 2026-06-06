@@ -21,6 +21,9 @@ from scripts.era_scalp.trade_harness import evaluate_fair_price_trades, evaluate
 
 import random as _random
 
+import numpy as _np
+
+from scripts.era_scalp.era_engine import engine_verdict, run_search_rich
 from scripts.era_scalp.feature_concepts import (
     FEATURE_CONCEPT_TAXONOMY,
     FEATURE_SEED_COMPOSITIONS,
@@ -68,6 +71,51 @@ def recombine_compositions(comp_a, score_a, comp_b, score_b, *, cache_dir=None):
     ops = {**a["operators"], **b["operators"]}
     params = a["params"] if score_a >= score_b else b["params"]
     return {"skeleton": "default", "operators": ops, "params": params}, 0.5
+
+
+def _halve(split):
+    """Split a TradeSplitData in half by time -> (V1, V2)."""
+    from dataclasses import replace
+    n = len(split.mid); m = n // 2
+    def cut(s, a, b):
+        return replace(s, X=s.X[a:b], hour=(None if s.hour is None else s.hour[a:b]),
+                       mid=s.mid[a:b], cost=s.cost[a:b], test_month=s.test_month[a:b],
+                       spread_pips=(None if s.spread_pips is None else s.spread_pips[a:b]))
+    return cut(split, 0, m), cut(split, m, n)
+
+
+def run_boost_search(splits, *, symbol="EURUSD", target="forward", horizon=12,
+                     budget=20, seed=0, cache_dir=".era_boost_cache",
+                     complexity_per_feat=0.02):
+    """PUCT feature search: select on V1, confirm on V2, holdout once."""
+    v1, v2 = _halve(splits["validation"])
+    spec = boost_spec(splits["train"], symbol=symbol, target=target, horizon=horizon,
+                      complexity_per_feat=complexity_per_feat, seed=seed)
+    nodes = run_search_rich(spec, {"validation": v1}, budget=budget, seed=seed,
+                            cache_dir=cache_dir)
+    # apply complexity penalty to node value using logged n_feat (fallback: len(operators))
+    def penalised(n):
+        nf = 0
+        comp = _sanitize(getattr(n, "payload", {}))
+        nf = len(comp["operators"])
+        return n.score - complexity_penalty(nf, complexity_per_feat)
+    ranked = sorted([n for n in nodes if n.score > -1e6 + 1], key=penalised, reverse=True)
+    if not ranked:
+        return {"survivor": None, "holdout": None}
+    best = ranked[0]
+    src = spec.render_payload(best.payload)
+    # confirm on V2
+    from scripts.era_scalp.era_engine import score_program
+    v2_val, _, _, _ = score_program(src, spec, v2)
+    # holdout once (engine_verdict at best cell)
+    verdict = engine_verdict(spec, [best], {"validation": v1, "holdout": splits.get("holdout")},
+                             top_k=1)
+    return {
+        "survivor": {"branch": best.branch, "val_v1": float(best.score),
+                     "val_v1_penalised": float(penalised(best)), "val_v2": float(v2_val),
+                     "n_feat": len(_sanitize(best.payload)["operators"]), "src": src},
+        "holdout": verdict[0] if verdict else None,
+    }
 
 
 def boost_spec(train_split, *, symbol: str = "EURUSD", target: str = "forward",
