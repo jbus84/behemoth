@@ -1,6 +1,7 @@
 import numpy as np
-from scripts.era_scalp.context import FeatureContext
+
 from scripts.era_scalp.boosting_sandbox import causality_probe, run_program, static_check
+from scripts.era_scalp.context import FeatureContext
 
 CAUSAL = (
     "def build_features(ctx):\n"

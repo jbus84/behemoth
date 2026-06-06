@@ -7,6 +7,7 @@ score_program/score_frame/engine_verdict work unchanged."""
 from __future__ import annotations
 
 import hashlib
+import random as _random
 
 import numpy as np
 
@@ -15,20 +16,14 @@ from scripts.era_scalp.boosting_sandbox import run_program as _bf_run
 from scripts.era_scalp.boosting_scorer import complexity_penalty, train_predict
 from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.cost_model import realistic_cost
-from scripts.era_scalp.era_engine import RunSpec
-from scripts.era_scalp.load_splits import _pip_size
-from scripts.era_scalp.trade_harness import evaluate_fair_price_trades, evaluate_trades
-
-import random as _random
-
-import numpy as _np
-
-from scripts.era_scalp.era_engine import engine_verdict, run_search_rich
+from scripts.era_scalp.era_engine import RunSpec, engine_verdict, run_search_rich
 from scripts.era_scalp.feature_concepts import (
     FEATURE_CONCEPT_TAXONOMY,
     FEATURE_SEED_COMPOSITIONS,
     composition_to_features_source,
 )
+from scripts.era_scalp.load_splits import _pip_size
+from scripts.era_scalp.trade_harness import evaluate_fair_price_trades, evaluate_trades
 
 
 def _forward_target(mid: np.ndarray, h: int, pip: float) -> np.ndarray:
@@ -76,7 +71,8 @@ def recombine_compositions(comp_a, score_a, comp_b, score_b, *, cache_dir=None):
 def _halve(split):
     """Split a TradeSplitData in half by time -> (V1, V2)."""
     from dataclasses import replace
-    n = len(split.mid); m = n // 2
+    n = len(split.mid)
+    m = n // 2
     def cut(s, a, b):
         return replace(s, X=s.X[a:b], hour=(None if s.hour is None else s.hour[a:b]),
                        mid=s.mid[a:b], cost=s.cost[a:b], test_month=s.test_month[a:b],

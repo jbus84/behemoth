@@ -10,7 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
-from scripts.era.sandbox import _arrays_match, static_check as _static_check
+from scripts.era.sandbox import _arrays_match
+from scripts.era.sandbox import static_check as _static_check
 from scripts.era_scalp.context import FeatureContext
 
 

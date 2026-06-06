@@ -1,5 +1,6 @@
 # tests/era_scalp/test_feature_concepts.py
 import numpy as np
+
 from scripts.era_scalp.feature_concepts import (
     FEATURE_CONCEPT_TAXONOMY,
     FEATURE_SEED_COMPOSITIONS,
