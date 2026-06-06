@@ -4,7 +4,7 @@ from scripts.era_scalp.context import FeatureContext
 from scripts.era_scalp.fade_seeds import FADE_SEED_PROGRAMS
 from scripts.era_scalp.sandbox import causality_probe, run_program
 
-NAMES = ["spread_z", "vel_z_h1", "vel_pips_h1", "bar_return_sign", "hour_utc", "bar_range_pips"]
+NAMES = ["spread_z", "vel_z_h1", "vel_pips_h1", "bar_return_sign", "hour_utc", "range_pips"]
 
 
 def _ctx(n=120, seed=0):

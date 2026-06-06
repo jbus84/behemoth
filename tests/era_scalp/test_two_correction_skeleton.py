@@ -19,7 +19,7 @@ def _ctx(n=500, seed=0):
     rng = np.random.default_rng(seed)
     X = rng.standard_normal((n, len(WHITELIST)))
     X[:, WHITELIST.index("tick_volume")] = np.abs(X[:, WHITELIST.index("tick_volume")]) * 50 + 1
-    X[:, WHITELIST.index("bar_range_pips")] = np.abs(X[:, WHITELIST.index("bar_range_pips")]) + 0.5
+    X[:, WHITELIST.index("range_pips")] = np.abs(X[:, WHITELIST.index("range_pips")]) + 0.5
     return FeatureContext(X=X, names=list(WHITELIST), hour=(np.arange(n) % 24).astype(float))
 
 

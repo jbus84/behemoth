@@ -137,6 +137,10 @@ def build_range_splits(
     df = pd.read_parquet(parquet_path)
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     df = df[df["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
+    # range_pips is a derived causal feature in WHITELIST. Production parquets carry it
+    # (build_tick_velocity_dataset); derive from high/low only when absent (e.g. tests).
+    if "range_pips" not in df.columns:
+        df["range_pips"] = (df["high_bid"] - df["low_bid"]).abs() / _pip_size(symbol)
     df["year"] = df["close_ts"].dt.strftime("%Y")
     df["test_month"] = df["close_ts"].dt.strftime("%Y-%m")
 
@@ -184,6 +188,10 @@ def build_fair_splits(
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     df = df[df["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
     df["mid"] = (df["close_bid"] + df["close_ask"]) / 2.0
+    # range_pips is a derived causal feature in WHITELIST (raw parquets carry it; derive
+    # from high/low only when absent, e.g. in tests).
+    if "range_pips" not in df.columns:
+        df["range_pips"] = (df["high_bid"] - df["low_bid"]).abs() / _pip_size(symbol)
     df["year"] = df["close_ts"].dt.strftime("%Y")
     df["test_month"] = df["close_ts"].dt.strftime("%Y-%m")
 
@@ -229,6 +237,10 @@ def build_trade_splits(
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     df = df[df["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
     df["mid"] = (df["close_bid"] + df["close_ask"]) / 2.0
+    # range_pips is a derived causal feature in WHITELIST (raw parquets carry it; derive
+    # from high/low only when absent, e.g. in tests).
+    if "range_pips" not in df.columns:
+        df["range_pips"] = (df["high_bid"] - df["low_bid"]).abs() / _pip_size(symbol)
     df["year"] = df["close_ts"].dt.strftime("%Y")
     df["test_month"] = df["close_ts"].dt.strftime("%Y-%m")
 
