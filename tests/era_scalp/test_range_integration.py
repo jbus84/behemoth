@@ -19,7 +19,7 @@ def _data(n=300, seed=0):
 
 def test_range_scorer_runs_causal_deploy():
     scorer = RangeScorer(splits={"validation": _data()}, symbol="EURUSD")
-    s, _ = scorer.score("def deploy(ctx):\n    return ctx.col('bar_range_pips')\n", "validation")
+    s, _ = scorer.score("def deploy(ctx):\n    return ctx.col('range_pips')\n", "validation")
     assert np.isfinite(s)
     assert s > -1e6  # a valid deploy program is accepted, not rejected as -1e6
 
@@ -27,14 +27,14 @@ def test_range_scorer_runs_causal_deploy():
 def test_range_scorer_requires_deploy_not_signal():
     # the scorer requires `deploy`; a `signal`-named program must be rejected
     scorer = RangeScorer(splits={"validation": _data()}, symbol="EURUSD")
-    s, logs = scorer.score("def signal(ctx):\n    return ctx.col('bar_range_pips')\n", "validation")
+    s, logs = scorer.score("def signal(ctx):\n    return ctx.col('range_pips')\n", "validation")
     assert s == -1e6 and "deploy" in logs.lower()
 
 
 def test_range_scorer_rejects_noncausal():
     scorer = RangeScorer(splits={"validation": _data()}, symbol="EURUSD")
     fwd = ("def deploy(ctx):\n"
-           "    x = ctx.col('bar_range_pips').copy()\n"
+           "    x = ctx.col('range_pips').copy()\n"
            "    x[:-1] = x[1:]\n"
            "    return x\n")
     s, logs = scorer.score(fwd, "validation")
@@ -71,7 +71,7 @@ def test_run_search_with_mocked_writer():
     splits = {"validation": _data(), "holdout": _data(seed=2)}
 
     def fake_writer(parent_src, parent_score, logs, idea, cache_dir, rules=None, caller=None):
-        return "def deploy(ctx):\n    return ctx.col('bar_range_pips')\n"
+        return "def deploy(ctx):\n    return ctx.col('range_pips')\n"
 
     nodes = run_search(splits, symbol="EURUSD", budget=3, writer=fake_writer, p_recombine=0.0)
     assert len(nodes) >= 3

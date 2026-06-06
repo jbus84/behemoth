@@ -51,7 +51,10 @@ def test_runspec_defaults():
 
 # Frozen golden: score_program's directional output, captured at parity with the
 # (now-retired) CostAwarePerSymbolScorer (#316). Pins net-of-cost scoring numerically.
-_GOLDEN_DIRECTIONAL = (-7.56506721600773, -0.19022051312333085, 0.655184610847353)
+# Re-frozen after #324 enriched WHITELIST: the synthetic fixture sizes X to
+# len(WHITELIST), so the deterministic RNG matrix (hence the score) shifted. The engine
+# scoring logic is unchanged — only the fixture's input changed.
+_GOLDEN_DIRECTIONAL = (-10.584397355545182, -0.2200613096344869, 0.7163139585257098)
 
 
 def test_score_program_directional_golden():

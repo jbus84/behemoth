@@ -230,7 +230,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "barzykin_propagator_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -245,7 +245,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "stoikov_ofi_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -277,7 +277,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "taylor_adaptive_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    # Taylor (2017): Parkinson-vol-adaptive alpha.\n"
@@ -297,7 +297,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "microprice_imbalance_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -353,7 +353,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "kyle_informed_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -374,7 +374,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "pin_informed_flow_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    vol = ctx.col('tick_volume'); n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -399,7 +399,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "almgren_impact_fair": (
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -416,7 +416,7 @@ FAIR_SEED_PROGRAMS: dict[str, str] = {
     ),
     "ow_propagator_fair": (
         "def estimate_fair(ctx):\n"
-        "    br = ctx.col('bar_range_pips'); n = br.shape[0]\n"
+        "    br = ctx.col('range_pips'); n = br.shape[0]\n"
         "    r = ctx.col('vel_pips_h1'); a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -557,7 +557,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -584,7 +584,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -637,7 +637,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; W = 20\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
@@ -668,7 +668,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -749,7 +749,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    W = 20\n"
@@ -776,7 +776,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -811,7 +811,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    vol = ctx.col('tick_volume'); n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -850,7 +850,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
@@ -882,7 +882,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def estimate_fair(ctx):\n"
-        "    br = ctx.col('bar_range_pips'); n = br.shape[0]\n"
+        "    br = ctx.col('range_pips'); n = br.shape[0]\n"
         "    r = ctx.col('vel_pips_h1'); a = 0.02\n"
         "    p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"

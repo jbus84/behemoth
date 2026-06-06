@@ -17,7 +17,7 @@ PARAMS = {"alpha": 0.05, "mult": 0.5, "k": 3.0, "gamma": 1.0, "threshold": 0.5,
 def _ctx(n=500, seed=0):
     rng = np.random.default_rng(seed)
     X = rng.standard_normal((n, len(WHITELIST)))
-    X[:, WHITELIST.index("bar_range_pips")] = np.abs(X[:, WHITELIST.index("bar_range_pips")]) + 0.5
+    X[:, WHITELIST.index("range_pips")] = np.abs(X[:, WHITELIST.index("range_pips")]) + 0.5
     return FeatureContext(X=X, names=list(WHITELIST), hour=(np.arange(n) % 24).astype(float))
 
 

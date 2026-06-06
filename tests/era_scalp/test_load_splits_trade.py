@@ -11,7 +11,7 @@ def _write_fake(path, n=3000):
         pd.date_range("2024-06-01", periods=n // 3, freq="5min", tz="UTC"),
         pd.date_range("2025-06-01", periods=n - 2 * (n // 3), freq="5min", tz="UTC"),
     ])
-    cols = {c: rng.standard_normal(n) for c in WHITELIST if c != "bar_range_pips"}
+    cols = {c: rng.standard_normal(n) for c in WHITELIST if c != "range_pips"}
     cols["close_ts"] = ts
     cols["close_bid"] = 1.1 + rng.standard_normal(n) * 1e-3
     cols["close_ask"] = cols["close_bid"] + 3e-5

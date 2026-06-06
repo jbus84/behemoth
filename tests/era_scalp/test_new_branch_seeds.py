@@ -15,7 +15,7 @@ NAMES = [
     "tick_burst", "tick_burst_score", "high_pos_tick", "low_pos_tick",
     "hl_pos_delta_tick", "bar_return_sign", "vel_pips_h1", "vel_pips_h2",
     "vel_pips_h5", "vel_pips_h10", "vel_z_h1", "vel_z_h2", "vel_z_h5",
-    "vel_z_h10", "accel_pips", "hour_utc", "bar_range_pips",
+    "vel_z_h10", "accel_pips", "hour_utc", "range_pips",
 ]
 
 
@@ -25,7 +25,7 @@ def _ctx(n=1500, seed=0):
     X[:, NAMES.index("tick_volume")] = np.abs(X[:, NAMES.index("tick_volume")]) * 50 + 1
     X[:, NAMES.index("hl_pos_delta_tick")] = np.clip(X[:, NAMES.index("hl_pos_delta_tick")], -1, 1)
     X[:, NAMES.index("bar_return_sign")] = np.sign(X[:, NAMES.index("bar_return_sign")])
-    X[:, NAMES.index("bar_range_pips")] = np.abs(X[:, NAMES.index("bar_range_pips")]) + 0.5
+    X[:, NAMES.index("range_pips")] = np.abs(X[:, NAMES.index("range_pips")]) + 0.5
     return FeatureContext(X=X, names=list(NAMES), hour=(np.arange(n) % 24).astype(float))
 
 

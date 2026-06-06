@@ -307,7 +307,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; W = 20\n"
         "    c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
         "    k = np.arange(n); lo = np.maximum(0, k - W); m = (k - lo).astype(float)\n"
@@ -341,7 +341,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "  bar return.  When large range co-occurs with large directional move → informed flow\n"
         "  (trending, do NOT fade).  When large range has small return → noise / choppy\n"
         "  (mean-reverting, DO fade).  This is a microstructure-informed gate that needs no\n"
-        "  external data — only bar_range_pips and returns, both in the existing feature set.\n"
+        "  external data — only range_pips and returns, both in the existing feature set.\n"
         "BAYESIAN ALIGNMENT:\n"
         "  The gate should NOT be too tight (threshold < 0.1) or monthly trade counts drop\n"
         "  below viable levels.  The Bayesian model needs at least _MIN_MONTHS=2 active months\n"
@@ -352,7 +352,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; W = 20\n"
         "    absr = np.abs(np.where(np.isfinite(r), r, 0.0))\n"
         "    s_x = np.concatenate(([0.0], np.cumsum(absr)))\n"
@@ -407,7 +407,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips'); sz = ctx.col('spread_z')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips'); sz = ctx.col('spread_z')\n"
         "    n = r.shape[0]; W = 20\n"
         "    # Parkinson volatility (causal trailing)\n"
         "    c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
@@ -460,7 +460,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]\n"
         "    # Baseline fair estimator\n"
         "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
@@ -513,7 +513,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; W = 20\n"
         "    # Parkinson volatility (causal trailing)\n"
         "    c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
@@ -625,7 +625,7 @@ RICH_TEMPLATES: dict[str, str] = {
         "REFERENCE IMPLEMENTATION:\n"
         "```python\n"
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; W = 20\n"
         "    # Baseline fair estimator\n"
         "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
@@ -1114,7 +1114,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
     ),
     "adaptive_fair": (
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]\n"
         "    W = 20\n"
         "    # Parkinson volatility (causal trailing): sqrt( sum(range^2) / (4*ln2*W) )\n"
@@ -1138,7 +1138,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
     ),
     "ofi_gated_fade": (
         "def signal(ctx):\n" + _FAIR +
-        "    br = ctx.col('bar_range_pips')\n"
+        "    br = ctx.col('range_pips')\n"
         "    W = 20\n"
         "    # Range/Return Correlation (Cont-Kukanov OFI proxy)\n"
         "    # Large range + small return => noise => good fade\n"
@@ -1166,7 +1166,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
     ),
     "spread_vol_gate": (
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips'); sz = ctx.col('spread_z')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips'); sz = ctx.col('spread_z')\n"
         "    n = r.shape[0]\n"
         "    W = 20\n"
         "    # Parkinson volatility (causal trailing window)\n"
@@ -1190,7 +1190,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
     ),
     "transient_impact_fade": (
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]\n"
         "    # Baseline fair estimator\n"
         "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
@@ -1211,7 +1211,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
     ),
     "jump_aware_fade": (
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; W = 20\n"
         "    # Parkinson volatility (causal trailing)\n"
         "    c = np.concatenate(([0.0], np.cumsum(br * br)))\n"
@@ -1256,7 +1256,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
     ),
     "asymmetric_vol_gate": (
         "def signal(ctx):\n"
-        "    r = ctx.col('vel_pips_h1'); br = ctx.col('bar_range_pips')\n"
+        "    r = ctx.col('vel_pips_h1'); br = ctx.col('range_pips')\n"
         "    n = r.shape[0]; W = 20\n"
         "    # Baseline fair estimator\n"
         "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
@@ -1295,7 +1295,7 @@ FADE_SEED_PROGRAMS: dict[str, str] = {
     "microprice_fade": (
         "def signal(ctx):\n"
         "    r = ctx.col('vel_pips_h1'); imb = ctx.col('hl_pos_delta_tick')\n"
-        "    rng_ = ctx.col('bar_range_pips'); n = r.shape[0]\n"
+        "    rng_ = ctx.col('range_pips'); n = r.shape[0]\n"
         "    a = 0.05; p = np.cumsum(np.where(np.isfinite(r), r, 0.0))\n"
         "    ew = np.empty(n); acc = p[0]\n"
         "    for i in range(n): acc = (1 - a) * acc + a * p[i]; ew[i] = acc\n"
