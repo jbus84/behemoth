@@ -16,6 +16,7 @@
 | **Meta-labeling + gauntlet** | Does ML gating / more data / rigorous stats confirm an edge? | Ridge + CatBoost meta-classifier + Bayesian P(edge>0), temporal-robust, block-bootstrap, DSR | **Mixed.** ML gating hurts; BUT more data + gauntlet validates **P(edge>0)=0.94** at maker(adv0). |
 | **Stage 3 (broad)** | Does 59-symbol breadth + 2020–2025 history + gauntlet validate the lead? | 59-pair perp 1h + real funding + full gauntlet | **Yes, maker-only.** Net +26 bps train/val, +20 bps holdout; Bayesian P=0.94. DSR fails. |
 | **Futures-native (this session)** | Does perp data (true mark prices + real funding) improve signal? | 15-pair perp 1h + real 8h funding + parametric maker-fill model | **No.** Signal IC weakens; holdout reverses. Line closed. |
+| **Funding-carry (this session)** | Is a standalone funding-carry book a cleaner edge than flow? | 59-pair perp 1h + real funding, rank-by-carry | **No.** Train+val looks strong (+153 bps) but is mean-reversion in disguise; holdout 2025 reverses catastrophically (−12 bps maker_best). Line closed perp-only. |
 
 ---
 
@@ -88,6 +89,17 @@ Perp data + real funding rates + parametric maker-fill model at 15 pairs:
 
 **Verdict:** perp-native line closed at 15-pair breadth. Coarse-kline flow is not robust on perp data until you add ~60 symbols.
 
+### 7. Standalone funding-carry is a mean-reversion mirage (closed perp-only)
+
+A pure funding-rank book (long low-funding / short high-funding) on 59 perps:
+- **Train+val:** net **+153 bps** per 3-day rebalance at `fw24 h72 k3 maker_best`. Even taker is +133 bps.
+- **Holdout 2025:** gross **−40 bps**, funding **+33 bps**, net **−12 bps** at maker_best.
+- **Bayesian P(edge>0) = 0.435** — coin flip.
+
+Why it fails: the signal selects the most speculative perps (high funding = over-leveraged longs). Shorting them profits when speculation mean-reverts (2022–2024), but **bleeds during persistent bull trends** (Jan–May 2025). The funding income is real (~+33 bps) but cannot cover the price momentum against the shorts. A true carry edge requires a **spot-perp basis** to hedge price; perp-only is a disguised short-momentum bet.
+
+**Verdict:** funding-carry line closed perp-only. Would need spot data + paired margin to isolate pure funding.
+
 ---
 
 ## What remains (ranked by expected impact)
@@ -104,7 +116,7 @@ Perp data + real funding rates + parametric maker-fill model at 15 pairs:
 
 4. **CPCV / PBO + walk-forward** — combinatorial purged CV gives a distribution of OOS paths and a probability of backtest overfitting, and rolling re-fit tests weight stability. Directly addresses the DSR<0.95 / multiplicity gap.
 
-5. **Standalone funding-carry book** — funding P&L is systematically positive. A dedicated carry strategy (long low-funding / short high-funding, or spot-perp basis) may be a cleaner, more robust edge than the flow signal. Worth isolating and gauntlet-testing on its own.
+5. **Standalone funding-carry book** — ✅ **DONE.** Perp-only funding rank is a mean-reversion mirage. Train+val +153 bps, holdout −12 bps, P=0.435. The funding income is real (+33 bps) but price exposure dominates. A true basis trade (spot-perp) would need spot data + paired margin; that is a separate project.
 
 ### Tier 3 — Portfolio / risk engineering (improves Sharpe, not alpha)
 
@@ -134,4 +146,5 @@ The lead is now the **most-validated result of the whole project** — genuinely
 - Stage 2b: `docs/analysis/2026-06-07_crypto_flow_stage2b_findings.md`
 - Stage 3 (broad): `docs/analysis/2026-06-07_crypto_flow_broad_findings.md`
 - Futures-native: `docs/analysis/2026-06-07_crypto_flow_xs_futures_findings.md`
+- Funding-carry: `docs/analysis/2026-06-07_crypto_funding_carry_findings.md`
 - Stage-2 data scoping: `docs/superpowers/specs/2026-06-07-crypto-flow-stage2-data-design.md`
