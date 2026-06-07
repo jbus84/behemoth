@@ -316,12 +316,11 @@ def crypto_boost_spec(
             sd = float(np.nanstd(row)) + 1e-12
             z[t, :] = (row - m) / sd
 
-        # Conviction threshold
+        # Conviction threshold computed CAUSALLY per bar (current cross-section only)
         abs_z = np.abs(z)
         fin_mask = np.isfinite(abs_z)
         if fin_mask.sum() < 2:
             return pd.DataFrame({"net": np.array([]), "test_month": np.array([])})
-        thr = float(np.nanquantile(abs_z[fin_mask], q))
 
         # Proportional weights, rebalance every h bars
         gross_list, cost_list, net_list, months = [], [], [], []
@@ -329,7 +328,11 @@ def crypto_boost_spec(
         for t in range(0, n - h, h):
             if not np.any(fin_mask[t]):
                 continue
-            w = np.where(fin_mask[t] & (abs_z[t] >= thr), z[t], 0.0)
+            row_abs = abs_z[t][fin_mask[t]]
+            if row_abs.size < 2:
+                continue
+            thr_t = float(np.nanquantile(row_abs, q))
+            w = np.where(fin_mask[t] & (abs_z[t] >= thr_t), z[t], 0.0)
             w = np.clip(w, -1.0, 1.0)
             w = w - w.mean()  # dollar-neutral
             abs_sum = np.abs(w).sum()

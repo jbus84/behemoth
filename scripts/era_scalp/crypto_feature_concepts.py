@@ -108,6 +108,90 @@ CRYPTO_FEATURE_TAXONOMY: dict[str, str] = {
         "            _x[t] = _so * _sv\n"
         "    feats.append(_x)\n"
     ),
+    # Amihud illiquidity: trailing mean of |return|/dollar-volume (Cakici 2024)
+    "amihud_illiq": (
+        "    _r = np.abs(np.nan_to_num(ctx.col('return_1h')))\n"
+        "    _dv = np.nan_to_num(ctx.col('close')) * np.nan_to_num(ctx.col('vol')) + 1e-9\n"
+        "    _il = _r / _dv\n"
+        "    _c = np.cumsum(_il)\n"
+        "    _w = {w}\n"
+        "    _o = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _o[t] = (_c[t] - (_c[lo-1] if lo > 0 else 0.0)) / _w\n"
+        "    feats.append(_o)\n"
+    ),
+    # realized volatility: trailing std of returns (cumsum-based)
+    "realized_vol": (
+        "    _r = np.nan_to_num(ctx.col('return_1h'))\n"
+        "    _c1 = np.cumsum(_r); _c2 = np.cumsum(_r*_r)\n"
+        "    _w = {w}\n"
+        "    _o = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _s1 = _c1[t] - (_c1[lo-1] if lo > 0 else 0.0)\n"
+        "            _s2 = _c2[t] - (_c2[lo-1] if lo > 0 else 0.0)\n"
+        "            _m = _s1 / _w\n"
+        "            _o[t] = np.sqrt(max(_s2/_w - _m*_m, 0.0))\n"
+        "    feats.append(_o)\n"
+    ),
+    # downside semi-volatility: trailing std of negative returns
+    "downside_vol": (
+        "    _r = np.nan_to_num(ctx.col('return_1h'))\n"
+        "    _rn = np.minimum(_r, 0.0)\n"
+        "    _c2 = np.cumsum(_rn*_rn)\n"
+        "    _w = {w}\n"
+        "    _o = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _o[t] = np.sqrt((_c2[t] - (_c2[lo-1] if lo > 0 else 0.0)) / _w)\n"
+        "    feats.append(_o)\n"
+    ),
+    # return skewness (lottery/skewness factor), trailing window
+    "ret_skew": (
+        "    _r = np.nan_to_num(ctx.col('return_1h'))\n"
+        "    _c1 = np.cumsum(_r); _c2 = np.cumsum(_r*_r); _c3 = np.cumsum(_r*_r*_r)\n"
+        "    _w = {w}\n"
+        "    _o = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _m = (_c1[t] - (_c1[lo-1] if lo > 0 else 0.0)) / _w\n"
+        "            _m2 = (_c2[t] - (_c2[lo-1] if lo > 0 else 0.0)) / _w\n"
+        "            _m3 = (_c3[t] - (_c3[lo-1] if lo > 0 else 0.0)) / _w\n"
+        "            _var = _m2 - _m*_m\n"
+        "            if _var > 1e-18:\n"
+        "                _o[t] = (_m3 - 3*_m*_m2 + 2*_m**3) / (_var**1.5)\n"
+        "    feats.append(_o)\n"
+    ),
+    # dollar volume (size/liquidity proxy): trailing mean of close*vol
+    "dollar_vol": (
+        "    _dv = np.nan_to_num(ctx.col('close')) * np.nan_to_num(ctx.col('vol'))\n"
+        "    _c = np.cumsum(_dv)\n"
+        "    _w = {w}\n"
+        "    _o = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _o[t] = (_c[t] - (_c[lo-1] if lo > 0 else 0.0)) / _w\n"
+        "    feats.append(_o)\n"
+    ),
+    # volume shock: current volume vs trailing mean volume
+    "vol_shock": (
+        "    _v = np.nan_to_num(ctx.col('vol'))\n"
+        "    _c = np.cumsum(_v)\n"
+        "    _w = {w}\n"
+        "    _o = np.full(n, np.nan)\n"
+        "    for t in range(n):\n"
+        "        lo = t - _w + 1\n"
+        "        if lo >= 0:\n"
+        "            _ma = (_c[t] - (_c[lo-1] if lo > 0 else 0.0)) / _w\n"
+        "            _o[t] = _v[t] / (_ma + 1e-12)\n"
+        "    feats.append(_o)\n"
+    ),
 }
 
 CRYPTO_FEATURE_SKELETON = (
@@ -136,6 +220,9 @@ def crypto_composition_to_source(skeleton: str, operators, params=None) -> str:
     return CRYPTO_FEATURE_SKELETON.format(body=body or "    feats.append(np.zeros(n))\n")
 
 
+# NOTE: research factors (amihud_illiq/realized_vol/downside_vol/ret_skew/dollar_vol/vol_shock)
+# remain in the taxonomy but are NOT seeded — empirically they DEGRADE the hourly model
+# (val IC 0.0076 flow-only -> 0.0008 with factors; they are monthly-horizon factors). Seeds stay flow-focused.
 CRYPTO_SEED_COMPOSITIONS: dict[str, dict] = {
     "flow_raw": {
         "skeleton": "default",
