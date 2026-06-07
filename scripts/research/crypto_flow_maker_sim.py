@@ -240,6 +240,9 @@ def main() -> None:
     ap.add_argument("--n-paths", type=int, default=1000, help="Monte Carlo paths per rebalance")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--holdout", action="store_true", help="Run on 2025 holdout instead of train+val")
+    ap.add_argument("--spread", type=float, default=2.0, help="Half-spread in bps")
+    ap.add_argument("--rebate", type=float, default=0.2, help="Maker rebate in bps")
+    ap.add_argument("--taker", type=float, default=7.5, help="Taker fee in bps")
     args = ap.parse_args()
 
     perp, keep_syms = load_data()
@@ -261,7 +264,7 @@ def main() -> None:
     for p_fill, adv_mean, adv_std in product(p_fills, adv_means, adv_stds):
         r = run_simulation(
             targets, p_fill, adv_mean, adv_std,
-            spread=2.0, rebate=0.2, taker_fee=7.5,
+            spread=args.spread, rebate=args.rebate, taker_fee=args.taker,
             n_paths=args.n_paths, seed=args.seed,
         )
         rows.append(r)
