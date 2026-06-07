@@ -96,6 +96,11 @@ still assumes you reliably get *maker* fills.
   rebate==spread, no √365, no look-ahead).
 - Guard test `tests/test_crypto_flow_overlays.py` locks all three bugs out.
 
-> Note: `crypto_flow_smooth.py`, `crypto_flow_smooth_full.py`, and the earlier synthesis
-> docs (`*_smooth_system_synthesis.md`, `*_ab_sector_synthesis.md`) still contain the
-> original inflated numbers and should be read in light of this correction.
+> Note: the tainted artifacts that produced the inflated headline were **removed** in this
+> PR — scripts `crypto_flow_smooth.py`, `crypto_flow_smooth_full.py`,
+> `crypto_flow_explore_smooth.py`, `crypto_flow_explore_more.py`,
+> `crypto_flow_signal_enhance.py`, `crypto_flow_holdout_guard.py`, and their findings/
+> synthesis docs (`*_smooth_findings.md`, `*_explore_smooth.md`, `*_explore_more.md`,
+> `*_signal_enhance.md`, `*_holdout_guard.md`, `*_smooth_system_synthesis.md`,
+> `*_ab_sector_synthesis.md`). This note is the surviving record. The legitimate sector
+> concentration finding is retained in `2026-06-07_crypto_flow_sector_check.md`.
