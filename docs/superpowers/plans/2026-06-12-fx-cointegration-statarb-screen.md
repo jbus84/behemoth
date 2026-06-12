@@ -633,10 +633,22 @@ from scripts.fx_coint.instruments import MAJORS, instrument_weight
 
 
 def instrument_series(panel: pd.DataFrame, symbol: str) -> pd.Series:
-    """Log-price series of any instrument = weights . major logmids."""
+    """Log-price series of any instrument = weights . major logmids.
+
+    Only legs with a nonzero weight are read, so a panel holding a subset of
+    MAJORS works as long as it carries every leg the instrument needs. A
+    required-but-absent leg is a hard error (no silent zero-fill).
+    """
     w = instrument_weight(symbol)
-    logmids = np.column_stack([panel[(m, "logmid")].to_numpy() for m in MAJORS])
-    return pd.Series(logmids @ w, index=panel.index)
+    present = set(panel.columns.get_level_values(0))
+    series = pd.Series(0.0, index=panel.index)
+    for i, major in enumerate(MAJORS):
+        if w[i] == 0.0:
+            continue
+        if major not in present:
+            raise KeyError(f"panel missing leg {major!r} required for {symbol!r}")
+        series = series + w[i] * panel[(major, "logmid")]
+    return series
 
 
 def fit_hedge(panel: pd.DataFrame, base: str, hedge: str) -> float:
