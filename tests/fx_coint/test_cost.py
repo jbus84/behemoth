@@ -1,7 +1,7 @@
 import numpy as np
 
 from scripts.era_scalp.load_splits import _pip_size
-from scripts.fx_coint.cost import leg_cost_frac, spread_cost_frac, MARKUP_SWEEP_PIPS
+from scripts.fx_coint.cost import MARKUP_SWEEP_PIPS, leg_cost_frac, spread_cost_frac
 
 
 def test_markup_sweep_values():
@@ -27,7 +27,9 @@ def test_jpy_pip_size_used():
 
 def test_spread_cost_frac_sums_weighted_legs():
     # weight vector +1 EURUSD, -1 GBPUSD -> round-trip cost = |1|*cE + |1|*cG
-    weights = np.zeros(6); weights[0] = 1.0; weights[1] = -1.0
+    weights = np.zeros(6)
+    weights[0] = 1.0
+    weights[1] = -1.0
     spreads = np.full(6, 1e-4)
     mids = np.array([1.10, 1.30, 110.0, 0.90, 1.35, 0.65])
     total = spread_cost_frac(weights, spreads, mids, markup_pips=0.0)

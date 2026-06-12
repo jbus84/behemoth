@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from scripts.fx_coint.reversion import ou_fit, oos_reversion, reversion_exists
+from scripts.fx_coint.reversion import oos_reversion, ou_fit, reversion_exists
 
 
 def _ou_series(n=3000, theta=0.05, sigma=0.001, seed=7):

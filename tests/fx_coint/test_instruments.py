@@ -1,6 +1,11 @@
 import numpy as np
+
 from scripts.fx_coint.instruments import (
-    MAJORS, CURRENCIES, ccy_weight, instrument_weight, all_pairs,
+    CURRENCIES,
+    MAJORS,
+    all_pairs,
+    ccy_weight,
+    instrument_weight,
 )
 
 
@@ -26,7 +31,8 @@ def test_usd_is_zero_vector():
 
 def test_real_pair_is_unit_vector():
     w = instrument_weight("EURUSD")
-    expected = np.zeros(len(MAJORS)); expected[0] = 1.0
+    expected = np.zeros(len(MAJORS))
+    expected[0] = 1.0
     assert np.allclose(w, expected)
 
 

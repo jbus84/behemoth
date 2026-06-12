@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from scripts.fx_coint.panels import resample_fine, align_panel
+from scripts.fx_coint.panels import align_panel, resample_fine
 
 
 def _toy_ticks(start, n, step_s, base):
