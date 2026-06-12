@@ -67,10 +67,18 @@ For each surviving (stable, FDR-passing) spread, fit OU on the train residual; m
 - θ (mean-reversion speed) and half-life → feeds condition **B**.
 - Whether deviations are followed by reversion *on average* OOS (significant, with a
   minimum number of reversion events for statistical weight) → feeds **B**.
-- Gross reversion amplitude captured per round-trip vs round-trip cost (the markup
-  sweep) → the **amplitude-vs-cost ratio**, feeds condition **C**.
+- **Two amplitude measures**, both vs the round-trip cost markup sweep → feeds **C**:
+  - **Close-to-close reversion** (taker, pessimistic) = amplitude **floor**.
+  - **Intrabar residual excursion** (maker ceiling) = amplitude **ceiling**. Compute the
+    residual on the **fine (100/1000-tick) series**, then take its min/max within each
+    coarse (daily/hourly) window — a synchronous, true intrabar excursion of the spread.
+    Do **not** approximate from leg highs/lows (non-synchronous extremes fabricate range).
 
-No z-band trading, no net-PnL gate. OU is a measurement instrument only.
+No z-band trading, no net-PnL gate. OU is a measurement instrument only. Intrabar
+amplitude is **opportunity headroom, not capturable PnL** — capturing it needs limit
+fills, which suffer adverse selection (cf. the prior "range-band maker monetization is a
+tick-exact illusion" result: +1.17p OHLC → −0.74p tick-exact). It bounds the ceiling; it
+does not promise it.
 
 ### Stage 3 — Modelling-readiness gate (rule fixed before running)
 The stage is set for modelling iff **all three** hold for at least one spread:
@@ -80,14 +88,23 @@ The stage is set for modelling iff **all three** hold for at least one spread:
 - **(B) Reversion exists** — residual genuinely mean-reverts on a usable horizon:
   significant OU speed θ / finite, sensible half-life, deviations followed by reversion
   on average OOS. No timing/predictability claim — that is the model's job.
-- **(C) Amplitude reachable** — gross reversion amplitude per round-trip ≥ round-trip
-  cost (or within a defined multiple), read off the markup sweep. Model-proof: a
-  forecaster can improve timing/selection/regime but cannot make amplitude exceed cost.
+- **(C) Amplitude reachable** — evaluated as a **band** against the cost markup sweep:
+  - **floor** = close-to-close OOS reversion (taker, pessimistic);
+  - **ceiling** = intrabar residual excursion (perfect maker fills, optimistic).
+  Model-proof: a forecaster improves timing/selection/regime but cannot make amplitude
+  exceed cost.
 
-Outcome:
-- **≥1 spread passes A+B+C** → escalate to Stage 4 (build TimeBridge).
-- **None pass** → documented **NO-GO** with the precise killing number (e.g. "structure
-  real and reverting, but amplitude is X× below cost at every markup"). Model-proof null.
+Outcome (per spread, then aggregated):
+- **Floor ≥ cost** → stage is set; escalate to Stage 4 (build TimeBridge).
+- **Floor < cost ≤ ceiling** → **promising but execution-gated**: a model plus maker
+  fills *might* close it, but only **tick-exact maker verification** proves it (the
+  adverse-selection trap). Escalate only with that verification first.
+- **Ceiling < cost** → documented **NO-GO**: even perfect intrabar capture can't clear
+  cost. Model-proof *and* execution-proof null — the strongest possible negative result.
+
+If **no** spread reaches at least the execution-gated tier → overall NO-GO with the
+precise killing number (e.g. "structure real and reverting, but intrabar ceiling is X×
+below cost at every markup").
 
 ### Stage 4 — TimeBridge (conditional; only if Stage 3 says the stage is set)
 Port TimeBridge; forecast the residual path h-ahead (Cointegrated Attention exploits the
