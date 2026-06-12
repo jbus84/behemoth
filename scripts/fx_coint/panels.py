@@ -52,3 +52,38 @@ def load_aligned(freq: str = "5min", bar: str = "100tick",
                  symbols: list[str] | None = None) -> pd.DataFrame:
     syms = symbols or MAJORS
     return align_panel({s: load_fine(s, freq, bar) for s in syms})
+
+
+def coarsen(fine_panel: pd.DataFrame, freq: str) -> pd.DataFrame:
+    """Coarsen a fine MultiIndex panel: logmid=last, spread=mean per window."""
+    out = {}
+    for sym in fine_panel.columns.get_level_values(0).unique():
+        g = fine_panel[sym].resample(freq)
+        out[(sym, "logmid")] = g["logmid"].last()
+        out[(sym, "spread")] = g["spread"].mean()
+    res = pd.DataFrame(out)
+    res.columns = pd.MultiIndex.from_tuples(res.columns)
+    return res.dropna()
+
+
+def walk_forward_windows(frame: pd.DataFrame, train_years: int = 2,
+                         step_years: int = 1, purge: str = "5D"):
+    """Yield (train_df, oos_df) tuples: rolling train_years window, the next
+    step_years as OOS, separated by a purge gap. Look-ahead safe."""
+    purge_td = pd.Timedelta(purge)
+    start = frame.index.min().normalize()
+    end = frame.index.max()
+    wins = []
+    tr_start = start
+    while True:
+        tr_end = tr_start + pd.DateOffset(years=train_years)
+        oos_start = tr_end + purge_td
+        oos_end = oos_start + pd.DateOffset(years=step_years)
+        if oos_start >= end:
+            break
+        train = frame[(frame.index >= tr_start) & (frame.index < tr_end)]
+        oos = frame[(frame.index >= oos_start) & (frame.index < oos_end)]
+        if len(train) > 0 and len(oos) > 0:
+            wins.append((train, oos))
+        tr_start = tr_start + pd.DateOffset(years=step_years)
+    return wins
