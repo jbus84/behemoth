@@ -1,5 +1,10 @@
 # FX Cointegration Stat-Arb — Modelling-Readiness Screen — Implementation Plan
 
+> **Post-implementation amendments (2026-06-12):** during execution, spec review caught three deviations from the code below, all now fixed in the committed source (trust the code over this plan where they differ):
+> 1. **`cointegration.instrument_series`** sums only nonzero-weight legs present in the panel (a required-but-absent leg raises) — the original iterate-all-MAJORS version KeyError'd on subset/unit-test panels.
+> 2. **`amplitude.close_to_close_amplitude`** uses directional reversion pnl `sign(z)·(r[t]−r[t+h])` averaged over all events — the `abs−abs` shrinkage version read zero on symmetric overshoots and understated harvestable amplitude.
+> 3. **`run_screen`** measures conditions B and C on **concatenated walk-forward OOS residuals** (β + de-mean from train only, applied forward), not the full sample — the original measured OU/reversion/amplitude in-sample, a look-ahead leak. `run()` coarsens once per timeframe and does a single `_measure`/`_finalize` pass per pair.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a cheap, look-ahead-safe screen that decides whether genuine, stable, mean-reverting cointegration structure exists across the 6 USD majors with reversion amplitude in reach of cost — i.e. whether the stage is set for modelling (TimeBridge). No net-edge baseline; this is pure measurement → a go/no-go verdict.
