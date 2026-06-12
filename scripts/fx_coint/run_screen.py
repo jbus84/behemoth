@@ -32,6 +32,9 @@ MIN_OOS_BARS = 30
 
 
 def _mean_legs(coarse: pd.DataFrame):
+    # Cost uses each leg's grand-mean spread/mid over the full panel — a screen-level
+    # simplification (not the contemporaneous-OOS regime). Adequate for a go/no-go
+    # amplitude-vs-cost check; a live system would use period-local spreads.
     spreads = np.array([coarse[(m, "spread")].mean() for m in MAJORS])
     mids = np.array([np.exp(coarse[(m, "logmid")].mean()) for m in MAJORS])
     return spreads, mids
@@ -123,7 +126,12 @@ def _finalize(m: dict, universe: str, fdr_pass: bool) -> dict:
 
 def screen_pair(fine: pd.DataFrame, coarse_freq: str, base: str, hedge: str,
                 universe: str, fdr_pass: bool) -> dict:
-    """Convenience single-pair screen (coarsens internally)."""
+    """Convenience single-pair screen (coarsens internally).
+
+    NOTE: `fdr_pass` must come from a cross-pair BH-FDR run (as `run()` does) for
+    the verdict to be valid in isolation; passing True here skips multiplicity
+    control and is only appropriate for single-pair inspection / tests.
+    """
     coarse = coarsen(fine, coarse_freq)
     return _finalize(_measure(coarse, fine, coarse_freq, base, hedge),
                      universe, fdr_pass)
