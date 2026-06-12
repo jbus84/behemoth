@@ -1,0 +1,5680 @@
+{
+  "summary": {
+    "n_rows": 210,
+    "n_set_at_zero_markup": 0,
+    "n_execution_gated_at_zero_markup": 0,
+    "n_set_at_0_6_markup": 0
+  },
+  "rows": [
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "EURJPY",
+      "beta": -0.001364585408283016,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1204.1515808882639,
+      "reversion_frac": 0.5095396236244059,
+      "n_events": 15357,
+      "floor": 0.0002383328069289829,
+      "ceiling": 0.0008596226306422106,
+      "cost_by_markup": {
+        "0.0": 0.00011470299335208604,
+        "0.3": 0.00016468330990518598,
+        "0.6": 0.00021466362645828594,
+        "1.0": 0.0002813040485290859
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "EURCHF",
+      "beta": -0.023362362972071286,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1296.4048248545164,
+      "reversion_frac": 0.5071099539355097,
+      "n_events": 14979,
+      "floor": 0.00021254777355967958,
+      "ceiling": 0.0008426428133751628,
+      "cost_by_markup": {
+        "0.0": 0.00011843119131761596,
+        "0.3": 0.0001697323317566995,
+        "0.6": 0.000221033472195783,
+        "1.0": 0.0002894349927812277
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "EURCAD",
+      "beta": 0.19321544485884937,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1866.4185416059324,
+      "reversion_frac": 0.4892869099430867,
+      "n_events": 11948,
+      "floor": 0.00020795459025997856,
+      "ceiling": 0.0008657603277933276,
+      "cost_by_markup": {
+        "0.0": 0.00012734399941825213,
+        "0.3": 0.00017644613501409512,
+        "0.6": 0.0002255482706099381,
+        "1.0": 0.00029101778473772876
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "EURAUD",
+      "beta": 0.14498281075396346,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1204.606142269932,
+      "reversion_frac": 0.5135499528111096,
+      "n_events": 14834,
+      "floor": 0.00019652779718799552,
+      "ceiling": 0.0007945473206623949,
+      "cost_by_markup": {
+        "0.0": 0.00013240874159026352,
+        "0.3": 0.00018472491688713012,
+        "0.6": 0.00023704109218399672,
+        "1.0": 0.0003067959925798188
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "EURUSD",
+      "beta": 0.11344288254030761,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1223.9549661041192,
+      "reversion_frac": 0.5156155143338954,
+      "n_events": 14825,
+      "floor": 0.00017668229796972507,
+      "ceiling": 0.0008058830751528373,
+      "cost_by_markup": {
+        "0.0": 0.00011078715416940651,
+        "0.3": 0.00015766599796190355,
+        "0.6": 0.00020454484175440058,
+        "1.0": 0.0002670499668110633
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "GBPJPY",
+      "beta": -0.16490646609751944,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1185.0040700718291,
+      "reversion_frac": 0.5103666964793886,
+      "n_events": 12299,
+      "floor": 0.00025755527376003387,
+      "ceiling": 0.0007484193830455333,
+      "cost_by_markup": {
+        "0.0": 0.0001084357403265845,
+        "0.3": 0.00015845044514609872,
+        "0.6": 0.00020846514996561292,
+        "1.0": 0.0002751514230582985
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "GBPCHF",
+      "beta": -0.4237736492557076,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1284.1680500157067,
+      "reversion_frac": 0.52615518744551,
+      "n_events": 9176,
+      "floor": 0.0002713599678571923,
+      "ceiling": 0.0006464979976206834,
+      "cost_by_markup": {
+        "0.0": 0.00013557221489524665,
+        "0.3": 0.00018954202857459019,
+        "0.6": 0.00024351184225393372,
+        "1.0": 0.0003154715938263918
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "GBPCAD",
+      "beta": -0.23313146083299166,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1964.6090636700671,
+      "reversion_frac": 0.5090461831455324,
+      "n_events": 12602,
+      "floor": 0.00022574457075655484,
+      "ceiling": 0.0007510844530166595,
+      "cost_by_markup": {
+        "0.0": 0.00011892232091340719,
+        "0.3": 0.00016868532690187898,
+        "0.6": 0.0002184483328903508,
+        "1.0": 0.00028479900754164653
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "GBPAUD",
+      "beta": -0.2593951665344016,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1926.6152132064017,
+      "reversion_frac": 0.5172438517243851,
+      "n_events": 13947,
+      "floor": 0.00021191817977562149,
+      "ceiling": 0.0007911905396823868,
+      "cost_by_markup": {
+        "0.0": 0.00013416395981672073,
+        "0.3": 0.00018929921637562036,
+        "0.6": 0.00024443447293452,
+        "1.0": 0.00031794814834638615
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "GBPUSD",
+      "beta": -0.2141437698049398,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1741.93306665728,
+      "reversion_frac": 0.5209655987007235,
+      "n_events": 13546,
+      "floor": 0.00017260038581997048,
+      "ceiling": 0.000745139059440967,
+      "cost_by_markup": {
+        "0.0": 9.72501478852111e-05,
+        "0.3": 0.00014219770021448535,
+        "0.6": 0.00018714525254375958,
+        "1.0": 0.0002470753223161252
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "JPYCHF",
+      "beta": -0.021307400326089517,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1747.239062306155,
+      "reversion_frac": 0.49292452830188677,
+      "n_events": 12296,
+      "floor": 0.0002533670087688821,
+      "ceiling": 0.000852858801445784,
+      "cost_by_markup": {
+        "0.0": 0.00011830820136357723,
+        "0.3": 0.0001694247691102307,
+        "0.6": 0.00022054133685688417,
+        "1.0": 0.00028869676051908875
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "JPYCAD",
+      "beta": 0.14275910420064863,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1316.9795420220935,
+      "reversion_frac": 0.49430391967561305,
+      "n_events": 10358,
+      "floor": 0.00017473167057347917,
+      "ceiling": 0.0008550801309613677,
+      "cost_by_markup": {
+        "0.0": 0.00013504094354646135,
+        "0.3": 0.00019156916986191733,
+        "0.6": 0.00024809739617737326,
+        "1.0": 0.0003234683645979812
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "JPYAUD",
+      "beta": 0.05481741644784303,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1117.5644282998555,
+      "reversion_frac": 0.5109808676906494,
+      "n_events": 14844,
+      "floor": 0.00020242522619619212,
+      "ceiling": 0.000832630669614512,
+      "cost_by_markup": {
+        "0.0": 0.00012556557074933395,
+        "0.3": 0.00017915654451484416,
+        "0.6": 0.00023274751828035426,
+        "1.0": 0.0003042021499677011
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "JPYUSD",
+      "beta": 0.2720484219215517,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2830.5330736137803,
+      "reversion_frac": 0.486676875957121,
+      "n_events": 6530,
+      "floor": 0.00021393349361805602,
+      "ceiling": 0.0009301967833194687,
+      "cost_by_markup": {
+        "0.0": 0.00012647051691693935,
+        "0.3": 0.0001828583872914154,
+        "0.6": 0.00023924625766589142,
+        "1.0": 0.0003144300848318594
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "CHFCAD",
+      "beta": 0.22523074141741015,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1338.645616740856,
+      "reversion_frac": 0.4938480641155887,
+      "n_events": 8859,
+      "floor": 0.00026822710051973913,
+      "ceiling": 0.0008894757457878644,
+      "cost_by_markup": {
+        "0.0": 0.00016641470784031315,
+        "0.3": 0.00022878135366296835,
+        "0.6": 0.00029114799948562356,
+        "1.0": 0.0003743035272491638
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "CHFAUD",
+      "beta": 0.07490936183574926,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1383.1808670935218,
+      "reversion_frac": 0.5100143602146474,
+      "n_events": 13231,
+      "floor": 0.00022968503099076007,
+      "ceiling": 0.0008302260705361578,
+      "cost_by_markup": {
+        "0.0": 0.00013609227932693394,
+        "0.3": 0.00019170238110370705,
+        "0.6": 0.00024731248288048014,
+        "1.0": 0.0003214592852495109
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "CHFUSD",
+      "beta": 0.09842606937570493,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1484.5834303678585,
+      "reversion_frac": 0.5101662214306916,
+      "n_events": 13476,
+      "floor": 0.0001964637232164816,
+      "ceiling": 0.0008492216392095169,
+      "cost_by_markup": {
+        "0.0": 0.0001274425308624157,
+        "0.3": 0.00018057799824117648,
+        "0.6": 0.00023371346561993722,
+        "1.0": 0.0003045607554582849
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "CADAUD",
+      "beta": -0.054289014538256804,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1125.1864518327668,
+      "reversion_frac": 0.5216362617520702,
+      "n_events": 16061,
+      "floor": 0.0002238681952229372,
+      "ceiling": 0.000830606469475191,
+      "cost_by_markup": {
+        "0.0": 0.00012849549124746134,
+        "0.3": 0.00018198242609803443,
+        "0.6": 0.00023546936094860743,
+        "1.0": 0.0003067852740827048
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "CADUSD",
+      "beta": -0.035714665208509064,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 996.2291193656064,
+      "reversion_frac": 0.5241011035955856,
+      "n_events": 14045,
+      "floor": 0.00026726347124649474,
+      "ceiling": 0.0008428716041793898,
+      "cost_by_markup": {
+        "0.0": 0.00011815332054777422,
+        "0.3": 0.00016886980477389999,
+        "0.6": 0.0002195862890000257,
+        "1.0": 0.0002872082679681933
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURGBP",
+      "hedge": "AUDUSD",
+      "beta": 0.018605438152374577,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1093.3351940550378,
+      "reversion_frac": 0.5185989861083679,
+      "n_events": 15189,
+      "floor": 0.00023011139333689031,
+      "ceiling": 0.0008338425952087512,
+      "cost_by_markup": {
+        "0.0": 0.0001175082227829635,
+        "0.3": 0.0001682255362758148,
+        "0.6": 0.0002189428497686661,
+        "1.0": 0.00028656593442580113
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "EURCHF",
+      "beta": -0.1232154323136981,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1457.5207315612136,
+      "reversion_frac": 0.46152960147431465,
+      "n_events": 8682,
+      "floor": 0.0006878515828774372,
+      "ceiling": 0.0014043403647597738,
+      "cost_by_markup": {
+        "0.0": 9.745051617037993e-05,
+        "0.3": 0.0001553184764364337,
+        "0.6": 0.00021318643670248746,
+        "1.0": 0.0002903437170572258
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "EURCAD",
+      "beta": 0.5222120909607264,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2701.0205479635215,
+      "reversion_frac": 0.49645780315014787,
+      "n_events": 14539,
+      "floor": 0.00021065187348739237,
+      "ceiling": 0.0013639074804255753,
+      "cost_by_markup": {
+        "0.0": 0.0001116820516235401,
+        "0.3": 0.00016003302603726763,
+        "0.6": 0.0002083840004509952,
+        "1.0": 0.00027285196633596525
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "EURAUD",
+      "beta": -0.06359099354758058,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1746.8356112936478,
+      "reversion_frac": 0.516153058374453,
+      "n_events": 10741,
+      "floor": 0.00046526967510686335,
+      "ceiling": 0.0016336088958770248,
+      "cost_by_markup": {
+        "0.0": 8.931588205898933e-05,
+        "0.3": 0.00014430852277002857,
+        "0.6": 0.0001993011634810678,
+        "1.0": 0.0002726246844291201
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "EURUSD",
+      "beta": 0.36398206079834405,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2696.709858671805,
+      "reversion_frac": 0.477998607996288,
+      "n_events": 12931,
+      "floor": 0.00033732328212370905,
+      "ceiling": 0.0010468548739468184,
+      "cost_by_markup": {
+        "0.0": 6.5005946765548e-05,
+        "0.3": 0.00010581420842986787,
+        "0.6": 0.0001466224700941877,
+        "1.0": 0.0002010334856466142
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "GBPJPY",
+      "beta": 0.8350935339024808,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1185.0040700740794,
+      "reversion_frac": 0.5103666964793886,
+      "n_events": 12299,
+      "floor": 0.0002575552737600343,
+      "ceiling": 0.0007484193830455353,
+      "cost_by_markup": {
+        "0.0": 0.0001084357403265845,
+        "0.3": 0.0001584504451460987,
+        "0.6": 0.00020846514996561294,
+        "1.0": 0.0002751514230582986
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "GBPCHF",
+      "beta": -0.03504236398459907,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1116.0410712785488,
+      "reversion_frac": 0.4701067615658363,
+      "n_events": 11240,
+      "floor": 0.0004833152000485515,
+      "ceiling": 0.0013615559519547973,
+      "cost_by_markup": {
+        "0.0": 8.464366611866882e-05,
+        "0.3": 0.00013714189505531466,
+        "0.6": 0.0001896401239919605,
+        "1.0": 0.000259637762574155
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "GBPCAD",
+      "beta": 0.3978590659280848,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2428.8332670542177,
+      "reversion_frac": 0.5061998541210795,
+      "n_events": 13710,
+      "floor": 0.0002745361409346792,
+      "ceiling": 0.0013176054298230933,
+      "cost_by_markup": {
+        "0.0": 0.00014907219590421447,
+        "0.3": 0.00021780166512368467,
+        "0.6": 0.00028653113434315484,
+        "1.0": 0.00037817042663578176
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "GBPAUD",
+      "beta": 0.01515119053398958,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2442.805563663195,
+      "reversion_frac": 0.5143596146985373,
+      "n_events": 11212,
+      "floor": 0.0003559873139755542,
+      "ceiling": 0.001402686058582304,
+      "cost_by_markup": {
+        "0.0": 8.082940799622343e-05,
+        "0.3": 0.00013237501924245564,
+        "0.6": 0.00018392063048868788,
+        "1.0": 0.0002526481121503308
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "GBPUSD",
+      "beta": 0.49193186374104975,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2497.9638899597235,
+      "reversion_frac": 0.5074946466809421,
+      "n_events": 13076,
+      "floor": 0.0005078937282545228,
+      "ceiling": 0.0012960656232468097,
+      "cost_by_markup": {
+        "0.0": 0.00011708243476428129,
+        "0.3": 0.000179023378986865,
+        "0.6": 0.00024096432320944877,
+        "1.0": 0.00032355224883956035
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "JPYCHF",
+      "beta": -0.852922402008591,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2356.0750085789396,
+      "reversion_frac": 0.49811561801341425,
+      "n_events": 15655,
+      "floor": 0.00017791698995914382,
+      "ceiling": 0.0008064938783061258,
+      "cost_by_markup": {
+        "0.0": 0.0001513171921785858,
+        "0.3": 0.00020948912154619643,
+        "0.6": 0.0002676610509138071,
+        "1.0": 0.0003452236234039546
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "JPYCAD",
+      "beta": -0.7425850899637884,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1871.7963316760681,
+      "reversion_frac": 0.4938573003622618,
+      "n_events": 12698,
+      "floor": 0.00013463010536763926,
+      "ceiling": 0.0008631343521744292,
+      "cost_by_markup": {
+        "0.0": 0.00011875444962869156,
+        "0.3": 0.00016835460788074098,
+        "0.6": 0.00021795476613279042,
+        "1.0": 0.0002840883104688564
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "JPYAUD",
+      "beta": -0.7164248662958058,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1387.5256863510383,
+      "reversion_frac": 0.49572922487427157,
+      "n_events": 12527,
+      "floor": 0.00022453716678891267,
+      "ceiling": 0.0009428385368637597,
+      "cost_by_markup": {
+        "0.0": 0.0001580420099420999,
+        "0.3": 0.00022255901443378123,
+        "0.6": 0.00028707601892546253,
+        "1.0": 0.0003730986915810376
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "JPYUSD",
+      "beta": -0.577559045324857,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2229.8692010834125,
+      "reversion_frac": 0.5229763912310287,
+      "n_events": 14232,
+      "floor": 0.0002025179578972232,
+      "ceiling": 0.000906723523157123,
+      "cost_by_markup": {
+        "0.0": 5.202558927940064e-05,
+        "0.3": 8.881401991951818e-05,
+        "0.6": 0.0001256024505596357,
+        "1.0": 0.0001746536914131257
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "CHFCAD",
+      "beta": 0.07637558295413187,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1576.2203811682703,
+      "reversion_frac": 0.4993596926524732,
+      "n_events": 12494,
+      "floor": 0.00038394428826378437,
+      "ceiling": 0.0013591113192021624,
+      "cost_by_markup": {
+        "0.0": 9.480293695355919e-05,
+        "0.3": 0.00014956460063766082,
+        "0.6": 0.00020432626432176246,
+        "1.0": 0.0002773418159005647
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "CHFAUD",
+      "beta": 0.13994934799658948,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1121.7630196235223,
+      "reversion_frac": 0.4956623452578224,
+      "n_events": 10259,
+      "floor": 0.00038923542902690546,
+      "ceiling": 0.0014530573205243464,
+      "cost_by_markup": {
+        "0.0": 0.00011738920211083002,
+        "0.3": 0.00017857396717873775,
+        "0.6": 0.00023975873224664552,
+        "1.0": 0.00032133841900385587
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "CHFUSD",
+      "beta": 0.45851096406347214,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2230.9400785281046,
+      "reversion_frac": 0.48813303099017386,
+      "n_events": 13230,
+      "floor": 0.0003857174495629107,
+      "ceiling": 0.0013493819620537788,
+      "cost_by_markup": {
+        "0.0": 0.00013706898821500013,
+        "0.3": 0.00020262638239685834,
+        "0.6": 0.0002681837765787166,
+        "1.0": 0.0003555936354878609
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "CADAUD",
+      "beta": 0.019118484372031976,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1683.1428508012318,
+      "reversion_frac": 0.4844734143840633,
+      "n_events": 13654,
+      "floor": 0.00031371185961220465,
+      "ceiling": 0.0014414540760270278,
+      "cost_by_markup": {
+        "0.0": 8.212609080372239e-05,
+        "0.3": 0.00013392335480648724,
+        "0.6": 0.00018572061880925208,
+        "1.0": 0.0002547836374796052
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "CADUSD",
+      "beta": -0.1288221446349285,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1336.9470045627754,
+      "reversion_frac": 0.5055624227441285,
+      "n_events": 12135,
+      "floor": 0.0006057951064942836,
+      "ceiling": 0.0013652372326292954,
+      "cost_by_markup": {
+        "0.0": 9.005719887498989e-05,
+        "0.3": 0.00014349937523439746,
+        "0.6": 0.00019694155159380507,
+        "1.0": 0.00026819778673968183
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURJPY",
+      "hedge": "AUDUSD",
+      "beta": -0.08251700330380406,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1368.7272593336274,
+      "reversion_frac": 0.4828024525198146,
+      "n_events": 13374,
+      "floor": 0.00044481278763791956,
+      "ceiling": 0.0014239070237465163,
+      "cost_by_markup": {
+        "0.0": 9.014068350468793e-05,
+        "0.3": 0.00014425328267387314,
+        "0.6": 0.00019836588184305836,
+        "1.0": 0.0002705160140686386
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "EURCAD",
+      "beta": 0.07479399722037781,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1964.9693009582709,
+      "reversion_frac": 0.5136995731791271,
+      "n_events": 14526,
+      "floor": 0.00020674634711862158,
+      "ceiling": 0.0008845660874085232,
+      "cost_by_markup": {
+        "0.0": 0.00016902659795936886,
+        "0.3": 0.00022820165545658759,
+        "0.6": 0.0002873767129538063,
+        "1.0": 0.00036627678961676457
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "EURAUD",
+      "beta": -0.2602730044527214,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2057.4576963505283,
+      "reversion_frac": 0.5147104607721046,
+      "n_events": 12848,
+      "floor": 0.0001822621266496958,
+      "ceiling": 0.0010419312317167082,
+      "cost_by_markup": {
+        "0.0": 0.00021355168304047417,
+        "0.3": 0.00029127214978683514,
+        "0.6": 0.0003689926165331962,
+        "1.0": 0.00047261990552834417
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "EURUSD",
+      "beta": 0.2304336637328833,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 854.6609536400482,
+      "reversion_frac": 0.48843776234450126,
+      "n_events": 13103,
+      "floor": 0.00023678102999635098,
+      "ceiling": 0.0007415305475414847,
+      "cost_by_markup": {
+        "0.0": 0.00015635237808886635,
+        "0.3": 0.00020968082545074406,
+        "0.6": 0.0002630092728126218,
+        "1.0": 0.00033411386929512544
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "GBPJPY",
+      "beta": -0.053500311175674296,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1936.1035187126608,
+      "reversion_frac": 0.47931130241599557,
+      "n_events": 10803,
+      "floor": 0.00012775478467679763,
+      "ceiling": 0.0009302943245978226,
+      "cost_by_markup": {
+        "0.0": 0.00017076132131254896,
+        "0.3": 0.00023276340686340943,
+        "0.6": 0.00029476549241426995,
+        "1.0": 0.0003774349398154172
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "GBPCHF",
+      "beta": 0.5762263507442927,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1284.1680500122714,
+      "reversion_frac": 0.52615518744551,
+      "n_events": 9176,
+      "floor": 0.00027135996785719244,
+      "ceiling": 0.0006464979976206834,
+      "cost_by_markup": {
+        "0.0": 0.00013557221489524663,
+        "0.3": 0.00018954202857459019,
+        "0.6": 0.00024351184225393372,
+        "1.0": 0.00031547159382639176
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "GBPCAD",
+      "beta": 0.14843862331052224,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1497.9556348448364,
+      "reversion_frac": 0.49634389541325064,
+      "n_events": 13539,
+      "floor": 0.0001760144018201861,
+      "ceiling": 0.000889158675602065,
+      "cost_by_markup": {
+        "0.0": 0.00019089563404760108,
+        "0.3": 0.0002571710285104608,
+        "0.6": 0.0003234464229733205,
+        "1.0": 0.00041181361559046686
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "GBPAUD",
+      "beta": -0.15631561682381953,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2202.740611308943,
+      "reversion_frac": 0.5062686099357467,
+      "n_events": 12762,
+      "floor": 0.0001679480885531937,
+      "ceiling": 0.0008942966355109951,
+      "cost_by_markup": {
+        "0.0": 0.00020120921653071013,
+        "0.3": 0.000271092246212114,
+        "0.6": 0.0003409752758935179,
+        "1.0": 0.0004341526488020565
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "GBPUSD",
+      "beta": 0.15589078106349838,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 881.2036198386182,
+      "reversion_frac": 0.49924137931034485,
+      "n_events": 14500,
+      "floor": 0.0002805972609910013,
+      "ceiling": 0.0008545901014191401,
+      "cost_by_markup": {
+        "0.0": 0.00017672092001959382,
+        "0.3": 0.00023982273736307915,
+        "0.6": 0.0003029245547065645,
+        "1.0": 0.000387060311164545
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "JPYCHF",
+      "beta": 0.14707759799140865,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2356.0750085700456,
+      "reversion_frac": 0.49811561801341425,
+      "n_events": 15655,
+      "floor": 0.00017791698995914563,
+      "ceiling": 0.0008064938783061307,
+      "cost_by_markup": {
+        "0.0": 0.0001513171921785858,
+        "0.3": 0.0002094891215461965,
+        "0.6": 0.0002676610509138071,
+        "1.0": 0.0003452236234039546
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "JPYCAD",
+      "beta": -0.07447200366833705,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1317.712925680296,
+      "reversion_frac": 0.4637011120829689,
+      "n_events": 8003,
+      "floor": 0.00017865449250943838,
+      "ceiling": 0.0009234970704698023,
+      "cost_by_markup": {
+        "0.0": 0.00017475696254982747,
+        "0.3": 0.00023769704089743505,
+        "0.6": 0.00030063711924504263,
+        "1.0": 0.0003845572237085195
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "JPYAUD",
+      "beta": 0.015878507522613394,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1376.19205726528,
+      "reversion_frac": 0.46801968019680196,
+      "n_events": 8130,
+      "floor": 0.00022923232376947955,
+      "ceiling": 0.0009461814920938174,
+      "cost_by_markup": {
+        "0.0": 0.0001672694487884983,
+        "0.3": 0.0002278236009012657,
+        "0.6": 0.00028837775301403305,
+        "1.0": 0.00036911662249772286
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "JPYUSD",
+      "beta": -0.02149972960006641,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 952.9429462144949,
+      "reversion_frac": 0.4902682368334969,
+      "n_events": 12228,
+      "floor": 0.00018588407892593408,
+      "ceiling": 0.0008542500754726381,
+      "cost_by_markup": {
+        "0.0": 0.0001650307536751437,
+        "0.3": 0.00022503089353218832,
+        "0.6": 0.00028503103338923294,
+        "1.0": 0.00036503121986529246
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "CHFCAD",
+      "beta": -0.3986965670431304,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2981.362963419012,
+      "reversion_frac": 0.4991171277221895,
+      "n_events": 11893,
+      "floor": 0.00012061509022747876,
+      "ceiling": 0.0007032547403403734,
+      "cost_by_markup": {
+        "0.0": 0.0001517550647612762,
+        "0.3": 0.00020717137296842912,
+        "0.6": 0.00026258768117558203,
+        "1.0": 0.0003364760921184526
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "CHFAUD",
+      "beta": -0.4765221571999942,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2296.2556289549916,
+      "reversion_frac": 0.5150134795946826,
+      "n_events": 10757,
+      "floor": 0.00019900069729610878,
+      "ceiling": 0.0007717679915232124,
+      "cost_by_markup": {
+        "0.0": 0.00017645145256925334,
+        "0.3": 0.00024097270606140327,
+        "0.6": 0.00030549395955355326,
+        "1.0": 0.00039152229754308647
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "CHFUSD",
+      "beta": -0.0029421374680290158,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1769.990448981276,
+      "reversion_frac": 0.49976908866995073,
+      "n_events": 12992,
+      "floor": 0.0001313244226793894,
+      "ceiling": 0.0008886147323901456,
+      "cost_by_markup": {
+        "0.0": 0.0001637084899398345,
+        "0.3": 0.0002231004220050699,
+        "0.6": 0.0002824923540703052,
+        "1.0": 0.0003616815968239524
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "CADAUD",
+      "beta": -0.4456592521466764,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 718.5021843792216,
+      "reversion_frac": 0.49334916864608075,
+      "n_events": 12630,
+      "floor": 0.00027285612524404076,
+      "ceiling": 0.0009456492339674305,
+      "cost_by_markup": {
+        "0.0": 0.00027818039256791323,
+        "0.3": 0.0003670206988041258,
+        "0.6": 0.0004558610050403384,
+        "1.0": 0.0005743147466886218
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "CADUSD",
+      "beta": 0.5347216780815119,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 976.0189516342037,
+      "reversion_frac": 0.4872037914691943,
+      "n_events": 11605,
+      "floor": 0.0002793248939042475,
+      "ceiling": 0.0008843442711744117,
+      "cost_by_markup": {
+        "0.0": 0.00021732880745506711,
+        "0.3": 0.00028887157720826405,
+        "0.6": 0.000360414346961461,
+        "1.0": 0.00045580470663239027
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCHF",
+      "hedge": "AUDUSD",
+      "beta": 0.35651975069099245,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 829.1717125653954,
+      "reversion_frac": 0.47982187586974673,
+      "n_events": 10779,
+      "floor": 0.0002866977305115458,
+      "ceiling": 0.000904432506712412,
+      "cost_by_markup": {
+        "0.0": 0.00021986609305260922,
+        "0.3": 0.00029479831596872794,
+        "0.6": 0.0003697305388848467,
+        "1.0": 0.00046964016943967167
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "EURAUD",
+      "beta": 0.48964507983543676,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3143.655683669259,
+      "reversion_frac": 0.5032371086906847,
+      "n_events": 13129,
+      "floor": 0.00016644481345557386,
+      "ceiling": 0.0010060740624935342,
+      "cost_by_markup": {
+        "0.0": 0.0001933010502364746,
+        "0.3": 0.0002506977969742297,
+        "0.6": 0.00030809454371198485,
+        "1.0": 0.0003846235393623251
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "EURUSD",
+      "beta": 0.5629598912970496,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3670.450207958146,
+      "reversion_frac": 0.5073572200515422,
+      "n_events": 12029,
+      "floor": 0.0002179881157699577,
+      "ceiling": 0.0007626247321434835,
+      "cost_by_markup": {
+        "0.0": 0.00011423881122112459,
+        "0.3": 0.00014846502470673126,
+        "0.6": 0.00018269123819233797,
+        "1.0": 0.00022832618950648025
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "GBPJPY",
+      "beta": 0.0008774205370263141,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2482.3895343987056,
+      "reversion_frac": 0.5081832218219249,
+      "n_events": 9715,
+      "floor": 0.00022501711137995004,
+      "ceiling": 0.0010775052204300898,
+      "cost_by_markup": {
+        "0.0": 0.0001332575259237333,
+        "0.3": 0.00018257378211235042,
+        "0.6": 0.00023189003830096754,
+        "1.0": 0.000297645046552457
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "GBPCHF",
+      "beta": -0.17795837724657024,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3013.263062746012,
+      "reversion_frac": 0.49495357287040775,
+      "n_events": 9908,
+      "floor": 0.00040791859431851216,
+      "ceiling": 0.001051954435602328,
+      "cost_by_markup": {
+        "0.0": 0.00017078844335289878,
+        "0.3": 0.0002300178361251363,
+        "0.6": 0.0002892472288973738,
+        "1.0": 0.0003682197525936905
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "GBPCAD",
+      "beta": 0.7668685391670079,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1964.6090636682118,
+      "reversion_frac": 0.5090461831455324,
+      "n_events": 12602,
+      "floor": 0.00022574457075655476,
+      "ceiling": 0.0007510844530166591,
+      "cost_by_markup": {
+        "0.0": 0.00011892232091340719,
+        "0.3": 0.00016868532690187898,
+        "0.6": 0.0002184483328903508,
+        "1.0": 0.0002847990075416466
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "GBPAUD",
+      "beta": 0.32096978504263657,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 4330.9275920378905,
+      "reversion_frac": 0.4831679315041837,
+      "n_events": 10278,
+      "floor": 0.000143297122879302,
+      "ceiling": 0.001060048384886609,
+      "cost_by_markup": {
+        "0.0": 0.00020936165937995618,
+        "0.3": 0.00027998063410493456,
+        "0.6": 0.00035059960882991286,
+        "1.0": 0.00044475824179655073
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "GBPUSD",
+      "beta": 0.40395288292445375,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3337.509505085638,
+      "reversion_frac": 0.505587256300523,
+      "n_events": 8412,
+      "floor": 0.00027557431249512364,
+      "ceiling": 0.0009561373518301347,
+      "cost_by_markup": {
+        "0.0": 0.00016587175370438086,
+        "0.3": 0.00022451031313814,
+        "0.6": 0.00028314887257189917,
+        "1.0": 0.000361333618483578
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "JPYCHF",
+      "beta": -0.17951734887780874,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2590.4499265857535,
+      "reversion_frac": 0.4950901624709873,
+      "n_events": 11202,
+      "floor": 0.0002799869362662492,
+      "ceiling": 0.0010157850125914198,
+      "cost_by_markup": {
+        "0.0": 0.00016441037306715918,
+        "0.3": 0.00022383947808043102,
+        "0.6": 0.00028326858309370286,
+        "1.0": 0.0003625073897780654
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "JPYCAD",
+      "beta": 0.25741491003621153,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1871.7963316783137,
+      "reversion_frac": 0.4938573003622618,
+      "n_events": 12698,
+      "floor": 0.0001346301053676384,
+      "ceiling": 0.0008631343521744306,
+      "cost_by_markup": {
+        "0.0": 0.00011875444962869157,
+        "0.3": 0.000168354607880741,
+        "0.6": 0.00021795476613279042,
+        "1.0": 0.00028408831046885635
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "JPYAUD",
+      "beta": 0.12097466654347855,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3197.168380998539,
+      "reversion_frac": 0.5153256704980843,
+      "n_events": 12006,
+      "floor": 0.00022108343265021257,
+      "ceiling": 0.0010069255527223266,
+      "cost_by_markup": {
+        "0.0": 0.00015735298224898365,
+        "0.3": 0.00021474843990449983,
+        "0.6": 0.000272143897560016,
+        "1.0": 0.0003486711744340376
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "JPYUSD",
+      "beta": 0.3247322465512449,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1680.688356975538,
+      "reversion_frac": 0.4877879115782965,
+      "n_events": 12938,
+      "floor": 0.00034983214254334833,
+      "ceiling": 0.0009734819066136142,
+      "cost_by_markup": {
+        "0.0": 0.0001473203289341974,
+        "0.3": 0.0002043260925898104,
+        "0.6": 0.0002613318562454234,
+        "1.0": 0.00033733954111957415
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "CHFCAD",
+      "beta": 0.6013034329568695,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2981.362963427556,
+      "reversion_frac": 0.4991171277221895,
+      "n_events": 11893,
+      "floor": 0.00012061509022747883,
+      "ceiling": 0.0007032547403403733,
+      "cost_by_markup": {
+        "0.0": 0.0001517550647612762,
+        "0.3": 0.00020717137296842912,
+        "0.6": 0.00026258768117558203,
+        "1.0": 0.00033647609211845267
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "CHFAUD",
+      "beta": 0.10831948786721358,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3014.486685873957,
+      "reversion_frac": 0.4987792747988064,
+      "n_events": 11059,
+      "floor": 0.00027782009404618405,
+      "ceiling": 0.0010314383424068546,
+      "cost_by_markup": {
+        "0.0": 0.00016422961305510625,
+        "0.3": 0.0002217450751366687,
+        "0.6": 0.00027926053721823114,
+        "1.0": 0.0003559478199936478
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "CHFUSD",
+      "beta": 0.6496433727728123,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2340.129462413807,
+      "reversion_frac": 0.4896868475991649,
+      "n_events": 11975,
+      "floor": 0.00017916471256191376,
+      "ceiling": 0.0009754944879876344,
+      "cost_by_markup": {
+        "0.0": 0.00021792875865630113,
+        "0.3": 0.00028848396867127136,
+        "0.6": 0.0003590391786862416,
+        "1.0": 0.00045311279203953534
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "CADAUD",
+      "beta": -0.4951625684668687,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 4042.1802376408764,
+      "reversion_frac": 0.5108387527096881,
+      "n_events": 11994,
+      "floor": 0.0002322906991474581,
+      "ceiling": 0.0009432515989663572,
+      "cost_by_markup": {
+        "0.0": 0.0001613130693990814,
+        "0.3": 0.00022087515508171216,
+        "0.6": 0.00028043724076434295,
+        "1.0": 0.00035985335500785063
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "CADUSD",
+      "beta": -0.13061304086040595,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3194.461561401776,
+      "reversion_frac": 0.5043278084714549,
+      "n_events": 10860,
+      "floor": 0.00023005033309618606,
+      "ceiling": 0.0009625399847124488,
+      "cost_by_markup": {
+        "0.0": 0.00012014444994185403,
+        "0.3": 0.00016647501294789392,
+        "0.6": 0.0002128055759539338,
+        "1.0": 0.0002745796599619869
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURCAD",
+      "hedge": "AUDUSD",
+      "beta": 0.10291863174147373,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3970.007575032823,
+      "reversion_frac": 0.5027349171360928,
+      "n_events": 12249,
+      "floor": 0.0002459058214856555,
+      "ceiling": 0.0010200213464035782,
+      "cost_by_markup": {
+        "0.0": 0.00014924865709408533,
+        "0.3": 0.0002029819717469921,
+        "0.6": 0.0002567152863998989,
+        "1.0": 0.00032835970593710794
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "EURUSD",
+      "beta": 0.09771905480249275,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3434.4472052358724,
+      "reversion_frac": 0.5144647609236844,
+      "n_events": 11649,
+      "floor": 0.00021089733034727334,
+      "ceiling": 0.001199469709821473,
+      "cost_by_markup": {
+        "0.0": 0.0001867459920292806,
+        "0.3": 0.0002541839440044355,
+        "0.6": 0.0003216218959795904,
+        "1.0": 0.0004115391652797969
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "GBPJPY",
+      "beta": -0.06040608677149909,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2204.4821090284745,
+      "reversion_frac": 0.5053463134375997,
+      "n_events": 12532,
+      "floor": 0.00022941136598854676,
+      "ceiling": 0.0011990020419195052,
+      "cost_by_markup": {
+        "0.0": 0.0001975579771096076,
+        "0.3": 0.00027044637051739436,
+        "0.6": 0.0003433347639251811,
+        "1.0": 0.00044051928846889667
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "GBPCHF",
+      "beta": -0.4524428095355866,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 3141.675208909395,
+      "reversion_frac": 0.5048411497730712,
+      "n_events": 13220,
+      "floor": 0.0001915312437536344,
+      "ceiling": 0.0011610652986399858,
+      "cost_by_markup": {
+        "0.0": 0.0002857252649838418,
+        "0.3": 0.0003810834564498481,
+        "0.6": 0.0004764416479158544,
+        "1.0": 0.0006035859032038628
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "GBPCAD",
+      "beta": 0.3563028534683975,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2220.1948534572007,
+      "reversion_frac": 0.5236944937833037,
+      "n_events": 14075,
+      "floor": 0.00021040298043264338,
+      "ceiling": 0.0011656807886076168,
+      "cost_by_markup": {
+        "0.0": 0.00025436499376751823,
+        "0.3": 0.0003407064356933906,
+        "0.6": 0.00042704787761926297,
+        "1.0": 0.0005421698001870928
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "GBPAUD",
+      "beta": 0.7406048334655984,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1926.6152132046175,
+      "reversion_frac": 0.5172438517243851,
+      "n_events": 13947,
+      "floor": 0.00021191817977562116,
+      "ceiling": 0.0007911905396823866,
+      "cost_by_markup": {
+        "0.0": 0.00013416395981672073,
+        "0.3": 0.00018929921637562036,
+        "0.6": 0.00024443447293452,
+        "1.0": 0.0003179481483463862
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "GBPUSD",
+      "beta": 0.05212676616214846,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3006.9936410425144,
+      "reversion_frac": 0.5109229643566426,
+      "n_events": 9567,
+      "floor": 0.0003220231308812201,
+      "ceiling": 0.0011993703768380288,
+      "cost_by_markup": {
+        "0.0": 0.00019425100067800615,
+        "0.3": 0.0002655094246915496,
+        "0.6": 0.00033676784870509304,
+        "1.0": 0.0004317790807231509
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "JPYCHF",
+      "beta": 0.012126409160773677,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2640.2117965741118,
+      "reversion_frac": 0.4931972789115646,
+      "n_events": 13524,
+      "floor": 0.00023039821065000486,
+      "ceiling": 0.0012109252220309193,
+      "cost_by_markup": {
+        "0.0": 0.0001921400568484387,
+        "0.3": 0.00026287610354755193,
+        "0.6": 0.0003336121502466651,
+        "1.0": 0.000427926879178816
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "JPYCAD",
+      "beta": 0.29659610563504973,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1182.323533773282,
+      "reversion_frac": 0.49261924189600176,
+      "n_events": 13481,
+      "floor": 0.00029034945384154363,
+      "ceiling": 0.0011459311223481232,
+      "cost_by_markup": {
+        "0.0": 0.0002325013441843019,
+        "0.3": 0.0003162986886435735,
+        "0.6": 0.00040009603310284513,
+        "1.0": 0.0005118258257152073
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "JPYAUD",
+      "beta": 0.283575133704194,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1387.5256863522723,
+      "reversion_frac": 0.49572922487427157,
+      "n_events": 12527,
+      "floor": 0.00022453716678891316,
+      "ceiling": 0.0009428385368637604,
+      "cost_by_markup": {
+        "0.0": 0.00015804200994209993,
+        "0.3": 0.0002225590144337812,
+        "0.6": 0.00028707601892546253,
+        "1.0": 0.0003730986915810376
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "JPYUSD",
+      "beta": 0.17260681932327163,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1816.6721455848158,
+      "reversion_frac": 0.5250282805429864,
+      "n_events": 14144,
+      "floor": 0.0002673235577894003,
+      "ceiling": 0.0011785676714922229,
+      "cost_by_markup": {
+        "0.0": 0.0001975613101459144,
+        "0.3": 0.0002717206104350386,
+        "0.6": 0.00034587991072416275,
+        "1.0": 0.0004447589777763283
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "CHFCAD",
+      "beta": 0.5776091390244401,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1519.8980547649192,
+      "reversion_frac": 0.5260199164792805,
+      "n_events": 12452,
+      "floor": 0.00016948719707715975,
+      "ceiling": 0.0010967185052943328,
+      "cost_by_markup": {
+        "0.0": 0.0003229143826367656,
+        "0.3": 0.0004249063903450929,
+        "0.6": 0.0005268983980534203,
+        "1.0": 0.0006628877416645234
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "CHFAUD",
+      "beta": 0.5234778428000053,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2296.2556289583704,
+      "reversion_frac": 0.5150134795946826,
+      "n_events": 10757,
+      "floor": 0.00019900069729610905,
+      "ceiling": 0.0007717679915232131,
+      "cost_by_markup": {
+        "0.0": 0.00017645145256925336,
+        "0.3": 0.00024097270606140332,
+        "0.6": 0.00030549395955355326,
+        "1.0": 0.0003915222975430865
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "CHFUSD",
+      "beta": 0.26489923517949854,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2528.6496340643534,
+      "reversion_frac": 0.5360075265138556,
+      "n_events": 11692,
+      "floor": 0.00026157479676275634,
+      "ceiling": 0.0012506156527861345,
+      "cost_by_markup": {
+        "0.0": 0.00022459851629068605,
+        "0.3": 0.000303325882312203,
+        "0.6": 0.00038205324833371994,
+        "1.0": 0.0004870230696957425
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "CADAUD",
+      "beta": 0.5048374315331323,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 4042.1802376277883,
+      "reversion_frac": 0.5108387527096881,
+      "n_events": 11994,
+      "floor": 0.00023229069914745785,
+      "ceiling": 0.0009432515989663564,
+      "cost_by_markup": {
+        "0.0": 0.00016131306939908132,
+        "0.3": 0.0002208751550817121,
+        "0.6": 0.00028043724076434284,
+        "1.0": 0.0003598533550078505
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "CADUSD",
+      "beta": -0.4846598609386627,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2427.6958100555453,
+      "reversion_frac": 0.5154165096117602,
+      "n_events": 13265,
+      "floor": 0.00017688476472678278,
+      "ceiling": 0.0010834853030040734,
+      "cost_by_markup": {
+        "0.0": 0.00023828054595328397,
+        "0.3": 0.0003192565818198661,
+        "0.6": 0.00040023261768644825,
+        "1.0": 0.0005082006655085578
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURAUD",
+      "hedge": "AUDUSD",
+      "beta": -0.40533207551219147,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3376.562157917871,
+      "reversion_frac": 0.5127108185931716,
+      "n_events": 12155,
+      "floor": 0.00018764850527436903,
+      "ceiling": 0.0008876449480031464,
+      "cost_by_markup": {
+        "0.0": 0.00012661848909726654,
+        "0.3": 0.00017911023241450218,
+        "0.6": 0.00023160197573173782,
+        "1.0": 0.0003015909668213853
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "GBPJPY",
+      "beta": 0.05912507075705655,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3690.457772510759,
+      "reversion_frac": 0.48113425925925923,
+      "n_events": 8640,
+      "floor": 0.00019912131907513875,
+      "ceiling": 0.0011413926856991094,
+      "cost_by_markup": {
+        "0.0": 4.0959153484074495e-05,
+        "0.3": 7.04688138937818e-05,
+        "0.6": 9.997847430348911e-05,
+        "1.0": 0.00013932468818309883
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "GBPCHF",
+      "beta": 0.15809866705751677,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2414.624899433866,
+      "reversion_frac": 0.5063450445726272,
+      "n_events": 9535,
+      "floor": 0.0004010210198589348,
+      "ceiling": 0.001113868252742201,
+      "cost_by_markup": {
+        "0.0": 6.702887497292005e-05,
+        "0.3": 0.00010260395152608757,
+        "0.6": 0.0001381790280792551,
+        "1.0": 0.00018561246348347847
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "GBPCAD",
+      "beta": 0.7193184129778941,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2306.70464552541,
+      "reversion_frac": 0.5161936330363925,
+      "n_events": 14481,
+      "floor": 0.00019123851371313154,
+      "ceiling": 0.0010474502963065322,
+      "cost_by_markup": {
+        "0.0": 0.00016347464840802518,
+        "0.3": 0.00022309577753516665,
+        "0.6": 0.00028271690666230813,
+        "1.0": 0.0003622117454984968
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "GBPAUD",
+      "beta": 0.08350602092373298,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 4006.318149792237,
+      "reversion_frac": 0.50208784410764,
+      "n_events": 12932,
+      "floor": 0.0001417934247809662,
+      "ceiling": 0.0012797513188648143,
+      "cost_by_markup": {
+        "0.0": 5.341745247484876e-05,
+        "0.3": 8.5702056291401e-05,
+        "0.6": 0.00011798666010795323,
+        "1.0": 0.00016103279853002287
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "GBPUSD",
+      "beta": 0.7858562301950596,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1741.9330666587387,
+      "reversion_frac": 0.5209655987007235,
+      "n_events": 13546,
+      "floor": 0.00017260038581997018,
+      "ceiling": 0.0007451390594409668,
+      "cost_by_markup": {
+        "0.0": 9.725014788521104e-05,
+        "0.3": 0.0001421977002144853,
+        "0.6": 0.0001871452525437595,
+        "1.0": 0.0002470753223161251
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "JPYCHF",
+      "beta": -0.34886678161589574,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3920.931205582997,
+      "reversion_frac": 0.47076822205223473,
+      "n_events": 9151,
+      "floor": 0.00025227278974812085,
+      "ceiling": 0.0011013443414602331,
+      "cost_by_markup": {
+        "0.0": 9.434288406571262e-05,
+        "0.3": 0.0001408075005838881,
+        "0.6": 0.0001872721171020636,
+        "1.0": 0.00024922493912629755
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "JPYCAD",
+      "beta": 0.05566190903485071,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 4820.437161826509,
+      "reversion_frac": 0.4806820243061854,
+      "n_events": 5513,
+      "floor": 0.0002089976858520762,
+      "ceiling": 0.001087836281025345,
+      "cost_by_markup": {
+        "0.0": 4.156002561572194e-05,
+        "0.3": 7.087154607721789e-05,
+        "0.6": 0.00010018306653871383,
+        "1.0": 0.0001392650938207084
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "JPYAUD",
+      "beta": 0.02633212503836366,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 4478.232816061283,
+      "reversion_frac": 0.4800948670167711,
+      "n_events": 5903,
+      "floor": 0.00037462314781089545,
+      "ceiling": 0.001173042404989142,
+      "cost_by_markup": {
+        "0.0": 3.885772698097056e-05,
+        "0.3": 6.735686701289926e-05,
+        "0.6": 9.585600704482796e-05,
+        "1.0": 0.00013385486042073285
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "JPYUSD",
+      "beta": 0.4224409546751433,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2229.8692010850054,
+      "reversion_frac": 0.5229763912310287,
+      "n_events": 14232,
+      "floor": 0.00020251795789722344,
+      "ceiling": 0.0009067235231571212,
+      "cost_by_markup": {
+        "0.0": 5.202558927940066e-05,
+        "0.3": 8.881401991951819e-05,
+        "0.6": 0.0001256024505596357,
+        "1.0": 0.00017465369141312576
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "CHFCAD",
+      "beta": 0.17244044667760497,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 4092.19972641375,
+      "reversion_frac": 0.5065238291443483,
+      "n_events": 14562,
+      "floor": 0.00015076013745708578,
+      "ceiling": 0.0009727132394666128,
+      "cost_by_markup": {
+        "0.0": 7.326119518131919e-05,
+        "0.3": 0.00010952877233402044,
+        "0.6": 0.0001457963494867217,
+        "1.0": 0.0001941531190236567
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "CHFAUD",
+      "beta": -0.27765134738294855,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2877.734775102354,
+      "reversion_frac": 0.4954682779456193,
+      "n_events": 9930,
+      "floor": 0.0002814014193771025,
+      "ceiling": 0.0011895130408843852,
+      "cost_by_markup": {
+        "0.0": 0.00011325910444607047,
+        "0.3": 0.00016111309665544637,
+        "0.6": 0.00020896708886482227,
+        "1.0": 0.0002727724118106568
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "CHFUSD",
+      "beta": 0.9970578625319709,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1769.9904489807743,
+      "reversion_frac": 0.49976908866995073,
+      "n_events": 12992,
+      "floor": 0.00013132442267938923,
+      "ceiling": 0.0008886147323901454,
+      "cost_by_markup": {
+        "0.0": 0.0001637084899398345,
+        "0.3": 0.00022310042200506983,
+        "0.6": 0.0002824923540703052,
+        "1.0": 0.00036168159682395233
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "CADAUD",
+      "beta": -0.7922966261441038,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2259.5287629274003,
+      "reversion_frac": 0.5147535533205885,
+      "n_events": 12031,
+      "floor": 0.0002094968698435872,
+      "ceiling": 0.0011209254988816155,
+      "cost_by_markup": {
+        "0.0": 0.00023641561864680926,
+        "0.3": 0.0003153294361690247,
+        "0.6": 0.0003942432536912402,
+        "1.0": 0.0004994616770541942
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "CADUSD",
+      "beta": 0.869386959139594,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3194.4615614115855,
+      "reversion_frac": 0.5043278084714549,
+      "n_events": 10860,
+      "floor": 0.00023005033309618609,
+      "ceiling": 0.0009625399847124482,
+      "cost_by_markup": {
+        "0.0": 0.00012014444994185402,
+        "0.3": 0.0001664750129478939,
+        "0.6": 0.00021280557595393374,
+        "1.0": 0.0002745796599619869
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "EURUSD",
+      "hedge": "AUDUSD",
+      "beta": 0.5946679244878094,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3376.5621579123913,
+      "reversion_frac": 0.5127108185931716,
+      "n_events": 12155,
+      "floor": 0.00018764850527436895,
+      "ceiling": 0.0008876449480031472,
+      "cost_by_markup": {
+        "0.0": 0.00012661848909726667,
+        "0.3": 0.00017911023241450231,
+        "0.6": 0.00023160197573173798,
+        "1.0": 0.0003015909668213855
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "GBPCHF",
+      "beta": 0.3887312852711123,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1323.9009133139712,
+      "reversion_frac": 0.4638990962359718,
+      "n_events": 10069,
+      "floor": 0.0005212940788512825,
+      "ceiling": 0.0012781530240162681,
+      "cost_by_markup": {
+        "0.0": 0.0001438912961470086,
+        "0.3": 0.00019460040287111428,
+        "0.6": 0.00024530950959521995,
+        "1.0": 0.00031292165189402755
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "GBPCAD",
+      "beta": 0.6309905267610769,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2879.3900825557853,
+      "reversion_frac": 0.50336034168708,
+      "n_events": 15921,
+      "floor": 0.0002397544561765373,
+      "ceiling": 0.0013838737198318813,
+      "cost_by_markup": {
+        "0.0": 0.00013635632322575602,
+        "0.3": 0.0001829410542740874,
+        "0.6": 0.00022952578532241876,
+        "1.0": 0.00029163876005352727
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "GBPAUD",
+      "beta": 0.2745463570683924,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2600.43554022944,
+      "reversion_frac": 0.5140340400119439,
+      "n_events": 13396,
+      "floor": 0.0002918467043477983,
+      "ceiling": 0.0014796768676279518,
+      "cost_by_markup": {
+        "0.0": 0.00014536032215305692,
+        "0.3": 0.00019787559742873663,
+        "0.6": 0.00025039087270441635,
+        "1.0": 0.00032041123973865595
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "GBPUSD",
+      "beta": 0.7060756335459839,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3264.249680271797,
+      "reversion_frac": 0.4895867497540177,
+      "n_events": 12196,
+      "floor": 0.00032436061858059543,
+      "ceiling": 0.0012254231568134626,
+      "cost_by_markup": {
+        "0.0": 6.745300491113837e-05,
+        "0.3": 9.80725879876195e-05,
+        "0.6": 0.00012869217106410062,
+        "1.0": 0.00016951828183274208
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "JPYCHF",
+      "beta": -0.8316150016825014,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2738.9998012393485,
+      "reversion_frac": 0.47663401316845994,
+      "n_events": 12454,
+      "floor": 0.0003020951747945866,
+      "ceiling": 0.0010875957989245984,
+      "cost_by_markup": {
+        "0.0": 0.00019688572484930509,
+        "0.3": 0.00025131511055501686,
+        "0.6": 0.0003057444962607286,
+        "1.0": 0.0003783170105350109
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "JPYCAD",
+      "beta": -0.8853441941644373,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2810.5776331472,
+      "reversion_frac": 0.4962730130220027,
+      "n_events": 11135,
+      "floor": 0.0002777320056414793,
+      "ceiling": 0.00099948672145183,
+      "cost_by_markup": {
+        "0.0": 0.00017415632654344324,
+        "0.3": 0.00022002433477686035,
+        "0.6": 0.0002658923430102775,
+        "1.0": 0.0003270496873215003
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "JPYAUD",
+      "beta": -0.7712422827436487,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1459.4285591928851,
+      "reversion_frac": 0.49337300513930216,
+      "n_events": 14788,
+      "floor": 0.0001953422787975252,
+      "ceiling": 0.0010198480399651808,
+      "cost_by_markup": {
+        "0.0": 0.00021164452993575116,
+        "0.3": 0.0002736792972366298,
+        "0.6": 0.00033571406453750845,
+        "1.0": 0.00041842708760534667
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "JPYUSD",
+      "beta": -0.8496074672464093,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3954.794367892025,
+      "reversion_frac": 0.5022779043280182,
+      "n_events": 5268,
+      "floor": 0.00026211455287902363,
+      "ceiling": 0.0011312216278174941,
+      "cost_by_markup": {
+        "0.0": 8.757198374200431e-05,
+        "0.3": 0.00011433205937400295,
+        "0.6": 0.00014109213500600157,
+        "1.0": 0.00017677223584866642
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "CHFCAD",
+      "beta": -0.14885515846327996,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1734.6727827586255,
+      "reversion_frac": 0.49792890858298816,
+      "n_events": 10381,
+      "floor": 0.00043332939831132217,
+      "ceiling": 0.0016158767863417428,
+      "cost_by_markup": {
+        "0.0": 0.0001588970626769624,
+        "0.3": 0.00021411501978530658,
+        "0.6": 0.0002693329768936507,
+        "1.0": 0.00034295691970477626
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "CHFAUD",
+      "beta": 0.06503998616083871,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1407.60884780146,
+      "reversion_frac": 0.5284742468415938,
+      "n_events": 10290,
+      "floor": 0.0004858547708525794,
+      "ceiling": 0.0015835126646640155,
+      "cost_by_markup": {
+        "0.0": 0.00014331383416343866,
+        "0.3": 0.00019524801282093038,
+        "0.6": 0.00024718219147842207,
+        "1.0": 0.0003164277630217444
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "CHFUSD",
+      "beta": 0.3600848946877602,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2259.227504343518,
+      "reversion_frac": 0.49948640690269125,
+      "n_events": 14603,
+      "floor": 0.00035236534652616247,
+      "ceiling": 0.0015316529341848893,
+      "cost_by_markup": {
+        "0.0": 0.00017164336873212653,
+        "0.3": 0.00023042481090158098,
+        "0.6": 0.00028920625307103534,
+        "1.0": 0.00036758150929697456
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "CADAUD",
+      "beta": 0.07340749891029492,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1917.7717460936265,
+      "reversion_frac": 0.48386835934341393,
+      "n_events": 12367,
+      "floor": 0.00040627061706119085,
+      "ceiling": 0.00152232626169218,
+      "cost_by_markup": {
+        "0.0": 0.00014344328548533794,
+        "0.3": 0.00019526429365960318,
+        "0.6": 0.0002470853018338684,
+        "1.0": 0.00031617997939955536
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "CADUSD",
+      "beta": -0.09310747942642318,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1350.5245968460272,
+      "reversion_frac": 0.513215859030837,
+      "n_events": 13166,
+      "floor": 0.0004913371804243027,
+      "ceiling": 0.0014676452349853862,
+      "cost_by_markup": {
+        "0.0": 0.00013392078970675907,
+        "0.3": 0.00018300599720639816,
+        "0.6": 0.00023209120470603725,
+        "1.0": 0.0002975381480388894
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPJPY",
+      "hedge": "AUDUSD",
+      "beta": -0.1011224414561784,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1470.3430798552101,
+      "reversion_frac": 0.49068880412833743,
+      "n_events": 13371,
+      "floor": 0.0004118101810499228,
+      "ceiling": 0.001501491367077749,
+      "cost_by_markup": {
+        "0.0": 0.00014047060972180404,
+        "0.3": 0.00019183733170476748,
+        "0.6": 0.00024320405368773087,
+        "1.0": 0.00031169301633168214
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "GBPCAD",
+      "beta": 0.38157008414351384,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2034.6898327035935,
+      "reversion_frac": 0.5006104221551115,
+      "n_events": 15563,
+      "floor": 0.00022838661398363237,
+      "ceiling": 0.0009574547811730574,
+      "cost_by_markup": {
+        "0.0": 0.00021859009111695866,
+        "0.3": 0.00027428375825089204,
+        "0.6": 0.0003299774253848254,
+        "1.0": 0.00040423564823006996
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "GBPAUD",
+      "beta": 0.103079549710582,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2473.8036552333047,
+      "reversion_frac": 0.49922760041194647,
+      "n_events": 11652,
+      "floor": 0.00020344262052203807,
+      "ceiling": 0.0010600484727341206,
+      "cost_by_markup": {
+        "0.0": 0.0002192871173370817,
+        "0.3": 0.0002772994834024338,
+        "0.6": 0.00033531184946778596,
+        "1.0": 0.0004126616708882554
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "GBPUSD",
+      "beta": 0.3700345508684383,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1131.5258135081413,
+      "reversion_frac": 0.47518254163590123,
+      "n_events": 12189,
+      "floor": 0.00018748348697972492,
+      "ceiling": 0.0008603304891052304,
+      "cost_by_markup": {
+        "0.0": 0.00018153582847850499,
+        "0.3": 0.0002288949864120048,
+        "0.6": 0.00027625414434550465,
+        "1.0": 0.00033939968825683775
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "JPYCHF",
+      "beta": 0.16838499831749817,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2738.9998012417523,
+      "reversion_frac": 0.47663401316845994,
+      "n_events": 12454,
+      "floor": 0.00030209517479458614,
+      "ceiling": 0.0010875957989246042,
+      "cost_by_markup": {
+        "0.0": 0.00019688572484930514,
+        "0.3": 0.00025131511055501686,
+        "0.6": 0.00030574449626072863,
+        "1.0": 0.00037831701053501094
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "JPYCAD",
+      "beta": -0.21723110786898556,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2037.9177463885153,
+      "reversion_frac": 0.475030327537404,
+      "n_events": 9892,
+      "floor": 0.0002583744937983263,
+      "ceiling": 0.0011792914684109303,
+      "cost_by_markup": {
+        "0.0": 0.00024261960953044144,
+        "0.3": 0.0003086247235144319,
+        "0.6": 0.0003746298374984224,
+        "1.0": 0.00046263665614374306
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "JPYAUD",
+      "beta": -0.03893890892522951,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1876.5395771040269,
+      "reversion_frac": 0.4860210243793335,
+      "n_events": 8942,
+      "floor": 0.0002270119141190172,
+      "ceiling": 0.0011526141611410956,
+      "cost_by_markup": {
+        "0.0": 0.00021930272257372332,
+        "0.3": 0.00027785296717417705,
+        "0.6": 0.00033640321177463075,
+        "1.0": 0.0004144702045752357
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "JPYUSD",
+      "beta": -0.29354815152161823,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2619.1188401383265,
+      "reversion_frac": 0.4742129119196374,
+      "n_events": 8163,
+      "floor": 0.0003112157900444477,
+      "ceiling": 0.0011897954998599935,
+      "cost_by_markup": {
+        "0.0": 0.0002243229740262357,
+        "0.3": 0.00028724779357868326,
+        "0.6": 0.0003501726131311309,
+        "1.0": 0.0004340723725343943
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "CHFCAD",
+      "beta": -0.6239273084605405,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1937.210797521781,
+      "reversion_frac": 0.5021037868162693,
+      "n_events": 9982,
+      "floor": 0.00023218096857540103,
+      "ceiling": 0.0009007621201043688,
+      "cost_by_markup": {
+        "0.0": 0.0001922047658648634,
+        "0.3": 0.00024176889239229318,
+        "0.6": 0.00029133301891972295,
+        "1.0": 0.0003574185209562959
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "CHFAUD",
+      "beta": -0.5514315190357436,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1855.1130140474095,
+      "reversion_frac": 0.5016326890830465,
+      "n_events": 11331,
+      "floor": 0.00022665488620692963,
+      "ceiling": 0.0009107085802239145,
+      "cost_by_markup": {
+        "0.0": 0.00022581359744351025,
+        "0.3": 0.0002875741933286716,
+        "0.6": 0.00034933478921383304,
+        "1.0": 0.00043168225039404823
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "CHFUSD",
+      "beta": -0.10136820684373374,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2021.716118074791,
+      "reversion_frac": 0.5036359179671542,
+      "n_events": 12239,
+      "floor": 0.0002786681647507977,
+      "ceiling": 0.0010765544933560216,
+      "cost_by_markup": {
+        "0.0": 0.00019828287045696186,
+        "0.3": 0.0002508988505097936,
+        "0.6": 0.00030351483056262536,
+        "1.0": 0.00037366947063306776
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "CADAUD",
+      "beta": -0.3913702376084194,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1318.2128401575455,
+      "reversion_frac": 0.5055972696245734,
+      "n_events": 14650,
+      "floor": 0.00022349892273811037,
+      "ceiling": 0.001120044348999293,
+      "cost_by_markup": {
+        "0.0": 0.0003117018126999948,
+        "0.3": 0.0003934146994519916,
+        "0.6": 0.0004751275862039881,
+        "1.0": 0.000584078101873317
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "CADUSD",
+      "beta": 0.570436343290021,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 999.3527963533672,
+      "reversion_frac": 0.4984154175588865,
+      "n_events": 11675,
+      "floor": 0.0003066515464708506,
+      "ceiling": 0.0011122552532646923,
+      "cost_by_markup": {
+        "0.0": 0.00026830383143699397,
+        "0.3": 0.0003370998947372436,
+        "0.6": 0.00040589595803749317,
+        "1.0": 0.000497624042437826
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCHF",
+      "hedge": "AUDUSD",
+      "beta": 0.3379143125386181,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1077.3661887204253,
+      "reversion_frac": 0.510997478285234,
+      "n_events": 14276,
+      "floor": 0.00027020304561410516,
+      "ceiling": 0.0010968924294811045,
+      "cost_by_markup": {
+        "0.0": 0.0002643747816491888,
+        "0.3": 0.0003349492064388134,
+        "0.6": 0.000405523631228438,
+        "1.0": 0.0004996228642812708
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "GBPAUD",
+      "beta": 0.580364951577038,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2509.8435431186276,
+      "reversion_frac": 0.4961895813759265,
+      "n_events": 9579,
+      "floor": 0.00016401015349802904,
+      "ceiling": 0.0009691639224727314,
+      "cost_by_markup": {
+        "0.0": 0.0002243447894120657,
+        "0.3": 0.00028175582633505015,
+        "0.6": 0.0003391668632580346,
+        "1.0": 0.00041571491248868056
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "GBPUSD",
+      "beta": 0.6180966527293934,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2766.6413376019523,
+      "reversion_frac": 0.49437052200614123,
+      "n_events": 10747,
+      "floor": 0.00017354057845821413,
+      "ceiling": 0.0007768491001437387,
+      "cost_by_markup": {
+        "0.0": 0.00013049640658946245,
+        "0.3": 0.00016189226779020227,
+        "0.6": 0.0001932881289909421,
+        "1.0": 0.00023514927725859524
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "JPYCHF",
+      "beta": -0.15820994855171927,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2662.708929010318,
+      "reversion_frac": 0.4960304858685297,
+      "n_events": 9447,
+      "floor": 0.00026200622766923347,
+      "ceiling": 0.0010315564538195118,
+      "cost_by_markup": {
+        "0.0": 0.00020811908308312498,
+        "0.3": 0.00026279113571610053,
+        "0.6": 0.00031746318834907606,
+        "1.0": 0.00039035925852637685
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "JPYCAD",
+      "beta": 0.114655805835563,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2810.5776331560587,
+      "reversion_frac": 0.4962730130220027,
+      "n_events": 11135,
+      "floor": 0.0002777320056414795,
+      "ceiling": 0.000999486721451834,
+      "cost_by_markup": {
+        "0.0": 0.0001741563265434432,
+        "0.3": 0.00022002433477686035,
+        "0.6": 0.00026589234301027746,
+        "1.0": 0.0003270496873215003
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "JPYAUD",
+      "beta": 0.06615725009563557,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2849.2503070917983,
+      "reversion_frac": 0.5001869158878505,
+      "n_events": 10700,
+      "floor": 0.00036501848777282907,
+      "ceiling": 0.0011106219216318485,
+      "cost_by_markup": {
+        "0.0": 0.0001938043228791927,
+        "0.3": 0.0002439683221355559,
+        "0.6": 0.00029413232139191905,
+        "1.0": 0.0003610176537337366
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "JPYUSD",
+      "beta": 0.05268382462969327,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2110.6060563822107,
+      "reversion_frac": 0.49888624318304015,
+      "n_events": 13019,
+      "floor": 0.0002775929835289292,
+      "ceiling": 0.0009834898388534808,
+      "cost_by_markup": {
+        "0.0": 0.00018286672339680107,
+        "0.3": 0.00022984413204429525,
+        "0.6": 0.00027682154069178937,
+        "1.0": 0.0003394580855551149
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "CHFCAD",
+      "beta": 0.37607269153945955,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1937.2107975253887,
+      "reversion_frac": 0.5021037868162693,
+      "n_events": 9982,
+      "floor": 0.00023218096857540054,
+      "ceiling": 0.0009007621201043684,
+      "cost_by_markup": {
+        "0.0": 0.0001922047658648634,
+        "0.3": 0.00024176889239229318,
+        "0.6": 0.00029133301891972295,
+        "1.0": 0.0003574185209562959
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "CHFAUD",
+      "beta": 0.033410126031464336,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2120.3707055994682,
+      "reversion_frac": 0.4959266802443992,
+      "n_events": 9820,
+      "floor": 0.00022342572045826528,
+      "ceiling": 0.0011022689713720538,
+      "cost_by_markup": {
+        "0.0": 0.00019015424510771534,
+        "0.3": 0.0002384191207788619,
+        "0.6": 0.0002866839964500084,
+        "1.0": 0.00035103716401153716
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "CHFUSD",
+      "beta": 0.5512173033971092,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1625.287081546824,
+      "reversion_frac": 0.48934869024564265,
+      "n_events": 9811,
+      "floor": 0.00018602177682422284,
+      "ceiling": 0.001065428140493038,
+      "cost_by_markup": {
+        "0.0": 0.0002525031391734287,
+        "0.3": 0.0003162823971759954,
+        "0.6": 0.0003800616551785621,
+        "1.0": 0.0004651006658486511
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "CADAUD",
+      "beta": -0.4408735539286108,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 3400.4923873752423,
+      "reversion_frac": 0.495757071547421,
+      "n_events": 12020,
+      "floor": 0.00023644603276076322,
+      "ceiling": 0.0009561370720966635,
+      "cost_by_markup": {
+        "0.0": 0.00020564441020164405,
+        "0.3": 0.00026052679804896574,
+        "0.6": 0.0003154091858962874,
+        "1.0": 0.00038858570302604964
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "CADUSD",
+      "beta": -0.09489837565189685,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1979.6863523202244,
+      "reversion_frac": 0.4965560425798372,
+      "n_events": 9582,
+      "floor": 0.00030674212986373455,
+      "ceiling": 0.001055157593449858,
+      "cost_by_markup": {
+        "0.0": 0.0001711194739237809,
+        "0.3": 0.0002147033304768734,
+        "0.6": 0.00025828718702996595,
+        "1.0": 0.0003163989957674227
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPCAD",
+      "hedge": "AUDUSD",
+      "beta": 0.08431319358909929,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2643.615271137977,
+      "reversion_frac": 0.49620746207462074,
+      "n_events": 9756,
+      "floor": 0.000312030666871656,
+      "ceiling": 0.0010521213972115872,
+      "cost_by_markup": {
+        "0.0": 0.0001937573456906649,
+        "0.3": 0.00024313286221707754,
+        "0.6": 0.0002925083787434902,
+        "1.0": 0.0003583424007787071
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "GBPUSD",
+      "beta": 0.26627053596708855,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2365.469042094806,
+      "reversion_frac": 0.5002591121091726,
+      "n_events": 11578,
+      "floor": 0.00015465982531116449,
+      "ceiling": 0.0011918082026360663,
+      "cost_by_markup": {
+        "0.0": 0.0002158774343435749,
+        "0.3": 0.0002762036483904269,
+        "0.6": 0.00033652986243727884,
+        "1.0": 0.0004169648144997481
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "JPYCHF",
+      "beta": 0.03343380948686323,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2270.6466226798307,
+      "reversion_frac": 0.5112456747404844,
+      "n_events": 9248,
+      "floor": 0.000262735240300658,
+      "ceiling": 0.0011547161746680028,
+      "cost_by_markup": {
+        "0.0": 0.00024326996164616857,
+        "0.3": 0.00031165938541286215,
+        "0.6": 0.00038004880917955574,
+        "1.0": 0.0004712347075351472
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "JPYCAD",
+      "beta": 0.1538370014344011,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1884.9819050013966,
+      "reversion_frac": 0.5169113791295228,
+      "n_events": 15256,
+      "floor": 0.00029418657532711586,
+      "ceiling": 0.0011449508493911818,
+      "cost_by_markup": {
+        "0.0": 0.0002594773120173836,
+        "0.3": 0.0003331059455275564,
+        "0.6": 0.0004067345790377292,
+        "1.0": 0.0005049060903846263
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "JPYAUD",
+      "beta": 0.228757717256351,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1459.428559190496,
+      "reversion_frac": 0.49337300513930216,
+      "n_events": 14788,
+      "floor": 0.00019534227879752333,
+      "ceiling": 0.0010198480399651816,
+      "cost_by_markup": {
+        "0.0": 0.0002116445299357512,
+        "0.3": 0.0002736792972366299,
+        "0.6": 0.00033571406453750856,
+        "1.0": 0.0004184270876053467
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "JPYUSD",
+      "beta": -0.09944160259828005,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3556.6301269416604,
+      "reversion_frac": 0.4939001143728555,
+      "n_events": 10492,
+      "floor": 0.00023609432307511552,
+      "ceiling": 0.0011756922556859417,
+      "cost_by_markup": {
+        "0.0": 0.0002417874939073949,
+        "0.3": 0.00031065314972386794,
+        "0.6": 0.000379518805540341,
+        "1.0": 0.00047133967996230503
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "CHFCAD",
+      "beta": 0.3523783976070302,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1751.8710888070689,
+      "reversion_frac": 0.5192179700499168,
+      "n_events": 12020,
+      "floor": 0.00025085064790524524,
+      "ceiling": 0.0011383878492965166,
+      "cost_by_markup": {
+        "0.0": 0.0003185165861759955,
+        "0.3": 0.00040450146342802483,
+        "0.6": 0.0004904863406800542,
+        "1.0": 0.0006051328436827599
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "CHFAUD",
+      "beta": 0.448568480964256,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1855.113014046307,
+      "reversion_frac": 0.5016326890830465,
+      "n_events": 11331,
+      "floor": 0.00022665488620692974,
+      "ceiling": 0.0009107085802239147,
+      "cost_by_markup": {
+        "0.0": 0.00022581359744351025,
+        "0.3": 0.0002875741933286716,
+        "0.6": 0.00034933478921383304,
+        "1.0": 0.00043168225039404823
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "CHFUSD",
+      "beta": 0.16647316580379404,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2068.0343160029342,
+      "reversion_frac": 0.503430283119142,
+      "n_events": 10349,
+      "floor": 0.00010934641653134188,
+      "ceiling": 0.0012890027791186854,
+      "cost_by_markup": {
+        "0.0": 0.00025917289680781345,
+        "0.3": 0.0003311243108169268,
+        "0.6": 0.00040307572482604014,
+        "1.0": 0.0004990109435048579
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "CADAUD",
+      "beta": 0.55912644607139,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 3400.492387386357,
+      "reversion_frac": 0.495757071547421,
+      "n_events": 12020,
+      "floor": 0.00023644603276076306,
+      "ceiling": 0.0009561370720966635,
+      "cost_by_markup": {
+        "0.0": 0.00020564441020164403,
+        "0.3": 0.0002605267980489657,
+        "0.6": 0.0003154091858962873,
+        "1.0": 0.0003885857030260496
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "CADUSD",
+      "beta": -0.44894519573015346,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2127.6500546430925,
+      "reversion_frac": 0.5016565656565657,
+      "n_events": 12375,
+      "floor": 0.0002390366372567355,
+      "ceiling": 0.0011150144540377422,
+      "cost_by_markup": {
+        "0.0": 0.00028214413678505275,
+        "0.3": 0.0003587632037918663,
+        "0.6": 0.00043538227079867987,
+        "1.0": 0.0005375410268077646
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPAUD",
+      "hedge": "AUDUSD",
+      "beta": -0.42393751366456595,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2297.0103011912825,
+      "reversion_frac": 0.5076954232482787,
+      "n_events": 9876,
+      "floor": 0.00025481933109361145,
+      "ceiling": 0.000949201714001168,
+      "cost_by_markup": {
+        "0.0": 0.00017112717769384608,
+        "0.3": 0.00021926112288458757,
+        "0.6": 0.00026739506807532904,
+        "1.0": 0.0003315736616629843
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "JPYCHF",
+      "beta": -0.32755938128980616,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 4015.2771533510463,
+      "reversion_frac": 0.4691797642436149,
+      "n_events": 8144,
+      "floor": 0.00031972663809159946,
+      "ceiling": 0.0012732390066463584,
+      "cost_by_markup": {
+        "0.0": 0.00013805159408167842,
+        "0.3": 0.00017975915821955758,
+        "0.6": 0.00022146672235743675,
+        "1.0": 0.00027707680787460897
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "JPYCAD",
+      "beta": -0.08709719516579795,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 5055.214115999259,
+      "reversion_frac": 0.46467165419783873,
+      "n_events": 4812,
+      "floor": 0.00012354338783577458,
+      "ceiling": 0.0012651062047709038,
+      "cost_by_markup": {
+        "0.0": 9.348091793073941e-05,
+        "0.3": 0.00012069762378469944,
+        "0.6": 0.00014791432963865946,
+        "1.0": 0.0001842032707772728
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "JPYAUD",
+      "beta": -0.028485291409479387,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 4065.8466241470396,
+      "reversion_frac": 0.4735679343537952,
+      "n_events": 6337,
+      "floor": 0.00021192816616924574,
+      "ceiling": 0.0013162851911257022,
+      "cost_by_markup": {
+        "0.0": 8.67078437683634e-05,
+        "0.3": 0.00011179967750194486,
+        "0.6": 0.00013689151123552634,
+        "1.0": 0.00017034728954696827
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "JPYUSD",
+      "beta": 0.15039253275359146,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3954.7943678820034,
+      "reversion_frac": 0.5022779043280182,
+      "n_events": 5268,
+      "floor": 0.0002621145528790245,
+      "ceiling": 0.0011312216278174937,
+      "cost_by_markup": {
+        "0.0": 8.757198374200434e-05,
+        "0.3": 0.000114332059374003,
+        "0.6": 0.00014109213500600165,
+        "1.0": 0.0001767722358486665
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "CHFCAD",
+      "beta": -0.05279029473980502,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2871.793445507964,
+      "reversion_frac": 0.5004283755997259,
+      "n_events": 11672,
+      "floor": 0.00019203306008713775,
+      "ceiling": 0.0011914930780407217,
+      "cost_by_markup": {
+        "0.0": 9.31535126589939e-05,
+        "0.3": 0.00011925258132894786,
+        "0.6": 0.00014535164999890181,
+        "1.0": 0.00018015040822550707
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "CHFAUD",
+      "beta": -0.3525607092186977,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2262.7837172694585,
+      "reversion_frac": 0.4846291050257056,
+      "n_events": 9531,
+      "floor": 0.00023225843176458074,
+      "ceiling": 0.0012822717623815927,
+      "cost_by_markup": {
+        "0.0": 0.00018217308720715702,
+        "0.3": 0.00023217399051423293,
+        "0.6": 0.00028217489382130885,
+        "1.0": 0.0003488427648974101
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "CHFUSD",
+      "beta": 0.8986317931562661,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2021.7161180734813,
+      "reversion_frac": 0.5036359179671542,
+      "n_events": 12239,
+      "floor": 0.0002786681647507976,
+      "ceiling": 0.0010765544933560216,
+      "cost_by_markup": {
+        "0.0": 0.00019828287045696184,
+        "0.3": 0.0002508988505097936,
+        "0.6": 0.00030351483056262536,
+        "1.0": 0.0003736694706330677
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "CADAUD",
+      "beta": -0.7380076116058474,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2210.1049821783986,
+      "reversion_frac": 0.5107536598590277,
+      "n_events": 11066,
+      "floor": 0.00018366536740389895,
+      "ceiling": 0.0011565414441483835,
+      "cost_by_markup": {
+        "0.0": 0.00026993703877889106,
+        "0.3": 0.00034172343681689065,
+        "0.6": 0.00041350983485489024,
+        "1.0": 0.0005092250322388897
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "CADUSD",
+      "beta": 0.9051016243481029,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1979.686352325248,
+      "reversion_frac": 0.4965560425798372,
+      "n_events": 9582,
+      "floor": 0.00030674212986373455,
+      "ceiling": 0.0010551575934498578,
+      "cost_by_markup": {
+        "0.0": 0.00017111947392378087,
+        "0.3": 0.0002147033304768734,
+        "0.6": 0.0002582871870299659,
+        "1.0": 0.0003163989957674227
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "GBPUSD",
+      "hedge": "AUDUSD",
+      "beta": 0.5760624863354347,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2297.010301192128,
+      "reversion_frac": 0.5076954232482787,
+      "n_events": 9876,
+      "floor": 0.000254819331093612,
+      "ceiling": 0.0009492017140011687,
+      "cost_by_markup": {
+        "0.0": 0.00017112717769384616,
+        "0.3": 0.0002192611228845877,
+        "0.6": 0.00026739506807532925,
+        "1.0": 0.00033157366166298454
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "JPYCAD",
+      "beta": 0.6681130862954514,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 961.7426054338404,
+      "reversion_frac": 0.5028638465254296,
+      "n_events": 14491,
+      "floor": 0.00037220434604558043,
+      "ceiling": 0.0009959680873628512,
+      "cost_by_markup": {
+        "0.0": 0.00021150439826214402,
+        "0.3": 0.00026722373476090747,
+        "0.6": 0.0003229430712596709,
+        "1.0": 0.0003972355199246889
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "JPYAUD",
+      "beta": 0.7323033738184189,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1140.6224339290895,
+      "reversion_frac": 0.499101688825009,
+      "n_events": 11132,
+      "floor": 0.0005051429719364697,
+      "ceiling": 0.0011933967186270819,
+      "cost_by_markup": {
+        "0.0": 0.0002567472020024465,
+        "0.3": 0.0003275991449465903,
+        "0.6": 0.00039845108789073405,
+        "1.0": 0.0004929203451495924
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "JPYUSD",
+      "beta": 0.5560593157247908,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1296.9481578101345,
+      "reversion_frac": 0.47958100360959727,
+      "n_events": 14129,
+      "floor": 0.00023145607595840268,
+      "ceiling": 0.0009819918883305207,
+      "cost_by_markup": {
+        "0.0": 0.000149878046388697,
+        "0.3": 0.00019320342620678606,
+        "0.6": 0.0002365288060248751,
+        "1.0": 0.00029429597911566054
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "CHFCAD",
+      "beta": -0.47507214999726133,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2735.6037054867465,
+      "reversion_frac": 0.4827838827838828,
+      "n_events": 12285,
+      "floor": 0.00034493279829036995,
+      "ceiling": 0.001279727190460684,
+      "cost_by_markup": {
+        "0.0": 0.0001594451738723025,
+        "0.3": 0.00021115632921553197,
+        "0.6": 0.00026286748455876146,
+        "1.0": 0.00033181569168306744
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "CHFAUD",
+      "beta": -0.6164715051965818,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2172.4302482050825,
+      "reversion_frac": 0.510837727006444,
+      "n_events": 10242,
+      "floor": 0.0004163293093771481,
+      "ceiling": 0.0014440786133478449,
+      "cost_by_markup": {
+        "0.0": 0.0001901346545356561,
+        "0.3": 0.00025320892159008375,
+        "0.6": 0.0003162831886445114,
+        "1.0": 0.0004003822113837483
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "CHFUSD",
+      "beta": -0.4614531015314742,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2311.11624607728,
+      "reversion_frac": 0.4838393731635651,
+      "n_events": 10210,
+      "floor": 0.00035057317257589473,
+      "ceiling": 0.001357342447725068,
+      "cost_by_markup": {
+        "0.0": 0.00011392479351504599,
+        "0.3": 0.00015537230636821446,
+        "0.6": 0.00019681981922138294,
+        "1.0": 0.00025208316969227424
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "CADAUD",
+      "beta": -0.46477773651870546,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1705.0334918628862,
+      "reversion_frac": 0.4790188021417009,
+      "n_events": 16062,
+      "floor": 0.0003902934660132701,
+      "ceiling": 0.0015275752505715093,
+      "cost_by_markup": {
+        "0.0": 0.0002931281868057875,
+        "0.3": 0.0003803025663656916,
+        "0.6": 0.00046747694592559575,
+        "1.0": 0.000583709452005468
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "CADUSD",
+      "beta": 0.6635438227164417,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 1473.874447235925,
+      "reversion_frac": 0.4712507409602845,
+      "n_events": 8435,
+      "floor": 0.0005575540787408396,
+      "ceiling": 0.0014520951830280613,
+      "cost_by_markup": {
+        "0.0": 0.00024020770976420974,
+        "0.3": 0.00031172946519774123,
+        "0.6": 0.0003832512206312727,
+        "1.0": 0.00047861356120931477
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCHF",
+      "hedge": "AUDUSD",
+      "beta": 0.4390367539948002,
+      "fraction_stationary": 0.2857142857142857,
+      "n_windows": 7,
+      "half_life": 1432.3058623331713,
+      "reversion_frac": 0.4620767494356659,
+      "n_events": 8860,
+      "floor": 0.0007284211782317179,
+      "ceiling": 0.0015468688262083113,
+      "cost_by_markup": {
+        "0.0": 0.00024282847999145034,
+        "0.3": 0.0003184101113976814,
+        "0.6": 0.00039399174280391246,
+        "1.0": 0.0004947672513455539
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "JPYAUD",
+      "beta": 0.8373995328392844,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2252.711825117028,
+      "reversion_frac": 0.5187675070028012,
+      "n_events": 12495,
+      "floor": 0.00023939779624725514,
+      "ceiling": 0.0010070842870753898,
+      "cost_by_markup": {
+        "0.0": 0.00023765738655676555,
+        "0.3": 0.00030034669425477655,
+        "0.6": 0.00036303600195278755,
+        "1.0": 0.0004466217455501356
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "JPYUSD",
+      "beta": 0.9022912918761022,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3081.954998952114,
+      "reversion_frac": 0.494816791542646,
+      "n_events": 9743,
+      "floor": 0.000214846598684703,
+      "ceiling": 0.0009027262556711538,
+      "cost_by_markup": {
+        "0.0": 0.00010382327275383545,
+        "0.3": 0.00012869280804356464,
+        "0.6": 0.00015356234333329386,
+        "1.0": 0.00018672172371959954
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "CHFCAD",
+      "beta": 0.5249278500027372,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2735.6037054951385,
+      "reversion_frac": 0.4827838827838828,
+      "n_events": 12285,
+      "floor": 0.00034493279829037233,
+      "ceiling": 0.0012797271904606848,
+      "cost_by_markup": {
+        "0.0": 0.00015944517387230244,
+        "0.3": 0.00021115632921553192,
+        "0.6": 0.00026286748455876135,
+        "1.0": 0.00033181569168306733
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "CHFAUD",
+      "beta": -0.03162986012937158,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2811.9752283099997,
+      "reversion_frac": 0.5101454646530158,
+      "n_events": 10793,
+      "floor": 0.00040277502778061577,
+      "ceiling": 0.0015128595941237865,
+      "cost_by_markup": {
+        "0.0": 0.00015227760146435473,
+        "0.3": 0.0002010337727559244,
+        "0.6": 0.0002497899440474941,
+        "1.0": 0.00031479817243625373
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "CHFUSD",
+      "beta": 0.1911324087093557,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2763.4755850680444,
+      "reversion_frac": 0.4833812320379858,
+      "n_events": 16006,
+      "floor": 0.0002310748659314173,
+      "ceiling": 0.0015803257911970795,
+      "cost_by_markup": {
+        "0.0": 0.00016814506223151115,
+        "0.3": 0.00022075585303441415,
+        "0.6": 0.00027336664383731716,
+        "1.0": 0.0003435143649078544
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "CADAUD",
+      "beta": -0.5142810528389037,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2823.1853917615244,
+      "reversion_frac": 0.4857607115368169,
+      "n_events": 11693,
+      "floor": 0.0001936758002823391,
+      "ceiling": 0.0015774727946180382,
+      "cost_by_markup": {
+        "0.0": 0.0001724540290285321,
+        "0.3": 0.0002294881954477774,
+        "0.6": 0.00028652236186702267,
+        "1.0": 0.0003625679170926831
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "CADUSD",
+      "beta": -0.0017908962254741653,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2362.5908064295936,
+      "reversion_frac": 0.48549637409352336,
+      "n_events": 7998,
+      "floor": 0.0006029698338824152,
+      "ceiling": 0.0013541289443138114,
+      "cost_by_markup": {
+        "0.0": 0.0001430233522509969,
+        "0.3": 0.00018933290093737135,
+        "0.6": 0.00023564244962374578,
+        "1.0": 0.0002973885145389118
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYCAD",
+      "hedge": "AUDUSD",
+      "beta": 0.18543563504528068,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2713.557702917391,
+      "reversion_frac": 0.5033517582029872,
+      "n_events": 8503,
+      "floor": 0.0005680298838749636,
+      "ceiling": 0.0015554770138135497,
+      "cost_by_markup": {
+        "0.0": 0.00017221104403292636,
+        "0.3": 0.00022659376717594541,
+        "0.6": 0.0002809764903189644,
+        "1.0": 0.00035348678784298987
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYAUD",
+      "hedge": "JPYUSD",
+      "beta": 0.7501658646481287,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2172.820659733822,
+      "reversion_frac": 0.5095708972149142,
+      "n_events": 11023,
+      "floor": 0.00029012722111204317,
+      "ceiling": 0.0013624833168393035,
+      "cost_by_markup": {
+        "0.0": 0.00016734256626985619,
+        "0.3": 0.00021660878235197072,
+        "0.6": 0.0002658749984340853,
+        "1.0": 0.0003315632865435713
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYAUD",
+      "hedge": "CHFCAD",
+      "beta": 0.5012335560703082,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1971.8842687400984,
+      "reversion_frac": 0.5036667644470519,
+      "n_events": 13636,
+      "floor": 0.00032377241139980263,
+      "ceiling": 0.0016441168298788216,
+      "cost_by_markup": {
+        "0.0": 0.0003153967374734145,
+        "0.3": 0.00041024005646743064,
+        "0.6": 0.0005050833754614468,
+        "1.0": 0.0006315411341201351
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYAUD",
+      "hedge": "CHFAUD",
+      "beta": 0.3835284948034178,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2172.4302481990326,
+      "reversion_frac": 0.510837727006444,
+      "n_events": 10242,
+      "floor": 0.0004163293093771492,
+      "ceiling": 0.0014440786133478394,
+      "cost_by_markup": {
+        "0.0": 0.0001901346545356561,
+        "0.3": 0.00025320892159008375,
+        "0.6": 0.0003162831886445114,
+        "1.0": 0.0004003822113837483
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYAUD",
+      "hedge": "CHFUSD",
+      "beta": -0.19361172888396266,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2958.205674232865,
+      "reversion_frac": 0.4921737858396723,
+      "n_events": 13672,
+      "floor": 0.00033496301260282755,
+      "ceiling": 0.001793938021724468,
+      "cost_by_markup": {
+        "0.0": 0.0002253487590606826,
+        "0.3": 0.0002988158729521447,
+        "0.6": 0.00037228298684360687,
+        "1.0": 0.0004702391386988896
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYAUD",
+      "hedge": "CADAUD",
+      "beta": 0.48571894716109915,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2823.1853917551402,
+      "reversion_frac": 0.4857607115368169,
+      "n_events": 11693,
+      "floor": 0.00019367580028233986,
+      "ceiling": 0.0015774727946180336,
+      "cost_by_markup": {
+        "0.0": 0.00017245402902853194,
+        "0.3": 0.00022948819544777718,
+        "0.6": 0.0002865223618670224,
+        "1.0": 0.0003625679170926827
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYAUD",
+      "hedge": "CADUSD",
+      "beta": -0.3558377163037324,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1942.499541709546,
+      "reversion_frac": 0.4985226967499328,
+      "n_events": 11169,
+      "floor": 0.0004156298124738747,
+      "ceiling": 0.0016343624115488162,
+      "cost_by_markup": {
+        "0.0": 0.000235508638868502,
+        "0.3": 0.00031065547334546695,
+        "0.6": 0.0003858023078224319,
+        "1.0": 0.00048599808712505193
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYAUD",
+      "hedge": "AUDUSD",
+      "beta": -0.3228150722083839,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2462.231936037582,
+      "reversion_frac": 0.48640036417434845,
+      "n_events": 8787,
+      "floor": 0.00040229524844725354,
+      "ceiling": 0.0013992306084564356,
+      "cost_by_markup": {
+        "0.0": 0.00014958087603610766,
+        "0.3": 0.00020272202784345558,
+        "0.6": 0.00025586317965080346,
+        "1.0": 0.0003267180487272674
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYUSD",
+      "hedge": "CHFCAD",
+      "beta": 0.09606486372347312,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 3502.0046058804887,
+      "reversion_frac": 0.4806965664530968,
+      "n_events": 12174,
+      "floor": 0.0003488058174717143,
+      "ceiling": 0.0012451072497850332,
+      "cost_by_markup": {
+        "0.0": 6.57435500179681e-05,
+        "0.3": 9.48624384563582e-05,
+        "0.6": 0.00012398132689474828,
+        "1.0": 0.00016280651147926838
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYUSD",
+      "hedge": "CHFAUD",
+      "beta": -0.4176006953795338,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2984.9807898989548,
+      "reversion_frac": 0.494595073542442,
+      "n_events": 11286,
+      "floor": 0.00041600052035853504,
+      "ceiling": 0.0014590406543923784,
+      "cost_by_markup": {
+        "0.0": 0.0001634700099910519,
+        "0.3": 0.0002190455765892622,
+        "0.6": 0.00027462114318747247,
+        "1.0": 0.0003487218986517528
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYUSD",
+      "hedge": "CHFUSD",
+      "beta": 0.5385468984685154,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2311.116246073001,
+      "reversion_frac": 0.4838393731635651,
+      "n_events": 10210,
+      "floor": 0.0003505731725758976,
+      "ceiling": 0.0013573424477250694,
+      "cost_by_markup": {
+        "0.0": 0.00011392479351504464,
+        "0.3": 0.00015537230636821278,
+        "0.6": 0.0001968198192213809,
+        "1.0": 0.00025208316969227174
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYUSD",
+      "hedge": "CADAUD",
+      "beta": -0.8114151105161272,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2708.4931029896456,
+      "reversion_frac": 0.49245476811250694,
+      "n_events": 12657,
+      "floor": 0.0002832747217560791,
+      "ceiling": 0.001488854510540704,
+      "cost_by_markup": {
+        "0.0": 0.0002513634128846821,
+        "0.3": 0.0003286113037305888,
+        "0.6": 0.00040585919457649544,
+        "1.0": 0.0005088563823710376
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYUSD",
+      "hedge": "CADUSD",
+      "beta": 0.9982091037745257,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2362.5908064322766,
+      "reversion_frac": 0.48549637409352336,
+      "n_events": 7998,
+      "floor": 0.0006029698338824152,
+      "ceiling": 0.0013541289443138097,
+      "cost_by_markup": {
+        "0.0": 0.00014302335225099686,
+        "0.3": 0.00018933290093737132,
+        "0.6": 0.00023564244962374578,
+        "1.0": 0.00029738851453891174
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "JPYUSD",
+      "hedge": "AUDUSD",
+      "beta": 0.6771849277916138,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2462.231936031754,
+      "reversion_frac": 0.48640036417434845,
+      "n_events": 8787,
+      "floor": 0.0004022952484472549,
+      "ceiling": 0.0013992306084564363,
+      "cost_by_markup": {
+        "0.0": 0.0001495808760361073,
+        "0.3": 0.0002027220278434551,
+        "0.6": 0.0002558631796508029,
+        "1.0": 0.0003267180487272666
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFCAD",
+      "hedge": "CHFAUD",
+      "beta": 0.5848416450672079,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1993.0974150412785,
+      "reversion_frac": 0.5071971534853631,
+      "n_events": 12366,
+      "floor": 0.00022059356446592406,
+      "ceiling": 0.0008578224040666433,
+      "cost_by_markup": {
+        "0.0": 0.0002452306677501619,
+        "0.3": 0.000306707812222677,
+        "0.6": 0.00036818495669519217,
+        "1.0": 0.0004501544826585457
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFCAD",
+      "hedge": "CHFUSD",
+      "beta": 0.6525855102408421,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2384.350347976737,
+      "reversion_frac": 0.5032329697603031,
+      "n_events": 15311,
+      "floor": 0.00019720098217036465,
+      "ceiling": 0.0008691377100350149,
+      "cost_by_markup": {
+        "0.0": 0.00014489774369216545,
+        "0.3": 0.00017882133404765525,
+        "0.6": 0.00021274492440314508,
+        "1.0": 0.00025797637821046483
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFCAD",
+      "hedge": "CADAUD",
+      "beta": -0.049503316320191414,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2819.2194824943567,
+      "reversion_frac": 0.49182214683789677,
+      "n_events": 16508,
+      "floor": 0.00017411780210420914,
+      "ceiling": 0.0010539255104457087,
+      "cost_by_markup": {
+        "0.0": 0.0002328780619430195,
+        "0.3": 0.0002892066443476908,
+        "0.6": 0.000345535226752362,
+        "1.0": 0.00042064000329192377
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFCAD",
+      "hedge": "CADUSD",
+      "beta": -0.6653347189419178,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2541.2161324742,
+      "reversion_frac": 0.4963867030672876,
+      "n_events": 12454,
+      "floor": 0.00016255691217874886,
+      "ceiling": 0.0009577703622392644,
+      "cost_by_markup": {
+        "0.0": 0.00016382224309967466,
+        "0.3": 0.0002041234593002285,
+        "0.6": 0.00024442467550078235,
+        "1.0": 0.00029815963043485416
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFCAD",
+      "hedge": "AUDUSD",
+      "beta": -0.25360111894951853,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2871.5361275536693,
+      "reversion_frac": 0.49085449085449084,
+      "n_events": 14652,
+      "floor": 0.0001633146086624365,
+      "ceiling": 0.0010911125082516619,
+      "cost_by_markup": {
+        "0.0": 0.000269735448367156,
+        "0.3": 0.0003360212249355927,
+        "0.6": 0.00040230700150402935,
+        "1.0": 0.0004906880369286116
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFAUD",
+      "hedge": "CHFUSD",
+      "beta": 0.2678413726475274,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2297.98084051465,
+      "reversion_frac": 0.5131391031133962,
+      "n_events": 14004,
+      "floor": 0.0002390010505043842,
+      "ceiling": 0.0014292867508354174,
+      "cost_by_markup": {
+        "0.0": 0.0002519882607855184,
+        "0.3": 0.000319289912560358,
+        "0.6": 0.00038659156433519764,
+        "1.0": 0.0004763271000349838
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFAUD",
+      "hedge": "CADAUD",
+      "beta": 0.9504966836798087,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2819.2194824943567,
+      "reversion_frac": 0.49182214683789677,
+      "n_events": 16508,
+      "floor": 0.00017411780210420928,
+      "ceiling": 0.0010539255104457092,
+      "cost_by_markup": {
+        "0.0": 0.00023287806194301948,
+        "0.3": 0.00028920664434769073,
+        "0.6": 0.000345535226752362,
+        "1.0": 0.00042064000329192377
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFAUD",
+      "hedge": "CADUSD",
+      "beta": -1.0193815390201746,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1388.2834005302595,
+      "reversion_frac": 0.48936562576837966,
+      "n_events": 16268,
+      "floor": 0.0002670107927495473,
+      "ceiling": 0.0012513073602039865,
+      "cost_by_markup": {
+        "0.0": 0.0003884310568425037,
+        "0.3": 0.0004874866717832097,
+        "0.6": 0.0005865422867239157,
+        "1.0": 0.0007186164399781904
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFAUD",
+      "hedge": "AUDUSD",
+      "beta": -0.7618518262031836,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2200.9881899505317,
+      "reversion_frac": 0.4887696435415868,
+      "n_events": 13045,
+      "floor": 0.0001967963322517902,
+      "ceiling": 0.0009186019938673207,
+      "cost_by_markup": {
+        "0.0": 0.00016775899665754507,
+        "0.3": 0.0002108319400063729,
+        "0.6": 0.00025390488335520073,
+        "1.0": 0.0003113354744869712
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFUSD",
+      "hedge": "CADAUD",
+      "beta": -0.34663737399742744,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1708.5709456140407,
+      "reversion_frac": 0.4913582078480825,
+      "n_events": 13481,
+      "floor": 0.0002296948637176551,
+      "ceiling": 0.000995160372208735,
+      "cost_by_markup": {
+        "0.0": 0.00021924182669178375,
+        "0.3": 0.0002748287609254976,
+        "0.6": 0.00033041569515921147,
+        "1.0": 0.00040453160747083
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFUSD",
+      "hedge": "CADUSD",
+      "beta": 0.3346652810580819,
+      "fraction_stationary": 0.14285714285714285,
+      "n_windows": 7,
+      "half_life": 2541.2161324669573,
+      "reversion_frac": 0.4963867030672876,
+      "n_events": 12454,
+      "floor": 0.00016255691217874875,
+      "ceiling": 0.0009577703622392644,
+      "cost_by_markup": {
+        "0.0": 0.0001638222430996746,
+        "0.3": 0.00020412345930022845,
+        "0.6": 0.0002444246755007823,
+        "1.0": 0.00029815963043485416
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CHFUSD",
+      "hedge": "AUDUSD",
+      "beta": 0.23814817379681677,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 2200.988189955189,
+      "reversion_frac": 0.4887696435415868,
+      "n_events": 13045,
+      "floor": 0.00019679633225179038,
+      "ceiling": 0.0009186019938673207,
+      "cost_by_markup": {
+        "0.0": 0.00016775899665754512,
+        "0.3": 0.00021083194000637298,
+        "0.6": 0.00025390488335520084,
+        "1.0": 0.0003113354744869713
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CADAUD",
+      "hedge": "CADUSD",
+      "beta": -0.35404682007825666,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1134.1909134911332,
+      "reversion_frac": 0.5167624878667961,
+      "n_events": 13393,
+      "floor": 0.00025798163537140816,
+      "ceiling": 0.0011113762919563708,
+      "cost_by_markup": {
+        "0.0": 0.00029124669932929065,
+        "0.3": 0.0003650901075228396,
+        "0.6": 0.0004389335157163885,
+        "1.0": 0.0005373913933077871
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CADAUD",
+      "hedge": "AUDUSD",
+      "beta": -0.508250707253665,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1953.9375355381626,
+      "reversion_frac": 0.5109842462783639,
+      "n_events": 13838,
+      "floor": 0.00011121383696693252,
+      "ceiling": 0.0006571105698284758,
+      "cost_by_markup": {
+        "0.0": 0.00017648784441181344,
+        "0.3": 0.00022033314138136703,
+        "0.6": 0.00026417843835092056,
+        "1.0": 0.0003226388343103254
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    },
+    {
+      "timeframe": "1h",
+      "base": "CADUSD",
+      "hedge": "AUDUSD",
+      "beta": 0.49174929274633544,
+      "fraction_stationary": 0.0,
+      "n_windows": 7,
+      "half_life": 1953.9375355369393,
+      "reversion_frac": 0.5109842462783639,
+      "n_events": 13838,
+      "floor": 0.00011121383696693241,
+      "ceiling": 0.0006571105698284758,
+      "cost_by_markup": {
+        "0.0": 0.0001764878444118135,
+        "0.3": 0.00022033314138136708,
+        "0.6": 0.00026417843835092067,
+        "1.0": 0.0003226388343103255
+      },
+      "universe": "pairwise",
+      "fdr_pass": false,
+      "verdict_by_markup": {
+        "0.0": "NOGO",
+        "0.3": "NOGO",
+        "0.6": "NOGO",
+        "1.0": "NOGO"
+      }
+    }
+  ]
+}
