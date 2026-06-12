@@ -1,4 +1,4 @@
-from scripts.fx_coint.gate import classify, Verdict
+from scripts.fx_coint.gate import Verdict, classify
 
 
 def test_set_when_floor_clears_cost():

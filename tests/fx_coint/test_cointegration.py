@@ -2,7 +2,11 @@ import numpy as np
 import pandas as pd
 
 from scripts.fx_coint.cointegration import (
-    instrument_series, fit_hedge, residual, eg_test, half_life,
+    eg_test,
+    fit_hedge,
+    half_life,
+    instrument_series,
+    residual,
 )
 
 

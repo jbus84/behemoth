@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 
 from scripts.fx_coint.amplitude import (
-    close_to_close_amplitude, intrabar_excursion, amplitude_vs_cost,
+    amplitude_vs_cost,
+    close_to_close_amplitude,
+    intrabar_excursion,
 )
 
 
