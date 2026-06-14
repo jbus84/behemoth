@@ -12,12 +12,14 @@ Cost = flat Pepperstone-style commission, frequency-independent.
 
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 import polars as pl
 from usd_factor_residual_probe import PAIRS
 
 COMMISSION_RT_BPS = 0.7
-FREQ = "4h"
+FREQ = sys.argv[1] if len(sys.argv) > 1 else "4h"  # e.g. 30m, 1h, 4h, 1d
 
 
 def resampled_mid(sym: str, freq: str) -> pl.DataFrame:

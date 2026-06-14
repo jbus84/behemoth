@@ -156,6 +156,28 @@ Timeframe verdict: robust reversion lives at **hourly** (cost-gated, 9/9 yrs
 gross+); the proven tradeable edge lives at **weekly+**; **4h is the worst of
 both** — less robust than hourly, not the weekly edge. Do not pursue 4h.
 
+## 5d. Timeframe sweep: 30m / 1h / 4h / daily (PCA) — a U-shape
+
+`usd_factor_4h_probe.py <freq>` runs any frequency. Pooled lag-1 residual corr
+(1-factor) scales MONOTONICALLY with frequency: 30m −0.074, 1h −0.058, 4h
+−0.039, daily −0.033. Monotonic strengthening toward the tick is the signature
+of **microstructure reversion**, not economic mean-reversion.
+
+| TF | Robust (per-yr)? | Net @0.7 commission | Verdict |
+|---|---|---|---|
+| **30m** | ✅ 8–9/9 yrs, win 58–62% | net+ (USDCHF +1/yr every yr) | strongest on paper; microstructure-contamination risk |
+| 1h | ✅ 9/9 gross+ | marginal | cost-gated |
+| 4h | ❌ tail mirage | fragile | skip |
+| daily | small-n/noisy | big but unstable (USDCHF clean) | overlaps proven weekly |
+| weekly+ | ✅ proven | clears cost | the macro edge |
+
+30m is the most statistically robust result here (look-ahead-clean 1-factor body
+net +0.15..+0.26, 2-factor stronger). BUT capture uses **mid** prices + flat
+commission; the frequency-scaling warns a chunk may be non-tradeable
+microstructure that dies once you cross the real spread at the stressed moment
+(the [[project_fx_range_band_maker_illusion]] pattern). **Decisive test: tick-exact
+fills at the 30m boundary (real ask/bid).** Until then 30m is unproven, not real.
+
 ## 6. Next (if continuing this thread)
 
 1. **Causal rolling 2-factor residual** — confirm the in-sample 2-factor lift (§3b) survives out-of-sample with a rolling factor estimate.
