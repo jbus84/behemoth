@@ -1,0 +1,80 @@
+{
+  "artifacts": {
+    "capacity_overall_pass": true,
+    "live_deployable": true,
+    "model_cbm_path": "models/oco/USDJPY_model_2025-12.cbm",
+    "model_cbm_sha256": "9aea26c060cc605acab8310c17eb37b2966de5d84fc59abe21759ae028c38548",
+    "model_month": "2025-12",
+    "model_threshold_json_path": "models/oco/USDJPY_model_2025-12.json",
+    "model_threshold_json_sha256": "40d13540aa6dc7dac440dc8d2b8c5e2420816343384082a8f1af6ef1aac182b9",
+    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet",
+    "predictions_sha256": "5916195eece95948e12048c1f4e6fc67522fed38e2962efd3ce9741e2ee5d5e7",
+    "reduced_config_path": "configs/research/experiments/usdjpy_oco_reduced_core.yaml",
+    "reduced_config_sha256": "1deee84cc3d4846f05be60752e8c6250ef93632dc33078a0a061fa8ac4a69313",
+    "reduced_states_csv_path": "configs/research/governance/oco_history/2025-12/usdjpy_oco_allowed_states.csv",
+    "reduced_states_csv_sha256": "fac1890ece80580c0450440017d04d5dbe4f933adcb5cb30cdb3fb7d122b0c65",
+    "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
+    "reduced_summary_sha256": "630b22ae583be10332cbbddd9ef295b6357464abf38ed89d4bc9b21c6b6a8668",
+    "tick_exact_overall_pass": true,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "68201418f353014772bac5b5c9b4cf9c67a583304adf525eddb0d74eb527bb08",
+    "wfo_config_path": "configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+    "wfo_config_sha256": "938642f549dead9ff81a6d52cde56b35a893869aed67082848422ad774aca61a"
+  },
+  "frozen_at_utc": "2026-03-10T11:42:17.494861+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "d8e2204e2b371440c50e0b713d7e93ca859349e8",
+    "dirty": true
+  },
+  "historical_backtest": {
+    "mode": "month_locked",
+    "target_month": "2025-12"
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 2,
+    "rows": [
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_abs_vel_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q80__k2",
+        "symbol": "USDJPY"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "low_cost_q50;barrier=2.0",
+        "state_id": "oco_first_touch_clean__low_cost_q50__k2",
+        "symbol": "USDJPY"
+      }
+    ],
+    "sha256": "9e5ff4fc726cb496463df4a99fbc5447cf2f455c0acb4a926b065888678ddc8f"
+  },
+  "symbol": "USDJPY"
+}
