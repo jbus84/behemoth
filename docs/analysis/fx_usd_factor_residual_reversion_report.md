@@ -139,6 +139,23 @@ holds let the level-stretch matter, but isolated (GBPUSD reverses). Implication:
 state-space decomposition is the right tool at *slower* reversion → another
 argument for the **daily/weekly port**, not hourly.
 
+## 5c. 4-hour timeframe (PCA) — body fades, tail is a fragile mirage
+
+Stepped up to 4h bars (`usd_factor_4h_probe.py`, PCA 1- and 2-factor, commission
+cost). PC structure unchanged (PC1 60%, PC2 17%). Findings:
+- Pooled reversion *weaker* than hourly (lag-1 corr −0.039 vs −0.058) — fast
+  hourly reversion averages out.
+- The moderate band (p75–95) that worked hourly is ~breakeven/negative at 4h.
+- The big-dislocation **top-10% tail** had strong *aggregate* net (+0.5..+1.0 bps,
+  5/6 pairs) — opposite to hourly where the extreme tail was non-reverting info.
+- **But per-year it is NOT robust:** win ~53–55% (coin-flip), every pair has
+  multiple large losing years, aggregates carried by 2–3 outlier years
+  (GBPUSD swings −2.27 → +3.96). Classic tail-concentration mirage.
+
+Timeframe verdict: robust reversion lives at **hourly** (cost-gated, 9/9 yrs
+gross+); the proven tradeable edge lives at **weekly+**; **4h is the worst of
+both** — less robust than hourly, not the weekly edge. Do not pursue 4h.
+
 ## 6. Next (if continuing this thread)
 
 1. **Causal rolling 2-factor residual** — confirm the in-sample 2-factor lift (§3b) survives out-of-sample with a rolling factor estimate.
