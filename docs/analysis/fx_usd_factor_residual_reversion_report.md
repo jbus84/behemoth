@@ -159,12 +159,15 @@ both** — less robust than hourly, not the weekly edge. Do not pursue 4h.
 ## 5d. Timeframe sweep: 30m / 1h / 4h / daily (PCA) — a U-shape
 
 `usd_factor_4h_probe.py <freq>` runs any frequency. Pooled lag-1 residual corr
-(1-factor) scales MONOTONICALLY with frequency: 30m −0.074, 1h −0.058, 4h
-−0.039, daily −0.033. Monotonic strengthening toward the tick is the signature
-of **microstructure reversion**, not economic mean-reversion.
+(1-factor): 15m −0.077, 30m −0.074, 1h −0.058, 4h −0.039, daily −0.033. It
+strengthens toward higher frequency but **PLATEAUS at 15–30m (~−0.075)** — it
+does NOT keep exploding toward the tick. Pure bid-ask/tick bounce would keep
+growing; a plateau argues for a *genuine ~15–30 min reversion timescale* in the
+residual mid (mildly reassuring vs the microstructure-illusion worry).
 
 | TF | Robust (per-yr)? | Net @0.7 commission | Verdict |
 |---|---|---|---|
+| **15m** | ✅ 5/6 pairs 8–9/9 yrs, win 57–62% | net+ (EUR/GBP/CHF 9/9) | as 30m; USDJPY fails fast end (2/9) |
 | **30m** | ✅ 8–9/9 yrs, win 58–62% | net+ (USDCHF +1/yr every yr) | strongest on paper; microstructure-contamination risk |
 | 1h | ✅ 9/9 gross+ | marginal | cost-gated |
 | 4h | ❌ tail mirage | fragile | skip |
