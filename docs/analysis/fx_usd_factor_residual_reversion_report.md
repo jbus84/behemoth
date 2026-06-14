@@ -1,79 +1,116 @@
-# Hourly USD-Factor Residual Mean-Reversion
+# FX USD-Factor Residual Mean-Reversion — Causal Selector Probe
 
-**Status:** Research probe — first FX intraday avenue with a *real, temporally-persistent* gross edge. Tradeable verdict is **execution-cost gated**, NOT predictability gated.
+**Date:** 2026-06-14  
+**Branch:** worktree-fx-usd-factor-residual (PR #334+)  
+**Question:** Can a supervised causal selector predict which 6–12 bps residual dislocations will revert next hour, lifting gross/net enough to clear measured spread cost?
 
-**Scripts:**
-- `scripts/fx_coint/usd_factor_residual_probe.py` — factor construction, reversion test, XS book, session/spread sweep.
-- `scripts/fx_coint/usd_factor_move_distribution.py` — move-size distribution, conditional reversion by dislocation bucket, break-even spread, per-year stability.
+---
 
-**Data:** 6 USD majors (EURUSD/GBPUSD/AUDUSD/USDJPY/USDCHF/USDCAD), tick bars resampled to hourly mid closes, 2018-01 → 2026-05 (46,650 aligned hours). Look-ahead guarded: factor = equal-weighted (no estimated beta), signal at `t`, forward return `t→t+1`, per-pair spread as cost.
+## 1. Data & Method
 
-## Findings
+- **Symbols:** 6 USD majors (EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD).
+- **Bars:** 1000tick parquet → 5min aligned panel → hourly coarsen.
+- **Factor:** Equal-weighted oriented USD-strength log return (no beta estimation, fully causal).
+- **Residual:** Pair return minus factor.
+- **Target band:** 6–12 bps |residual| (the "moderate-dislocation sweet spot" identified in PR #334).
+- **Cost:** Measured hourly mean relative spread (`spread / mid`) per pair, not a fixed commission.
+- **Label:** `y = 1` if fade wins (`−sign(residual_t) * residual_{t+1} > 0`).
+- **Walk-forward:** 2-year train, 1-year OOS, 5-day purge gap. 7 windows spanning 2018–2026.
 
-### 1. The USD factor is real and "known"
-- PC1 explains **56.4%** of hourly oriented-return variance.
-- `corr(equal-weighted dollar factor, PC1) = 0.997` → the EW factor *is* PC1; no estimation needed.
+### Causal features (all known at entry hour `t`)
 
-### 2. Removing the factor triples the reversion signal
-Pooled OLS slope of residual `t+h` on residual `t` (negative = reversion):
+1. **Factor regime** — 6h & 12h rolling mean of intra-hour factor efficiency (`|net| / Σ|sub|`).
+2. **Residual volatility** — 6h & 12h rolling std of pair residual.
+3. **Cross-pair breadth** — fraction of pairs whose |residual| > 1σ (24h rolling).
+4. **Cross-sectional dispersion** — std of residuals across the 6 pairs.
+5. **Intra-hour path** — efficiency ratio + close-position from 5min sub-bars within the hour.
+6. **Residual autocorrelation** — lag-1 correlation over 24h rolling window.
+7. **Residual persistence** — signed sum over past 3h & 6h.
+8. **Spread percentile** — current spread vs 24h median.
+9. **Calendar** — UTC hour, day-of-week.
+10. **Dislocation size** — |residual_t| in bps.
 
-| | h=1 | half-life |
-|---|---|---|
-| Raw oriented return | corr −0.016 (t −8.7) | — |
-| **Residual (factor removed)** | **corr −0.058 (t −30.8)** | ~1 hour |
+### Models
 
-The residual — not the factor — is the predictable object. Predicting the factor is irrelevant (it is *removed*, not traded).
+- **Baseline:** Always fade every pair-hour in the 6–12 bps band.
+- **Logistic Regression** (`sklearn`, `C=1.0`, standardized features). Threshold selected on train to maximize net t-stat.
+- **CatBoost** (`depth=4`, `iterations=200`, `l2_leaf_reg=5`). Only run if LR shows material OOS gross lift.
 
-### 3. The un-selective book is sub-cost; the tail is not
-Every-hour dollar-neutral XS book: gross **+0.52 bps/hr** (t +21, 99% positive months) but net **−0.63 bps/hr**. Dead levers: holding longer (half-life 1h), session/spread-timing (every UTC hour net-negative), tight-pairs-only.
+---
 
-**But conditioning on dislocation size works.** Residual moves are fat-tailed (median 3.5 bps, p99 26 bps, max 300 bps). EURUSD, conditioned on the dislocation magnitude:
+## 2. Results (aggregated across 7 walk-forward windows)
 
-| Subset | n | Gross capture | Net @0.33 (ECN) | Win% |
-|---|---|---|---|---|
-| Top decile (\|s\|≥8.3 bps) | ~4,665 | +0.76 bps | **+0.42** | 56 |
-| Top 1% (\|s\|≥18 bps) | ~467 | +1.24 bps | **+0.81** | 55 |
+| Model      | Active% | n/window | Gross (bps) | Gross t | Net (bps) | Net t | Win% | Pos-month% |
+|------------|---------|----------|-------------|---------|-----------|-------|------|------------|
+| Baseline   | 100.0   | 1,193    | **+0.673**  | 1.2     | **−0.203**| −0.4  | 52.6 | 54         |
+| Logistic   | 25.8    | 278      | **+0.761**  | 0.7     | **−0.101**| −0.1  | 52.3 | 55         |
+| CatBoost   | 28.6    | 260      | **+0.649**  | 0.4     | **−0.185**| −0.4  | 55.1 | 49         |
 
-**Break-even spread = 0.76 bps round-trip.**
+### Interpretation
 
-### 4. Temporally persistent — not a single-crisis mirage
-EURUSD top-decile gross capture is **positive in all 9 years** (2018–2026); weakest is 2020 (+0.09, COVID — large moves that were information, not noise). Net is positive 7/9 years at ECN spread (0.33), negative 7/9 years at retail spread (1.5).
+- **The 6–12 bps band is sub-cost on a 6-pair cross-sectional basis.** Baseline gross +0.67 bps, net −0.20 bps after measured spreads. The earlier EURUSD-only finding of net +0.18/+0.24 bps (at a 0.65 fixed commission) does **not** generalize to a diversified 6-pair book because wider-spread pairs (GBPUSD, USDCHF, USDCAD, AUDUSD) drag the average cost above the average capture.
+- **Logistic regression produces marginal gross lift** (+0.09 bps) by filtering out some losing trades, but the lift is far below the spread cost. Net improves from −0.20 to −0.10 bps — still negative.
+- **CatBoost does not help.** Despite astronomical train-set net t-stats (16–19), OOS gross is actually *lower* than baseline (+0.649 vs +0.673). The model overfits the training noise; more capacity makes it worse, not better.
+- **Win rates are barely above coin-flip.** Even the "selected" subset is ~52–55% — the signal is too faint for a binary classifier to separate reliably.
 
-## Verdict
+### LR coefficients (last window)
 
-A **real, persistent, selective edge (~0.4 bps/trade net)** viable **only at sub-0.76 bps EURUSD round-trip execution** (ECN/institutional). At retail/IG spreads (~1.2–1.8 bps) it is net-negative. The binding constraint is execution **access**, not signal quality or robustness.
+| Feature            | Coef   | Directional interpretation                     |
+|--------------------|--------|--------------------------------------------------|
+| factor_eff_6       | −0.15  | Lower efficiency (choppy) → slightly more revert  |
+| pers_3             | +0.21  | Recent persistence → model thinks revert (noise?) |
+| factor_eff_12      | +0.12  | Contradicts the 6h version                       |
+| res_vol_12         | +0.08  | Higher vol → slightly more revert                |
+| dispersion         | +0.07  | More dispersion → slightly more revert           |
+| intra_efficiency   | +0.06  | Higher intra-hour efficiency → more revert       |
+| pers_6             | −0.11  | Longer persistence → less revert                 |
+| breadth            | −0.07  | More pairs dislocating → less revert             |
+| spr_pct            | −0.06  | Wider spread → less revert                       |
+| disloc_bps         | −0.01  | Size within band → negligible                    |
 
-**A better model will not push the *hourly* version past the cost wall:** the reversion fuel is bounded (corr −0.058), tighter selection shrinks the sample toward overfit, and the tail carries adverse selection (2020). Model capacity converts to P&L only where cost is *not* the binding constraint.
+Coefficients are small, inconsistent across windows, and do not point to a robust causal structure. The model is essentially fitting noise.
 
-## Cost refinement: raw-spread + commission broker (Pepperstone Razor)
+---
 
-Retail spread-betting (~1.2–1.8 bps RT) kills it, but a raw-spread + commission
-account changes the floor. Pepperstone Razor ≈ **$3.5/side ≈ 0.3 pip/side ≈
-~0.6–0.7 bps round-trip commission** (fixed) + near-zero raw spread. Commission
-is a *flat tax per trade*, so the strategy must select trades whose gross beats it.
+## 3. Honest verdict
 
-EURUSD gross capture by dislocation **size band** vs a 0.65 bps commission floor:
+**Model capacity does not convert to P&L here because the signal is below the cost floor.**
 
-| \|s\| band (bps) | n | Gross | Win% | Net@0.65 |
-|---|---|---|---|---|
-| 0–2 | 18,111 | +0.16 | 52 | −0.49 |
-| 2–4 | 12,516 | +0.45 | 55 | −0.20 |
-| 4–6 | 7,216 | +0.60 | 56 | −0.05 |
-| **6–8** | **3,770** | **+0.89** | **58** | **+0.24** |
-| **8–12** | **3,320** | **+0.83** | **57** | **+0.18** |
-| 12–18 | 1,241 | +0.32 | 54 | −0.33 |
-| 18–30 | 385 | +1.42 | 56 | +0.77 |
-| 30+ | 89 | +0.52 | **49** | −0.13 |
+The 6–12 bps band was the best-sampled, highest-win-rate zone in the univariate analysis, but that analysis was EURUSD-centric and used a fixed-commission assumption. On the actual 6-pair cross-section with measured spreads:
 
-Two structural facts:
-- **Small dislocations (<6 bps) can't clear a fixed commission** — gross < tax, win ~52% (coin-flip).
-- **The extreme tail (30+ bps) does NOT revert** — win 49%, those are *information* moves (cf. 2020). The "top-1%" profit came from the 18–30 band, not the genuinely-huge candles.
-- **Sweet spot = moderate 6–12 bps dislocations:** net-positive at commission, best win rate (57–58%), ~7,000-trade sample, and (being ordinary moves not news blowouts) far more benign fills.
+- Average gross capture ≈ 0.67 bps.
+- Average measured spread cost ≈ 0.87 bps.
+- Margin = −0.20 bps.
 
-Refined verdict: the tradeable target is the **6–12 bps band at commission-based execution**, NOT the rare huge-move tail. Because cost is now a fixed floor rather than a hard wall, **model capacity (selecting which moderate dislocations revert) converts directly to P&L** — modeling is justified here in a way it is not at spread-betting cost.
+Even a perfect selector that kept only winning trades would cap out at ~1.28 bps gross (0.67 / 0.526), yielding ~+0.40 bps net on half the sample. No realistic model approaches perfection. Logistic achieves +0.76 bps gross on 26% of trades — a small, unstable lift that is swallowed by cost.
 
-## Open / next
+**Boosting is decisively ruled out.** CatBoost overfits massively (train t-stats 16–19, OOS net still negative). The hourly residual is fundamentally unpredictable at this signal-to-noise ratio.
 
-1. **Tick-exact fills (decisive):** capture uses close-to-close mid. Now testing the **6–12 bps band** (benign, non-event moves) rather than the 18–37 bps tail, so fills should be far closer to mid — but still the margin-deciding test.
-2. **Multi-pair breadth:** apply 6–12 bps band selection across all 6 majors (similar commission each) to smooth year-to-year variance — now valuable because the binding constraint shifted from cost to sample/robustness.
-3. **Lower-frequency port:** same decomposition at **daily/weekly**, where cost is negligible vs move size and a better model translates directly into P&L.
+---
+
+## 4. What *would* help (scoped to this signal)
+
+| Lever                     | Expected impact | Honest assessment                        |
+|---------------------------|-----------------|------------------------------------------|
+| Restrict to tight pairs   | High            | EURUSD-only or tight-3 book may clear cost; test next |
+| Lower cost (ECN/commission) | High            | Commission-based broker (~0.3 bps/side) vs spread-betting (~1.2–1.8 bps); decisive |
+| Lower frequency (daily/weekly) | High       | Cost negligible vs move size; only other surviving FX edge lives here |
+| More sophisticated model  | Low/negative    | Signal is below noise floor; capacity → overfit |
+| Exact 5-min sub-bar timing| Marginal        | Already engineered; no transformative leverage left |
+
+---
+
+## 5. Files / artifacts
+
+- `scripts/fx_coint/residual_selector.py` — causal selector prototype (walk-forward LR + CatBoost).
+- `tests/fx_coint/test_residual_selector.py` — look-ahead guard + regime-lift smoke tests.
+- `scripts/fx_coint/usd_factor_residual_probe.py` — original hourly probe (untracked, root checkout).
+- `scripts/fx_coint/usd_factor_move_distribution.py` — cost-sensitivity by move-size band (untracked, root checkout).
+
+---
+
+## 6. Next (if continuing this thread)
+
+1. **Tick-exact fills on EURUSD 6–12 bps band** — the margin-deciding test for the only pair that might clear cost.
+2. **Lower-frequency port** — daily/weekly factor-residual reversion, where cost is not the binding constraint.
+3. **Close this avenue** — record as another model-proof NO-GO and redirect modeling capacity to the weekly mean-reversion signal (the only surviving FX edge).
