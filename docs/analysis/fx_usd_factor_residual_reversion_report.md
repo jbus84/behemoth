@@ -122,6 +122,23 @@ Independent of the cost fix (lift is gross): logistic gives only ~+0.09 bps gros
 
 ---
 
+## 5b. Kalman state-space on the residual — does NOT help at hourly
+
+Tested whether decomposing the residual price into a random-walk (permanent) +
+AR(1) (transitory/mean-reverting) state and fading the filtered *stretch* beats
+thresholding the raw |residual move|. (`usd_factor_kalman_residual.py`; EW
+factor, train-only MLE params, causal *filtered* states, OOS tail.)
+
+Result: **Kalman stretch loses to simple |move| thresholding on 5/6 pairs at 1h**
+(matched trade count). Reason: φ ≈ 0.69 → ~1–2h half-life; reversion is so fast
+that the *last hour's move already is the stretch*, and integrating older history
+adds stale noise. Simple thresholding is near-optimal for a 1h-half-life signal.
+
+Lone exception: EURUSD at a 3h hold (Kalman +0.48 vs baseline +0.18) — longer
+holds let the level-stretch matter, but isolated (GBPUSD reverses). Implication:
+state-space decomposition is the right tool at *slower* reversion → another
+argument for the **daily/weekly port**, not hourly.
+
 ## 6. Next (if continuing this thread)
 
 1. **Causal rolling 2-factor residual** — confirm the in-sample 2-factor lift (§3b) survives out-of-sample with a rolling factor estimate.
