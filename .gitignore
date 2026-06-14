@@ -48,3 +48,4 @@ test_ticks.cs
 # Graphify output
 graphify-out/
 **/graphify-out/
+.era_tick_cache/
