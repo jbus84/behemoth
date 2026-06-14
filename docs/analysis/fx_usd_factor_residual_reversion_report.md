@@ -74,17 +74,29 @@ Coefficients are small, inconsistent across windows, and do not point to a robus
 
 ## 3. Honest verdict
 
-**Model capacity does not convert to P&L here because the signal is below the cost floor.**
+### 3a. The "sub-cost" result in §2 was a COST-MODEL ARTIFACT (corrected)
 
-The 6–12 bps band was the best-sampled, highest-win-rate zone in the univariate analysis, but that analysis was EURUSD-centric and used a fixed-commission assumption. On the actual 6-pair cross-section with measured spreads:
+The §2 selector charged each pair its **Dukascopy quoted spread** as cost (avg ≈ 0.87 bps, with AUDUSD ~1.49). That is *not* the user's execution cost. At a Pepperstone-Razor-style account the cost is **commission-dominated and roughly UNIFORM**: ~0.3 pip/side ×2 + near-zero raw spread ≈ **0.7 bps round-trip for every major**. Charging Dukascopy spreads spuriously sinks the wide-spread pairs (AUDUSD swings −0.80 → +0.04 just by using the right cost). Also confirmed: the `spread` column is the full ask−bid, so round-trip cost referenced to mid = **1× quoted spread** (a 2× "round-trip" correction is a double-count).
 
-- Average gross capture ≈ 0.67 bps.
-- Average measured spread cost ≈ 0.87 bps.
-- Margin = −0.20 bps.
+Per-pair always-fade, 6–12 bps band, at flat 0.7 bps commission:
 
-Even a perfect selector that kept only winning trades would cap out at ~1.28 bps gross (0.67 / 0.526), yielding ~+0.40 bps net on half the sample. No realistic model approaches perfection. Logistic achieves +0.76 bps gross on 26% of trades — a small, unstable lift that is swallowed by cost.
+| Residual | Mean net/pair | Pairs net>0 |
+|---|---|---|
+| **1-factor (dollar)** | −0.03 | 3/6 (EURUSD +0.13, GBPUSD +0.06, USDCHF +0.11) |
+| **2-factor (dollar+risk)** | **+0.08** | **4/6** (adds USDCAD +0.15; USDCHF +0.11→+0.29) |
+| 3-factor | +0.02 | 3/6 (over-removes) |
 
-**Boosting is decisively ruled out.** CatBoost overfits massively (train t-stats 16–19, OOS net still negative). The hourly residual is fundamentally unpredictable at this signal-to-noise ratio.
+So under the *correct* cost model the book is **~break-even to mildly positive**, not −0.20 sub-cost. EURUSD is the most stable winner (~+0.13–0.19).
+
+### 3b. Does improving the USD factor help? YES — *structure*, not *estimation*
+
+- More PCs of the same dollar factor: **no** (EW ≈ PC1 at 0.997).
+- A **2-factor** model (dollar + a risk/carry PC2, 17% of variance): **yes**. Mean net/pair −0.03 → +0.08, 3/6 → 4/6 pairs positive, win rates +1–2 pts. The gain concentrates in the safe-haven/commodity pairs (USDCHF, USDCAD) whose 1-factor residual still carried an un-removed common component. 3-factor over-removes (scrubs signal).
+- **Caveat:** PCA removal is full-sample (in-sample) → optimistic upper bound. A causal *rolling* 2-factor is the next build.
+
+### 3c. Modeling (LR/CatBoost) still adds ~no gross lift
+
+Independent of the cost fix (lift is gross): logistic gives only ~+0.09 bps gross lift, CatBoost overfits (train t 16–19, worse OOS). The *selection* edge is faint. The leverage is in **the 2nd factor and pair selection**, not a classifier.
 
 ---
 
@@ -102,15 +114,16 @@ Even a perfect selector that kept only winning trades would cap out at ~1.28 bps
 
 ## 5. Files / artifacts
 
-- `scripts/fx_coint/residual_selector.py` — causal selector prototype (walk-forward LR + CatBoost).
-- `tests/fx_coint/test_residual_selector.py` — look-ahead guard + regime-lift smoke tests.
-- `scripts/fx_coint/usd_factor_residual_probe.py` — original hourly probe (untracked, root checkout).
-- `scripts/fx_coint/usd_factor_move_distribution.py` — cost-sensitivity by move-size band (untracked, root checkout).
+- `scripts/fx_coint/residual_selector.py` — causal selector (walk-forward LR + CatBoost); cost = flat commission.
+- `scripts/fx_coint/usd_factor_nfactor_probe.py` — 1- vs 2- vs 3-factor residual comparison under commission cost.
+- `tests/fx_coint/test_residual_selector.py` — look-ahead guard + regime-lift + cost smoke tests.
+- `scripts/fx_coint/usd_factor_residual_probe.py` — original hourly probe.
+- `scripts/fx_coint/usd_factor_move_distribution.py` — cost-sensitivity by move-size band.
 
 ---
 
 ## 6. Next (if continuing this thread)
 
-1. **Tick-exact fills on EURUSD 6–12 bps band** — the margin-deciding test for the only pair that might clear cost.
-2. **Lower-frequency port** — daily/weekly factor-residual reversion, where cost is not the binding constraint.
-3. **Close this avenue** — record as another model-proof NO-GO and redirect modeling capacity to the weekly mean-reversion signal (the only surviving FX edge).
+1. **Causal rolling 2-factor residual** — confirm the in-sample 2-factor lift (§3b) survives out-of-sample with a rolling factor estimate.
+2. **Tick-exact fills on the 6–12 bps band** — the margin-deciding test; band is moderate (not event candles) so fills should be benign.
+3. **Lower-frequency port** — daily/weekly factor-residual reversion, where cost is negligible and a richer factor model converts directly to P&L.

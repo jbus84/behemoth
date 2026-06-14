@@ -44,6 +44,12 @@ ORIENT: dict[str, float] = {
 
 BAND_LO_BPS: float = 6.0
 BAND_HI_BPS: float = 12.0
+# Cost model: Pepperstone-Razor-style FLAT round-trip commission (~0.3 pip/side
+# x2 sides + near-zero raw spread), roughly UNIFORM across majors. This is the
+# user's real execution cost. Do NOT use the parquet's Dukascopy quoted spread
+# as cost -- it overstates the wide-spread majors (AUDUSD ~1.5bps) 2-4x vs the
+# commission actually paid, which spuriously sinks those pairs.
+COMMISSION_RT_BPS: float = 0.7
 TICK_BAR: str = "1000tick"
 FINE_FREQ: str = "5min"
 COARSE_FREQ: str = "1h"
@@ -252,29 +258,46 @@ def _build_features(
 
 
 def _build_labels_and_capture(
-    residuals: np.ndarray, spreads: np.ndarray
+    residuals: np.ndarray, cost_bps: float = COMMISSION_RT_BPS
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Labels and captures for next-hour fade.
 
-    residuals shape (T, 6), spreads shape (T, 6) aligned to same T (signal hours).
+    residuals shape (T, 6) aligned to signal hours. Capture is measured
+    mid-to-mid; round-trip taker cost referenced to mid = ONE full quoted
+    spread, but here we charge a flat commission (`cost_bps`) instead because
+    that is the real Pepperstone execution cost (see COMMISSION_RT_BPS).
     Returns flat arrays of length T*6:
       y: 1 if fade wins, 0 otherwise
       capture: gross capture in bps
-      net: capture - spread in bps
+      net: capture - cost_bps
     """
-    T, n_pairs = residuals.shape
     s = residuals[:-1]          # signal at t
     fwd = residuals[1:]         # forward residual at t+1
-    spr = spreads[:-1]          # spread at entry
     cap = -np.sign(s) * fwd
     y = (cap > 0).astype(int)
     capture_bps = cap * 1e4
-    net_bps = capture_bps - spr * 1e4
+    net_bps = capture_bps - cost_bps
     # Flatten pair-major order (t, pair)
     y_flat = y.ravel(order="C")
     capture_flat = capture_bps.ravel(order="C")
     net_flat = net_bps.ravel(order="C")
     return y_flat, capture_flat, net_flat
+
+
+def _print_per_pair_baseline(residuals: np.ndarray) -> None:
+    """Always-fade economics per pair on the 6-12bps band under flat commission."""
+    s = residuals[:-1]
+    fwd = residuals[1:]
+    cap = -np.sign(s) * fwd
+    absb = np.abs(s) * 1e4
+    print(f"\nPer-pair always-fade baseline (6-12bps band, cost={COMMISSION_RT_BPS}bps RT flat):")
+    print("  pair      n     gross    net    win%")
+    for j, sym in enumerate(MAJORS):
+        m = (absb[:, j] >= BAND_LO_BPS) & (absb[:, j] < BAND_HI_BPS)
+        if m.sum() < 50:
+            continue
+        g = cap[m, j].mean() * 1e4
+        print(f"  {sym}  {m.sum():>6}  {g:+.3f}  {g - COMMISSION_RT_BPS:+.3f}   {(cap[m, j] > 0).mean() * 100:.0f}")
 
 
 def _monthly_stats(values: np.ndarray, months: pd.Series) -> dict[str, float]:
@@ -354,20 +377,14 @@ def main() -> None:
     hours, oriented = _oriented_returns(hourly)
     factor, residuals = _residuals(oriented)
 
-    # spreads aligned to signal hours (hourly.index[1:])
-    spreads = np.stack([hourly[(sym, "spread")].to_numpy()[1:] for sym in MAJORS], axis=1)
-    # The parquet 'spread' column is absolute price difference (ask-bid).
-    # Normalise by mid price to get a unitless fractional cost comparable across pairs.
-    rel_spreads = np.zeros_like(spreads)
-    for j, sym in enumerate(MAJORS):
-        mid = np.exp(hourly[(sym, "logmid")].to_numpy()[1:])
-        rel_spreads[:, j] = spreads[:, j] / mid
-
     print("Building causal features ...")
     features_df = _build_features(hourly, fine, oriented, residuals, factor)
 
     print("Building labels & captures ...")
-    y_flat, capture_flat, net_flat = _build_labels_and_capture(residuals, rel_spreads)
+    y_flat, capture_flat, net_flat = _build_labels_and_capture(residuals, COMMISSION_RT_BPS)
+
+    # Per-pair baseline economics on the 6-12bps band under flat commission.
+    _print_per_pair_baseline(residuals)
 
     # Features have one extra hour (the last hour has no forward). Trim it.
     # _build_features always creates exactly 6 rows per hour, sorted by hour.
