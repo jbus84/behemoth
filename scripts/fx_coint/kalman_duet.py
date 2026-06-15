@@ -384,7 +384,7 @@ def run_duet(
     resid = merged["residual"].to_numpy()
     hl = half_life_ou(resid)
     adf_p = adf_pvalue(resid)
-    print(f"\n[4] Residual diagnostics", flush=True)
+    print("\n[4] Residual diagnostics", flush=True)
     print(f"    Mean reversion half-life : {hl:.1f} bars", flush=True)
     print(f"    ADF p-value (constant+trend) : {adf_p:.4f}", flush=True)
 
@@ -405,7 +405,7 @@ def run_duet(
     # ------------------------------------------------------------------
     # 6. Back-test z-score thresholds
     # ------------------------------------------------------------------
-    print(f"\n[6] Back-testing z-score entry thresholds…", flush=True)
+    print("\n[6] Back-testing z-score entry thresholds…", flush=True)
     print(f"    {'z-thresh':>8} {'IS Sharpe':>10} {'IS mean':>10} {'IS WR%':>8} {'OOS Sharpe':>10} {'OOS mean':>10} {'OOS WR%':>8}", flush=True)
     best = None
     best_sharpe = -np.inf
@@ -422,7 +422,6 @@ def run_duet(
         )
 
         def _metrics(bt: pd.DataFrame) -> tuple[float, float, float]:
-            gross = bt["gross_pnl"].dropna()
             net = bt["net_pnl"].dropna()
             if len(net) < 2 or net.std() == 0:
                 return (0.0, 0.0, 0.0)
