@@ -215,6 +215,35 @@ worry is resolved in the edge's favour. Tick-exact is now a confirmation step,
 not an expected killer. (AUDUSD lone negative only under its 1.5bps Dukascopy
 spread; fine at Pepperstone commission.)
 
+## 5f. TICK-EXACT FILLS — the gate PASSES for EURUSD & GBPUSD
+
+`usd_factor_tickexact_fill.py [freq]`: fade top-decile |1-factor residual|, enter
+at the ACTUAL quoted ask/bid at the bar-close tick, hold one bar, exit at actual
+bid/ask. Single tradeable instrument, look-ahead-free factor, real spread crossed
+at the stressed moment. THIS is the test every prior FX lead died on.
+
+30m (15m near-identical, slightly stronger):
+
+| Pair | mid gross | tick-exact NET | win% | t | per-year |
+|---|---|---|---|---|---|
+| **EURUSD** | +1.66 | **+1.32** | 55 | **+9.1** | **9/9 yrs +, growing** |
+| **GBPUSD** | +1.44 | **+0.61** | 52 | +3.4 | 8/9 yrs + |
+| AUDUSD | +0.78 | −0.89 | 48 | −4.1 | dead (Dukascopy 1.66bps spr) |
+| USDJPY | +0.50 | +0.01 | 52 | +0.1 | breakeven |
+| USDCHF | +0.72 | −0.51 | 47 | −3.7 | dead (1.23bps spr) |
+| USDCAD | +0.69 | −0.30 | 48 | −2.3 | dead (0.98bps spr) |
+
+**EURUSD & GBPUSD survive tick-exact fills, robustly** — first intraday edge in
+the thread to clear this gate. Wide pairs die only on Dukascopy's wide spreads;
+at Pepperstone (~0.7bps commission + tiny raw) they'd be ~breakeven and
+EURUSD/GBPUSD stay clearly + (EURUSD ≈ +0.9–1.1 net). Verdict MORE favourable at
+the real broker.
+
+Still unproven (honest): entry-at-close-tick assumes ~instant exec; no slippage
+beyond quote; single-pair unhedged (win 55–57%, factor adds variance — a
+dollar-neutral build raises Sharpe); still a backtest (needs walk-forward + live
+paper). But the core question — survives real spread at the real moment — PASSED.
+
 ## 6. Next (if continuing this thread)
 
 1. **Causal rolling 2-factor residual** — confirm the in-sample 2-factor lift (§3b) survives out-of-sample with a rolling factor estimate.
