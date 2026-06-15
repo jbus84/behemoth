@@ -88,7 +88,6 @@ def main() -> None:
 
     print("\nhour-of-day (UTC): mean residual-vol(bps) and mean EURUSD spread(bps)")
     eu = syms.index("EURUSD")
-    sig_eu = ewma_vol(E[:, eu])[:-1]
     vol_bps = np.abs(s[:, eu]) * 1e4
     print("  UTC  vol|move|  EURUSD_spr")
     for h in range(0, 24, 2):
