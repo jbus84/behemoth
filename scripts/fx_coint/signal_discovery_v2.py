@@ -18,12 +18,13 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+import duckdb  # noqa: E402
+
 from scripts.canonical_tick_feed import (  # noqa: E402
     DEFAULT_CANONICAL_ROOT,
     month_tags_between,
     quote_sql_path,
 )
-import duckdb  # noqa: E402
 
 
 def load_ticks(symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
@@ -240,7 +241,7 @@ def test_microstructure_momentum(b: pd.DataFrame) -> None:
     quiet = b["range_ma20"] < b["range_ma20"].quantile(0.30)
     top_q = b[b["closed_top"] & quiet]
     bot_q = b[b["closed_bottom"] & quiet]
-    print(f"\n--- After QUIET period ---")
+    print("\n--- After QUIET period ---")
     print(f"Top, n={len(top_q)}: next mean={top_q['fwd_1'].mean()*10000:+.3f} bp, up %={(top_q['fwd_1']>0).mean()*100:.1f}%")
     print(f"Bot, n={len(bot_q)}: next mean={bot_q['fwd_1'].mean()*10000:+.3f} bp, dn %={(bot_q['fwd_1']<0).mean()*100:.1f}%")
 

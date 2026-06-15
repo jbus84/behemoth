@@ -21,12 +21,13 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+import duckdb  # noqa: E402
+
 from scripts.canonical_tick_feed import (  # noqa: E402
     DEFAULT_CANONICAL_ROOT,
     month_tags_between,
     quote_sql_path,
 )
-import duckdb  # noqa: E402
 
 
 def load_ticks(symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
@@ -106,7 +107,7 @@ def test_big_hour_momentum(bars: pd.DataFrame) -> None:
 
     # What happens IN big hours AFTER the first 5 minutes?
     print("\n--- Trading AFTER first 5 minutes in big hours ---")
-    big_minutes = bars[bars["is_big"] == True].copy()
+    big_minutes = bars[bars["is_big"]].copy()
 
     for entry_min in [5, 10, 15]:
         entry = big_minutes[big_minutes["minute_of_hour"] == entry_min]
@@ -269,16 +270,16 @@ def test_vol_regime_switching(bars: pd.DataFrame) -> None:
     bars["vol_jump"] = bars["abs_ret"] > (bars["vol_ma20"] * 2.0)
     bars["vol_jump"] = bars["vol_jump"] & (bars["vol_ma20"] > 0)  # avoid divide-by-zero
 
-    print(f"\nVol jump minutes: {bars['vol_jump'].sum():,}")
-    print(f"  Up jumps: {len(up_jump):,}")
-    print(f"  Dn jumps: {len(dn_jump):,}")
-
     # Create forward returns BEFORE filtering
     for h in [1, 3, 5, 10]:
         bars[f"fwd_{h}"] = np.log(bars["close"].shift(-h) / bars["close"])
 
     up_jump = bars[bars["vol_jump"] & (bars["ret"] > 0)].copy()
     dn_jump = bars[bars["vol_jump"] & (bars["ret"] < 0)].copy()
+
+    print(f"\nVol jump minutes: {bars['vol_jump'].sum():,}")
+    print(f"  Up jumps: {len(up_jump):,}")
+    print(f"  Dn jumps: {len(dn_jump):,}")
 
     for h in [1, 3, 5, 10]:
         if len(up_jump) > 10 and len(dn_jump) > 10:
