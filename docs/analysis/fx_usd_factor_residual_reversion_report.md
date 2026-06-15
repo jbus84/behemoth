@@ -181,6 +181,24 @@ microstructure that dies once you cross the real spread at the stressed moment
 (the [[project_fx_range_band_maker_illusion]] pattern). **Decisive test: tick-exact
 fills at the 30m boundary (real ask/bid).** Until then 30m is unproven, not real.
 
+## 5e. GARCH/vol-normalisation — no selection lift, but a tradeability red flag
+
+`usd_factor_volnorm_probe.py [freq]`: dislocation in conditional-vol z-scores
+(causal EWMA, λ=0.94 = integrated-GARCH) vs raw bps. Findings (15m & 30m):
+- **No selection improvement:** raw-bps ≈ vol-z top-decile (raw often marginally
+  higher net), no robustness gain. Lagged/rolling PCA not pursued (validation
+  only; lead-lag PCA = overfit risk on 6 assets).
+- **The edge is concentrated in HIGH-vol regimes** (every pair, both TFs:
+  high-vol-half net > low-vol-half net). Opposite of the tradeability hope.
+  Mechanism: high vol → bigger absolute moves → bigger gross vs the FLAT 0.7bps
+  commission. So the flat-commission net **flatters the high-vol trades that
+  carry the edge**; real (vol-scaling) spread would hit exactly those.
+
+Implication: the mid-price + flat-commission nets across this report are likely
+**optimistic**, because the edge lives in the expensive (wide-spread) regime.
+No signal-processing refinement (Kalman, 4h, GARCH-norm) is the lever — all roads
+lead to the **tick-exact fill test**, which we now expect to bite.
+
 ## 6. Next (if continuing this thread)
 
 1. **Causal rolling 2-factor residual** — confirm the in-sample 2-factor lift (§3b) survives out-of-sample with a rolling factor estimate.
