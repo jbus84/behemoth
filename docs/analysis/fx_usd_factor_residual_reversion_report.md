@@ -194,10 +194,26 @@ fills at the 30m boundary (real ask/bid).** Until then 30m is unproven, not real
   commission. So the flat-commission net **flatters the high-vol trades that
   carry the edge**; real (vol-scaling) spread would hit exactly those.
 
-Implication: the mid-price + flat-commission nets across this report are likely
-**optimistic**, because the edge lives in the expensive (wide-spread) regime.
-No signal-processing refinement (Kalman, 4h, GARCH-norm) is the lever — all roads
-lead to the **tick-exact fill test**, which we now expect to bite.
+### 5e-correction: high vol is NOT wide spread — it's the liquid sessions
+
+A follow-up check (`usd_factor_vol_spread_check.py`) overturns the worry above.
+The "edge in high-vol = expensive regime" claim assumed high vol ⇒ wide spread.
+It is false:
+- Hour-of-day (EURUSD): peak-vol hour is 14 UTC (LDN/NY overlap, vol 4.2bps) at
+  the **tightest** spread (0.27bps); the **widest** spreads (0.60–0.70bps) are
+  the low-vol 20–22 UTC rollover. High realized vol = busy liquid sessions =
+  tight spreads.
+- corr(vol, spread) only weakly positive (+0.10..+0.26); high-vol-half spread is
+  just ~0.05–0.14bps wider than low-vol-half.
+- Net of the **actual quoted spread** (wider than Pepperstone) is STILL higher in
+  the high-vol half for every pair (EURUSD +0.90, GBPUSD +0.64, USDJPY +0.56).
+
+So the high-vol concentration is **favourable** for tradeability, not adverse —
+the prior "flat-commission flatters it" conclusion was wrong. The only unmodeled
+piece left is the boundary-tick fill (entry timing/slippage); the spread-regime
+worry is resolved in the edge's favour. Tick-exact is now a confirmation step,
+not an expected killer. (AUDUSD lone negative only under its 1.5bps Dukascopy
+spread; fine at Pepperstone commission.)
 
 ## 6. Next (if continuing this thread)
 
