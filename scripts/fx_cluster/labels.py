@@ -71,10 +71,15 @@ def build_labels(bars: pl.DataFrame) -> pl.DataFrame:
             continue
         long_o = barrier_outcome(mid, hi, lo, i, target_price, config.PATIENCE_BARS, +1)
         short_o = barrier_outcome(mid, hi, lo, i, target_price, config.PATIENCE_BARS, -1)
+        # barrier_outcome returns PRICE-difference excursions; divide by the entry
+        # price to get a fractional return, then * 1e4 -> bps. This normalization is
+        # what makes pairs at different price levels (EURUSD ~1.10, USDCHF ~0.90,
+        # USDCAD ~1.35) comparable, which the pooled clustering/scoring relies on.
+        to_bps = 1e4 / mid[i]
         rec.update(
-            ret_long=long_o["gross"] * 1e4 - cost_bps[i],
-            ret_short=short_o["gross"] * 1e4 - cost_bps[i],
-            mfe=long_o["mfe"] * 1e4, mae=long_o["mae"] * 1e4,
+            ret_long=long_o["gross"] * to_bps - cost_bps[i],
+            ret_short=short_o["gross"] * to_bps - cost_bps[i],
+            mfe=long_o["mfe"] * to_bps, mae=long_o["mae"] * to_bps,
             hold_bars=long_o["hold_bars"],
             exit_long=long_o["exit_reason"], exit_short=short_o["exit_reason"],
         )
