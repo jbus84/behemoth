@@ -3,7 +3,7 @@ from datetime import datetime
 import numpy as np
 import polars as pl
 
-from scripts.fx_coint.flow_proxies import tick_rule_signs, quote_ofi, causal_zscore, bars_from_ticks
+from scripts.fx_coint.flow_proxies import bars_from_ticks, causal_zscore, quote_ofi, tick_rule_signs
 
 
 def test_tick_rule_ffills_zero_diffs():
