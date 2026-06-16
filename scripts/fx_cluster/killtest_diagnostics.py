@@ -51,6 +51,17 @@ def main() -> None:
     test_labels, _ = clu.predict(emb.transform(test.select(fcols).to_numpy()))
     test_scored = test.with_columns(pl.Series("cluster", test_labels))
 
+    # aggregate decomposition across all scored clusters
+    n_pos_train = sum(1 for r in report if r["mean_net"] > 0)
+    n_persist = sum(1 for r in report if r["mfe_mae"] >= config.PERSIST_MIN_MFE_MAE)
+    best_p = min((r["pvalue"] for r in report), default=float("nan"))
+    mfe_lo = min((r["mfe_mae"] for r in report), default=float("nan"))
+    mfe_hi = max((r["mfe_mae"] for r in report), default=float("nan"))
+    print("\nAGGREGATE over scored clusters:")
+    print(f"  scored={len(report)}  train_net>0: {n_pos_train}  "
+          f"pass_persistence(mfe/mae>={config.PERSIST_MIN_MFE_MAE}): {n_persist}  "
+          f"best_boot_p={best_p:.3f}  mfe/mae range=[{mfe_lo:.2f},{mfe_hi:.2f}]")
+
     print("\nper train cluster — selection gate + OOS:")
     print(f"  margin>{config.SELECT_MARGIN_BPS}bps, mfe/mae>={config.PERSIST_MIN_MFE_MAE}, "
           f"hold>={config.PERSIST_MIN_HOLD_BARS}, FDR alpha={config.FDR_ALPHA}")

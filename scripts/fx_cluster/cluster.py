@@ -10,9 +10,11 @@ from scripts.fx_cluster import config
 
 class Clusterer:
     def __init__(self, min_cluster_size: int = config.HDBSCAN_MIN_CLUSTER_SIZE,
-                 min_samples: int = config.HDBSCAN_MIN_SAMPLES):
+                 min_samples: int = config.HDBSCAN_MIN_SAMPLES,
+                 cluster_selection_method: str = config.HDBSCAN_CLUSTER_SELECTION):
         self._h = hdbscan.HDBSCAN(
             min_cluster_size=min_cluster_size, min_samples=min_samples,
+            cluster_selection_method=cluster_selection_method,
             prediction_data=True,
         )
         self.labels_: np.ndarray = np.array([])

@@ -33,11 +33,17 @@ COMMISSION_BPS_RT = 0.6
 SPREAD_STRESS = 1.5         # report sensitivity: net at +50% spread
 
 # Embedding / clustering (spec section 3).
-UMAP_N_COMPONENTS = 8
+# HDBSCAN density estimation works best in low-D, so cluster on a 2-D UMAP.
+# cluster_selection_method='leaf' is REQUIRED: the default 'eom' collapses this
+# manifold to 2 broad masses (a trivial recent-return-sign bisection, 0% noise);
+# 'leaf' recovers the fine-grained recurring pockets (tens-to-hundreds of clusters,
+# ~70-90% noise = healthy). See scripts/fx_cluster/cluster_param_probe.py.
+UMAP_N_COMPONENTS = 2
 UMAP_N_NEIGHBORS = 30
 UMAP_MIN_DIST = 0.0
 HDBSCAN_MIN_CLUSTER_SIZE = 400
 HDBSCAN_MIN_SAMPLES = 20
+HDBSCAN_CLUSTER_SELECTION = "leaf"
 RANDOM_SEED = 17
 
 # Scoring (spec section 6).
