@@ -10,14 +10,11 @@ import polars as pl
 def tick_rule_signs(mid: np.ndarray) -> np.ndarray:
     """Lee-Ready tick rule: +1 uptick, -1 downtick, 0-diff carries the last sign.
     First element has no prior tick -> 0."""
-    d = np.sign(np.diff(mid, prepend=mid[0]))
-    out = np.zeros(len(d), dtype=float)
-    last = 0.0
-    for i in range(len(d)):
-        if d[i] != 0.0:
-            last = d[i]
-        out[i] = last
-    return out
+    d = np.sign(np.diff(mid, prepend=mid[0]))  # d[0] == 0 (prepend)
+    # forward-fill zero-diffs with the last non-zero sign; leading zeros stay 0
+    nz = d != 0.0
+    idx = np.maximum.accumulate(np.where(nz, np.arange(len(d)), 0))
+    return d[idx]
 
 
 def quote_ofi(bid: np.ndarray, ask: np.ndarray) -> np.ndarray:
