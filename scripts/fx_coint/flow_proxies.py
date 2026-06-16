@@ -26,3 +26,11 @@ def quote_ofi(bid: np.ndarray, ask: np.ndarray) -> np.ndarray:
     db = np.sign(np.diff(bid, prepend=bid[0]))
     da = np.sign(np.diff(ask, prepend=ask[0]))
     return db - da
+
+
+def causal_zscore(x: pl.Series, span: int) -> pl.Series:
+    """EWMA z-score using only information up to t-1 (mean/std shifted by one bar),
+    so x_t never enters its own normalisation."""
+    mean = x.ewm_mean(span=span, min_samples=span).shift(1)
+    std = x.ewm_std(span=span, min_samples=span).shift(1)
+    return (x - mean) / std
