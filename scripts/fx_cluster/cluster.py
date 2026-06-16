@@ -17,7 +17,7 @@ class Clusterer:
         )
         self.labels_: np.ndarray = np.array([])
 
-    def fit(self, z: np.ndarray) -> "Clusterer":
+    def fit(self, z: np.ndarray) -> Clusterer:
         self.labels_ = self._h.fit_predict(np.asarray(z, dtype=float))
         return self
 

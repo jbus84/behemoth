@@ -17,7 +17,7 @@ class Embedder:
             random_state=config.RANDOM_SEED,
         )
 
-    def fit(self, x: np.ndarray) -> "Embedder":
+    def fit(self, x: np.ndarray) -> Embedder:
         self._um.fit(np.asarray(x, dtype=float))
         return self
 

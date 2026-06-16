@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import polars as pl
 
-from scripts.fx_cluster.killtest import assemble_points, add_block_index
+from scripts.fx_cluster.killtest import add_block_index, assemble_points
 
 
 def _bars(seed):
