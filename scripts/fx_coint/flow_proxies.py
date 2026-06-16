@@ -34,3 +34,26 @@ def causal_zscore(x: pl.Series, span: int) -> pl.Series:
     mean = x.ewm_mean(span=span, min_samples=span).shift(1)
     std = x.ewm_std(span=span, min_samples=span).shift(1)
     return (x - mean) / std
+
+
+def bars_from_ticks(ticks: pl.DataFrame, freq: str) -> pl.DataFrame:
+    """ticks: timestamp, bid, ask, mid. Build true time bars (last tick before each
+    boundary) with mean tick-rule flow + mean OFI + tick count per bar."""
+    t = ticks.sort("timestamp")
+    t = t.with_columns(
+        pl.Series("tsign", tick_rule_signs(t["mid"].to_numpy())),
+        pl.Series("ofi", quote_ofi(t["bid"].to_numpy(), t["ask"].to_numpy())),
+        pl.col("timestamp").dt.truncate(freq).alias("bucket"),
+    )
+    return (
+        t.group_by("bucket")
+        .agg(
+            pl.col("mid").last(),
+            pl.col("bid").last(),
+            pl.col("ask").last(),
+            pl.col("tsign").mean().alias("flow_tick"),
+            pl.col("ofi").mean().alias("flow_ofi"),
+            pl.len().alias("n_ticks"),
+        )
+        .sort("bucket")
+    )
