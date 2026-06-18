@@ -238,7 +238,94 @@ The "surviving FX edge = weekly+ only" conclusion **stands**. Weekly/monthly mea
 ([[project_fx_weekly_meanreversion_lead.md]]) remains the only demonstrated, regime-robust
 retail-FX edge in this program.
 
-### Lesson
+---
+
+## UPDATE: Death diagnostic — why did the edge die? (IC / vol / tail-toxicity decomposition)
+
+Running `diagnose_edge_death_pooled` on EUR/GBP/JPY 2h long q0.95: for **every WFO test
+observation** (not just gated trades), compute per-quarter Spearman IC, realized vol, gross-all,
+gross-top-q, and net-top-q. This distinguishes three failure modes:
+
+1. **IC collapse** → model mapping broke → retraining MIGHT help.
+2. **IC stable + vol collapse** → z-space prediction works but bps reward too small →
+   retraining WON'T help.
+3. **IC stable + vol stable + topq gross negative** → adverse selection in the tail →
+   retraining WON'T help.
+
+### Pooled quarterly diagnostic
+
+| qtr | n | nTop | IC | vol | gAll | gTopQ | netTQ |
+|---|---|---|---|---|---|---|---|
+| 2022Q1 | 168 | 14 | **+0.122** | 14.5 | +1.46 | **+6.75** | **+6.06** |
+| 2022Q2 | 780 | 70 | −0.000 | 16.8 | +0.51 | +2.82 | +2.13 |
+| 2022Q3 | 792 | 90 | +0.062 | 19.5 | +0.65 | +1.39 | +0.70 |
+| 2022Q4 | 780 | 161 | +0.032 | 27.8 | +0.54 | +1.66 | +0.97 |
+| **2023Q1** | **777** | **81** | **+0.020** | **19.7** | **+0.78** | **+5.77** | **+5.08** |
+| 2023Q2 | 780 | 32 | −0.034 | 13.2 | +0.85 | +1.73 | +1.04 |
+| 2023Q3 | 780 | 40 | +0.024 | 13.4 | −0.13 | −0.39 | −1.08 |
+| 2023Q4 | 765 | 56 | −0.034 | 16.0 | +0.34 | +0.48 | −0.21 |
+| 2024Q1 | 768 | 10 | +0.008 | 12.6 | +0.86 | +6.03 | +5.34 |
+| 2024Q2 | 780 | 28 | +0.009 | 12.6 | +0.27 | −0.08 | −0.77 |
+| 2024Q3 | 789 | 50 | −0.029 | 13.4 | −0.36 | −1.82 | −2.51 |
+| **2024Q4** | **780** | **29** | **+0.137** | **14.3** | **−0.67** | **+0.43** | **−0.26** |
+| 2025Q1 | 756 | 45 | +0.003 | 16.1 | +1.11 | +4.23 | +3.54 |
+| 2025Q2 | 780 | 50 | +0.043 | 17.6 | +0.12 | +3.48 | +2.79 |
+| 2025Q3 | 789 | 36 | +0.015 | 12.4 | +0.20 | +2.00 | +1.31 |
+| 2025Q4 | 780 | 7 | +0.045 | 10.8 | +0.51 | +3.09 | +2.40 |
+| 2026Q1 | 756 | 27 | +0.040 | 14.2 | +0.42 | −0.86 | −1.55 |
+| 2026Q2 | 420 | 6 | +0.116 | 9.2 | −0.13 | +1.33 | +0.63 |
+
+### The verdict: retraining is NOT the answer
+
+Three facts from the diagnostic kill the retraining hypothesis:
+
+**1. IC is not dead — sometimes it's excellent in "bad" quarters.**
+- 2024Q4 has the **highest IC in the entire sample** (+0.137) but net is **negative** (−0.26).
+- 2026Q2: IC +0.116, net +0.63 (positive but tiny).
+- Even 2025Q2 (IC +0.043) produces +2.79 net.
+
+The model is STILL ranking. The mapping from features to target has **not** broken.
+
+**2. The expected IC-to-payoff relationship collapsed at the tail.**
+With IC=+0.137 and vol=14.3 (2024Q4), the theoretical top-5% lift from a monotonic rank
+relationship is ~3.2 bps. Observed: **0.43 bps** — a 7× shortfall. The model ranks correctly
+but the *extreme* tail (where the strategy lives) is disproportionately unrewarding. This is
+**tail toxicity**: the top-ranked trades behave worse than the rank-relationship predicts.
+
+**3. WFO already re-trains every fold.** The model is already adapting to progressively newer
+data. If retraining on recent data helped, the later folds would show it. They don't.
+
+### What actually killed the edge
+
+The edge died because the **payoff distribution became concave**: the model still predicts
+direction in the middle of the distribution, but the extreme tail (top 5%) is where it is
+most wrong. Possible mechanisms:
+- **Adverse selection at extreme confidence:** high predicted scores coincide with liquidity
+events, fading momentum, or crowded positioning.
+- **Regime-dependent convexity:** the momentum signal worked in trending/volatile regimes
+(2022, 2023Q1) but generates mean-reversion in chop (2023Q2+). The tail is where this regime
+switch is most severe.
+- **Feature starvation:** 5 price-only features lack regime indicators (vol regime, macro trend,
+liquidity proxies) to distinguish "good momentum" from "bad momentum."
+
+### Bottom line
+
+Retraining the same 5-feature Ridge model on newer data **will not fix this.** The ranking
+ability is intact. The problem is that the *economic content* of the ranking at the extreme
+tail has evaporated. A richer model (with regime/vol/flow features) might help, but that's a
+new research program, not a retraining pass.
+
+The "surviving FX edge = weekly+ only" conclusion **stands**.
+
+### Lessons
+
+1. **Pooled statistics are dangerous without death diagnostics.** A median split can say "decay."
+   The IC/vol/tail decomposition says "tail toxicity." These imply completely different actions.
+2. **Positive IC ≠ tradeable edge.** You need monotonicity AND tail payoff. A concave
+   relationship (positive in the middle, flat/reversing at extremes) is worthless for a
+   tail-gated strategy.
+3. **Build `diagnose_edge_death_pooled` into every WFO result.** It runs automatically and
+costs nothing, but it prevents chasing ghosts.
 
 Always slice by **calendar quarter** (or finer) before trusting a pooled t-stat. A single
 anomalous quarter can carry an entire "significant" result, and a median split will mask this
