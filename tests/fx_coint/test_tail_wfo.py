@@ -53,3 +53,20 @@ def test_gate_trades_uses_train_threshold_long_and_short():
     res_s2 = gate_trades(folds, q=0.85, cost_bps=0.5, side="short")
     assert res_s2["n"] == 1
     assert np.allclose(res_s2["net"], [-4.0 - 0.5])
+
+
+def test_cell_stats_known_arrays():
+    from scripts.fx_coint.tail_wfo import cell_stats
+    # 2 folds: fold 0 all positive, fold 1 mostly negative
+    net = np.array([1.0, 2.0, 1.5, -1.0, -0.5, -2.0])
+    fid = np.array([0, 0, 0, 1, 1, 1])
+    s = cell_stats(net, fid)
+    assert s["n"] == 6
+    assert abs(s["mean_net_bps"] - net.mean()) < 1e-9
+    assert abs(s["total_net_bps"] - net.sum()) < 1e-9
+    assert s["pos_fold_pct"] == 0.5  # fold 0 positive, fold 1 negative
+    assert abs(s["hit_rate"] - 3 / 6) < 1e-9
+    assert np.isfinite(s["t_stat"]) and np.isfinite(s["p_value"])
+    # n<3 -> nan stats guard
+    s2 = cell_stats(np.array([1.0, 2.0]), np.array([0, 0]))
+    assert np.isnan(s2["t_stat"]) and np.isnan(s2["p_value"])

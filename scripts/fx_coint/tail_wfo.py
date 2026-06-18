@@ -95,3 +95,31 @@ def gate_trades(folds: list[dict], q: float, cost_bps: float, side: str = "long"
         "hour": np.concatenate(hours),
         "n": len(net_all),
     }
+
+
+def cell_stats(net: np.ndarray, fold_id: np.ndarray) -> dict:
+    net = np.asarray(net, float)
+    n = len(net)
+    if n == 0:
+        return {"n": 0, "mean_net_bps": float("nan"), "t_stat": float("nan"),
+                "p_value": float("nan"), "pos_fold_pct": float("nan"),
+                "hit_rate": float("nan"), "total_net_bps": 0.0}
+    if n >= 3:
+        tt = ttest_1samp(net, 0.0)
+        t_stat, p_value = float(tt.statistic), float(tt.pvalue)
+    else:
+        t_stat = p_value = float("nan")
+    folds = np.unique(fold_id)
+    if len(folds) > 0:
+        pos = np.mean([net[fold_id == fk].mean() > 0 for fk in folds])
+    else:
+        pos = float("nan")
+    return {
+        "n": n,
+        "mean_net_bps": float(net.mean()),
+        "t_stat": t_stat,
+        "p_value": p_value,
+        "pos_fold_pct": float(pos),
+        "hit_rate": float((net > 0).mean()),
+        "total_net_bps": float(net.sum()),
+    }
