@@ -561,3 +561,95 @@ required_n = (z_critical * std / min_detectable_mean) ** 2
 If filtering drops you below required_n, the filter is not deployable regardless of how much
 it improves per-trade mean. Always test the filtered result with the SAME significance
 standard (day-clustered t) as the baseline.
+
+---
+
+## UPDATE: Enhanced model — regime features baked INTO the Ridge model
+
+The user asked the right follow-up: "these are all filters, what about features in the model?"
+Built `build_enhanced_panel` + `walk_forward_enhanced` that adds regime features + interaction
+terms DIRECTLY to the Ridge model (11 features total: original 5 + 5 regime + 6 interactions).
+The model itself learns regime-aware weights, rather than us thresholding post-hoc.
+
+### Pooled results (EUR/GBP/JPY 2h long q0.95)
+
+| variant | n | meanNet | dayT | dayP | hit |
+|---|---|---|---|---|---|
+| Baseline (5 features) | **832** | **+1.27** | **+2.78** | **0.006** ✓ | 52% |
+| Enhanced (11 features + interactions) | 128 | +1.07 | −0.38 | 0.705 | 48% |
+
+### Per-pair breakdown
+
+| pair | baseline n | base mean | enhanced n | enh mean |
+|---|---|---|---|---|
+| EURUSD | 271 | +1.19 | 53 | **+3.36** |
+| GBPUSD | 192 | +0.92 | 25 | **−2.24** |
+| USDJPY | 369 | +1.50 | 50 | **+0.31** |
+
+### What the enhanced model reveals
+
+**The enhanced model is WORSE than the baseline. Not just under-powered — it destroyed the edge.**
+
+Pooled: +1.07 vs +1.27 baseline, p=0.705 (not significant). Three reasons:
+
+**1. Pair-specific regime responses get averaged away.**
+The filter experiment proved USDJPY responds well to skew (+2.93 at skew≥0.3) but GBPUSD
+gets killed by it (−0.13 at skew≥0.5). The model learns a **single pooled coefficient** for
+`skew_ret` — it cannot say "skew helps USDJPY but hurts GBPUSD." The result is a noisy
+average that dilutes the signal for all pairs.
+
+**2. Interaction terms create multicollinearity with the original features.**
+`mom_short_x_skew_ret` is highly correlated with `mom_short` itself (correlation ~0.6–0.8).
+Ridge handles this by shrinking both coefficients, but the effective signal gets spread across
+two correlated features instead of concentrated in one. The net result is MORE variance, not
+less.
+
+**3. The model still takes trades in bad regimes — it just predicts slightly lower scores.**
+A tail-gated strategy selects the top 5% of predicted scores. If the model down-weights a
+prediction from "very confident" to "moderately confident" in chop, that trade might still
+clear the top-5% threshold (since the threshold is relative to the training distribution).
+The filter says "don't trade at all" — the model says "trade, but predict lower" — and the
+trade still gets selected. **Binary filtering is more powerful than continuous weighting for
+tail-gated strategies.**
+
+**4. Trailing regime estimates are noisy at WFO boundaries.**
+The 30-bar trailing skew/payoff estimates are unreliable in early folds where training data
+is limited. The model learns spurious relationships between noisy regime estimates and
+returns, then applies them to later folds where regime estimates are more stable.
+
+### Why filters showed promise but features in the model failed
+
+| mechanism | filter | feature-in-model |
+|---|---|---|
+| Pair-specific threshold | ✓ (per-pair tuning possible) | ✗ (single pooled coefficient) |
+| Binary on/off | ✓ (eliminates bad trades entirely) | ✗ (trade still clears top-5%) |
+| Multicollinearity | N/A (no interaction terms) | ✗ (mom_short × skew correlates with mom_short) |
+| Statistical power | Drops N, but edge preserved | Drops N AND corrupts edge |
+
+The filter is a **post-selection** mechanism: it looks at the model's output AND the regime,
+then decides whether to trade. The enhanced model is a **pre-computation** mechanism: it tries
+to fold regime into the prediction itself. For tail-gated strategies, post-selection is
+strictly more powerful because it can override the model when the regime is clearly wrong.
+
+### Bottom line
+
+**Baking regime features into the model is NOT the answer either.**
+
+The correct diagnosis (payoff asymmetry inversion) does not imply a model-level fix. The
+problem is that the *economic mapping* from prediction to payoff changes by regime, and a
+linear model with trailing regime features cannot capture this ex ante. The regime is only
+reliably identifiable AFTER the fact (when you have enough data to compute stable skew/payoff
+estimates), not at decision time with 30 bars of trailing data.
+
+The "surviving FX edge = weekly+ only" conclusion **still stands**.
+
+### Lesson
+
+**For tail-gated strategies, post-selection filters dominate model-level feature engineering.**
+The model's job is to rank — the filter's job is to decide whether the regime justifies acting
+on that rank. These are separate problems and should not be conflated.
+
+If you want regime-aware trading:
+1. **Keep the base model simple** (5 features is fine — its job is ranking)
+2. **Use the regime as a post-hoc gate** (binary on/off), not as a model input
+3. **Accept the N trade-off** — you need 5–10× more data for the filter to remain significant
