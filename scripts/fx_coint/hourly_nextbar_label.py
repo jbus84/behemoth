@@ -63,6 +63,44 @@ def label_next_bar_tercile(df: pd.DataFrame, window: int = 500) -> pd.DataFrame:
     return out
 
 
+def label_horizon_tercile(df: pd.DataFrame, horizon: int, window: int = 500) -> pd.DataFrame:
+    """Drift-immune h-bar-ahead 3-class label via rolling causal terciles.
+
+    Thresholds at t use realized h-bar returns known by t (the last `horizon` bars);
+    the h-bar forward return r_{t->t+h} is labelled against them. Last `horizon`
+    rows unlabelable. Uses h-bar scale for terciles to maintain balance and
+    drift-immunity across horizons.
+    """
+    mid = df["mid"].to_numpy()
+    n = len(mid)
+
+    # h-bar realized returns (what happened h bars ago)
+    realized = np.empty(n)
+    realized[:horizon] = np.nan
+    realized[horizon:] = mid[horizon:] / mid[:-horizon] - 1.0
+
+    # h-bar forward returns (what will happen)
+    fwd = np.full(n, np.nan)
+    fwd[: n - horizon] = mid[horizon:] / mid[: n - horizon] - 1.0
+
+    r = pd.Series(realized, index=df.index)
+    q33 = r.rolling(window, min_periods=window // 2).quantile(1 / 3)
+    q67 = r.rolling(window, min_periods=window // 2).quantile(2 / 3)
+
+    label = np.zeros(n, dtype=np.int8)
+    f = pd.Series(fwd, index=df.index)
+    label[(f < q33).to_numpy(na_value=False)] = -1
+    label[(f > q67).to_numpy(na_value=False)] = 1
+    valid = (~q33.isna()).to_numpy() & (~np.isnan(fwd))
+    label[~valid] = 0
+
+    out = df.copy()
+    out["tb_label"] = label
+    out["fwd_ret_bps"] = fwd * 10_000.0
+    out["_label_valid"] = valid
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default="EURUSD")
