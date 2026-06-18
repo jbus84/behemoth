@@ -74,3 +74,42 @@ Power, not new signal, is the lever:
    the floor) and then **tick-exact fill verification** before sizing.
 
 3h, USDCAD, and the USDJPY-3h reversion are dropped.
+
+---
+
+## UPDATE: Pooled tight-majors significance test (the power lever)
+
+Pooled the EUR/GBP/JPY 2h long top-decile trades for breadth and tested significance two ways:
+naive per-trade t (overstates — correlated trades) and **day-clustered t** (mean net per
+calendar day, then test the daily series — absorbs cross-pair + intraday correlation).
+
+| q | trades | mean net | naive t (p) | **day-clustered t (p)** | days | hit |
+|---|---|---|---|---|---|---|
+| 0.80 | 2651 | +0.177 | 0.65 (0.514) | 1.32 (0.187) | 880 | 50% |
+| 0.90 | 1487 | +0.525 | 1.35 (0.176) | **2.00 (0.046)** | 614 | 50% |
+| 0.95 | 832 | +1.265 | 2.25 (0.025) | **2.78 (0.006)** | 401 | 52% |
+
+**This clears significance.** At top-5% conviction: **+1.27 bps/trade, day-clustered p=0.006**
+(<1%), surviving a 3× Bonferroni for the q-sweep (→0.018). It is the **first FX intraday cell
+in the project to clear significance net of real cost**. Two credibility checks pass:
+1. **Mean AND t-stat both rise monotonically with conviction** (mean +0.18→+0.53→+1.27;
+   day-clustered t 1.32→2.00→2.78) — the mechanical signature of a real tail edge, not a
+   threshold artifact.
+2. **Day-clustering raised t rather than lowering it**, so the significance is not an artifact
+   of treating correlated same-day trades as independent.
+
+### Honest caveats (do not skip before risking capital)
+- **Garden of forking paths:** the cell (2h, these 3 pairs, long, high-q) was *selected* from
+  the #340 exploration. The WFO is OOS within the period, but the cell choice was not
+  pre-registered. Trust requires an untouched holdout (e.g. later years, or out-of-sample pairs).
+- **Magnitude-tail edge, hit only 52%:** wins barely more than half; expectancy comes from the
+  size of the winners. Highly sensitive to slippage — needs tick-exact (ideally maker) fills.
+- **Day-independence:** day-clustering assumes calendar days are independent; multi-day momentum
+  persistence could still inflate t. A block bootstrap / Newey-West would harden it further.
+
+### Revised verdict
+The 2h long tight-major continuation edge is **real and now statistically significant net of
+cost at high conviction** — the first such result in this FX program. It is **GO for further
+validation, not yet GO for capital.** Next: (1) untouched-holdout / pre-registered test to kill
+the forking-paths concern, (2) block-bootstrap significance, (3) tick-exact fill verification,
+(4) only then a richer model (this is still the 5-feature floor).
