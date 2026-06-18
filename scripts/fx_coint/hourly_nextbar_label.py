@@ -13,7 +13,7 @@ At bar t:
 Usage:
     uv run python scripts/fx_coint/hourly_nextbar_label.py --year 2024 --window 500
 """
-
+# ruff: noqa: E402  (imports follow sys.path bootstrap, by design)
 from __future__ import annotations
 
 import argparse
