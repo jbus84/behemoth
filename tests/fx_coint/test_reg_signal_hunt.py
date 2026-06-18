@@ -85,3 +85,15 @@ def test_build_panel_no_lookahead_and_volnorm():
     # return; no future info) — check correlation is ~1 on the contiguous interior
     last_ret = panel["ret_next_bps"].shift(1).to_numpy()[1:]
     assert np.corrcoef(panel["r_1"].to_numpy()[1:], last_ret)[0, 1] > 0.99
+
+
+def test_breakeven_ic_and_fit_keys():
+    from scripts.fx_coint.reg_signal_hunt import breakeven_ic, fit_and_eval, build_freq_bars, build_panel
+    assert abs(breakeven_ic(0.64, 16.0) - 0.04) < 1e-9
+    df = _synthetic_1m(datetime(2025, 1, 6, 7, 0), 400 * 60)
+    panel = build_panel(build_freq_bars(df, "1h", session=(0, 24)))
+    res = fit_and_eval(panel, cost_bps=0.64, purge=1)
+    for k in ["n_test", "ic", "ic_star", "clears", "pred_bps", "actual_bps", "hours", "sigma_med"]:
+        assert k in res
+    assert len(res["pred_bps"]) == len(res["actual_bps"]) == res["n_test"]
+    assert res["ic_star"] == breakeven_ic(0.64, res["sigma_med"])

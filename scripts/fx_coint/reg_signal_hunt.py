@@ -95,3 +95,41 @@ def build_panel(bars: pd.DataFrame, vol_lookback: int = 24) -> pd.DataFrame:
         result = result.drop(result.index[gaps])
 
     return result.reset_index(drop=True)
+
+
+def breakeven_ic(cost_bps: float, sigma_h_bps: float) -> float:
+    return cost_bps / sigma_h_bps
+
+
+def fit_and_eval(
+    panel: pd.DataFrame, cost_bps: float, purge: int = 1, alpha: float = 1.0
+) -> dict:
+    n = len(panel)
+    split = int(n * 0.7)
+    train = panel.iloc[:split]
+    test = panel.iloc[split + purge:]
+    Xtr = train[FEATURE_COLS].to_numpy()
+    Xte = test[FEATURE_COLS].to_numpy()
+    ytr = train["target_z"].to_numpy()
+    yte = test["target_z"].to_numpy()
+
+    scaler = StandardScaler().fit(Xtr)
+    model = Ridge(alpha=alpha).fit(scaler.transform(Xtr), ytr)
+    pred_z = model.predict(scaler.transform(Xte))
+
+    sigma_te = test["sigma_h"].to_numpy()
+    pred_bps = pred_z * sigma_te
+    actual_bps = test["ret_next_bps"].to_numpy()
+    ic = spearmanr(pred_z, yte).statistic if len(yte) > 2 else float("nan")
+    sigma_med = float(np.median(sigma_te))
+    ic_star = breakeven_ic(cost_bps, sigma_med)
+    return {
+        "n_test": len(yte),
+        "ic": float(ic),
+        "ic_star": float(ic_star),
+        "clears": bool(ic > ic_star),
+        "pred_bps": pred_bps,
+        "actual_bps": actual_bps,
+        "hours": test["hour"].to_numpy(),
+        "sigma_med": sigma_med,
+    }
