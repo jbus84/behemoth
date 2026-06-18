@@ -38,8 +38,10 @@ def test_gate_trades_uses_train_threshold_long_and_short():
     test_pred = np.array([50.0, 90.0, 95.0, 10.0])
     test_act = np.array([1.0, 2.0, 3.0, 4.0])
     test_hour = np.array([12, 13, 14, 15])
-    folds = [{"train_pred": train, "test_pred": test_pred,
-              "test_actual_bps": test_act, "test_hour": test_hour}]
+    test_bucket = np.array(["2025-01-06T12:00", "2025-01-06T13:00",
+                            "2025-01-06T14:00", "2025-01-06T15:00"], dtype="datetime64[ns]")
+    folds = [{"train_pred": train, "test_pred": test_pred, "test_actual_bps": test_act,
+              "test_hour": test_hour, "test_bucket": test_bucket}]
     # long: thr=quantile(0..99,0.9)=89.1 -> selects test_pred 90,95 -> net = act - cost
     res = gate_trades(folds, q=0.9, cost_bps=0.5, side="long")
     assert res["n"] == 2
@@ -84,3 +86,23 @@ def test_run_cell_wfo_on_synthetic(tmp_path, monkeypatch):
     for k in ["n", "mean_net_bps", "t_stat", "p_value", "pos_fold_pct", "hit_rate"]:
         assert k in row
     assert row["n"] > 0
+
+
+def test_day_clustered_tstat_groups_by_date():
+    from scripts.fx_coint.tail_wfo import day_clustered_tstat
+    # two trades per day across 4 days; daily means = [1, 1, 1, 1] -> strongly positive
+    buckets = np.array([
+        "2025-01-06T10:00", "2025-01-06T12:00",
+        "2025-01-07T10:00", "2025-01-07T12:00",
+        "2025-01-08T10:00", "2025-01-08T12:00",
+        "2025-01-09T10:00", "2025-01-09T12:00",
+    ], dtype="datetime64[ns]")
+    net = np.array([0.5, 1.5, 0.8, 1.2, 0.9, 1.1, 1.0, 1.0])  # each day mean = 1.0
+    r = day_clustered_tstat(net, buckets)
+    assert r["n_days"] == 4
+    assert abs(r["daily_mean"] - 1.0) < 1e-9
+    # zero within-day variance of daily means -> huge t, tiny p
+    assert r["t_stat"] > 50 and r["p_value"] < 1e-3
+    # empty input guard
+    r0 = day_clustered_tstat(np.array([]), np.array([], dtype="datetime64[ns]"))
+    assert r0["n_days"] == 0 and np.isnan(r0["t_stat"])

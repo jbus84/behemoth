@@ -48,6 +48,7 @@ def walk_forward(
     yz = panel["target_z"].to_numpy()
     act = panel["ret_next_bps"].to_numpy()
     hour = panel["hour"].to_numpy()
+    bucket = panel["bucket"].to_numpy()
 
     folds: list[dict] = []
     for k in range(n_folds):
@@ -62,6 +63,7 @@ def walk_forward(
             "test_pred": model.predict(scaler.transform(X[test_lo:test_hi])),
             "test_actual_bps": act[test_lo:test_hi],
             "test_hour": hour[test_lo:test_hi],
+            "test_bucket": bucket[test_lo:test_hi],
         })
     return folds
 
@@ -70,6 +72,7 @@ def gate_trades(folds: list[dict], q: float, cost_bps: float, side: str = "long"
     nets: list[np.ndarray] = []
     fids: list[np.ndarray] = []
     hours: list[np.ndarray] = []
+    buckets: list[np.ndarray] = []
     for i, f in enumerate(folds):
         tp = f["test_pred"]
         if side == "long":
@@ -86,13 +89,16 @@ def gate_trades(folds: list[dict], q: float, cost_bps: float, side: str = "long"
             nets.append(net)
             fids.append(np.full(int(sel.sum()), i))
             hours.append(f["test_hour"][sel])
+            buckets.append(f["test_bucket"][sel])
     if not nets:
-        return {"net": np.array([]), "fold_id": np.array([], int), "hour": np.array([]), "n": 0}
+        return {"net": np.array([]), "fold_id": np.array([], int),
+                "hour": np.array([]), "bucket": np.array([], "datetime64[ns]"), "n": 0}
     net_all = np.concatenate(nets)
     return {
         "net": net_all,
         "fold_id": np.concatenate(fids),
         "hour": np.concatenate(hours),
+        "bucket": np.concatenate(buckets),
         "n": len(net_all),
     }
 
@@ -141,6 +147,62 @@ def run_cell_wfo(
     return {"symbol": sym, "freq": freq, "side": side, "q": q, **s}
 
 
+TIGHT_2H_Q_SWEEP = (0.80, 0.90, 0.95)
+
+
+def day_clustered_tstat(net: np.ndarray, bucket: np.ndarray) -> dict:
+    """One-sample t-test on per-calendar-day mean net, absorbing same-day cross-pair
+    and intraday autocorrelation. Naive per-trade t overstates significance when trades
+    are correlated; clustering by day is the conservative correction."""
+    net = np.asarray(net, float)
+    if len(net) == 0:
+        return {"n_days": 0, "daily_mean": float("nan"), "t_stat": float("nan"),
+                "p_value": float("nan")}
+    dates = pd.to_datetime(pd.Series(bucket)).dt.date.to_numpy()
+    daily = pd.Series(net).groupby(dates).mean().to_numpy()
+    if len(daily) >= 3:
+        tt = ttest_1samp(daily, 0.0)
+        t_stat, p_value = float(tt.statistic), float(tt.pvalue)
+    else:
+        t_stat = p_value = float("nan")
+    return {"n_days": len(daily), "daily_mean": float(daily.mean()),
+            "t_stat": t_stat, "p_value": p_value}
+
+
+def pooled_long_test(
+    pairs: list[str], freq: str, q: float, n_folds: int = 5
+) -> dict | None:
+    """Pool long top-(1-q) trades across `pairs` at `freq`, return pooled per-trade mean,
+    naive t, and day-clustered t. Pooling lifts power via breadth; day-clustering keeps
+    the significance honest against cross-pair correlation."""
+    nets, buckets = [], []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+        if len(panel) < 200:
+            continue
+        folds = walk_forward(panel, n_folds=n_folds)
+        tr = gate_trades(folds, q=q, cost_bps=COST_BPS[sym], side="long")
+        if tr["n"] > 0:
+            nets.append(tr["net"])
+            buckets.append(tr["bucket"])
+    if not nets:
+        return None
+    net = np.concatenate(nets)
+    bucket = np.concatenate(buckets)
+    naive = ttest_1samp(net, 0.0) if len(net) >= 3 else None
+    dc = day_clustered_tstat(net, bucket)
+    return {
+        "pairs": pairs, "freq": freq, "q": q, "n": len(net),
+        "mean_net_bps": float(net.mean()), "hit_rate": float((net > 0).mean()),
+        "naive_t": float(naive.statistic) if naive else float("nan"),
+        "naive_p": float(naive.pvalue) if naive else float("nan"),
+        "day_n": dc["n_days"], "day_t": dc["t_stat"], "day_p": dc["p_value"],
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default="all", choices=UNIVERSE + ["all"])
@@ -181,6 +243,17 @@ def main() -> None:
     if jpy:
         print(f"\nUSDJPY 3h SHORT-side: n={jpy['n']} meanNet={jpy['mean_net_bps']:+.3f} "
               f"t={jpy['t_stat']:+.2f} posFold={jpy['pos_fold_pct']:.2f} hit={jpy['hit_rate']*100:.0f}%")
+
+    # POOLED tight majors at 2h long: breadth for power, day-clustered t for honesty.
+    print(f"\nPOOLED tight majors {TIGHT_MAJORS} @ 2h long — q-sweep:")
+    print(f"{'q':>5} {'n':>6} {'meanNet':>8} {'naiveT':>7} {'naiveP':>7} "
+          f"{'days':>5} {'dayT':>6} {'dayP':>7} {'hit':>5}")
+    for qq in TIGHT_2H_Q_SWEEP:
+        p = pooled_long_test(TIGHT_MAJORS, "2h", q=qq)
+        if p:
+            print(f"{qq:>5.2f} {p['n']:>6} {p['mean_net_bps']:>+8.3f} {p['naive_t']:>+7.2f} "
+                  f"{p['naive_p']:>7.3f} {p['day_n']:>5} {p['day_t']:>+6.2f} {p['day_p']:>7.3f} "
+                  f"{p['hit_rate']*100:>4.0f}%")
 
 
 if __name__ == "__main__":
