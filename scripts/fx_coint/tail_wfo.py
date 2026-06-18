@@ -102,6 +102,49 @@ def add_trailing_regime_features(
     return panel
 
 
+def build_enhanced_panel(sym: str, freq: str, window: int = 30) -> pd.DataFrame | None:
+    """Build panel with original 5 features + regime features + interaction terms.
+
+    Regime features (computed from past returns only):
+        skew_ret, auto_ret, vol_ret, hit_ret, payoff_ret
+
+    Interaction terms (regime × original features):
+        r_1×skew, mom_short×skew, mom_long×skew, r_1×payoff, mom_short×payoff
+
+    These let the linear Ridge model learn that momentum features have DIFFERENT
+    weights in trending vs choppy regimes — the core failure of the baseline model."""
+    src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+    if not src.exists():
+        return None
+    panel = add_trailing_regime_features(
+        build_panel(build_freq_bars(pl.read_parquet(src), freq)), window=window
+    )
+    if len(panel) < 200:
+        return None
+
+    # Add interaction terms — the key to regime-aware linear models
+    orig = ["r_1", "mom_short", "mom_long"]
+    regime = ["skew_ret", "payoff_ret"]
+    for o in orig:
+        for r in regime:
+            panel[f"{o}_x_{r}"] = panel[o] * panel[r]
+
+    # Drop any rows with NaN in the new interaction columns
+    all_cols = FEATURE_COLS + ["skew_ret", "auto_ret", "vol_ret", "hit_ret", "payoff_ret"]
+    all_cols += [f"{o}_x_{r}" for o in orig for r in regime]
+    finite = np.isfinite(panel[all_cols].to_numpy()).all(axis=1)
+    panel = panel[finite].reset_index(drop=True)
+    return panel
+
+
+# Feature columns for the enhanced model
+ENHANCED_FEATURE_COLS = FEATURE_COLS + [
+    "skew_ret", "auto_ret", "vol_ret", "hit_ret", "payoff_ret",
+    "r_1_x_skew_ret", "mom_short_x_skew_ret", "mom_long_x_skew_ret",
+    "r_1_x_payoff_ret", "mom_short_x_payoff_ret", "mom_long_x_payoff_ret",
+]
+
+
 def walk_forward_regime_aware(
     panel: pd.DataFrame,
     n_folds: int = 5,
@@ -109,11 +152,54 @@ def walk_forward_regime_aware(
     purge: int = 1,
     alpha: float = 1.0,
 ) -> list[dict]:
-    """Expanding-window WFO that also forwards regime / meta features for each fold."""
+    """Expanding-window WFO that forwards regime / meta features for post-hoc filtering.
+    Uses the ORIGINAL 5-feature model."""
     n = len(panel)
     start = int(n * min_train_frac)
     edges = np.linspace(start, n, n_folds + 1).astype(int)
     X = panel[FEATURE_COLS].to_numpy()
+    yz = panel["target_z"].to_numpy()
+    act = panel["ret_next_bps"].to_numpy()
+    hour = panel["hour"].to_numpy()
+    bucket = panel["bucket"].to_numpy()
+    regime_cols = ["skew_ret", "auto_ret", "vol_ret", "hit_ret", "payoff_ret"]
+    regime = {c: panel[c].to_numpy() for c in regime_cols}
+
+    folds: list[dict] = []
+    for k in range(n_folds):
+        split = edges[k]
+        test_lo, test_hi = edges[k] + purge, edges[k + 1]
+        if test_hi - test_lo < 1 or split < 10:
+            continue
+        scaler = StandardScaler().fit(X[:split])
+        model = Ridge(alpha=alpha).fit(scaler.transform(X[:split]), yz[:split])
+        fd: dict = {
+            "train_pred": model.predict(scaler.transform(X[:split])),
+            "test_pred": model.predict(scaler.transform(X[test_lo:test_hi])),
+            "test_target_z": yz[test_lo:test_hi],
+            "test_actual_bps": act[test_lo:test_hi],
+            "test_hour": hour[test_lo:test_hi],
+            "test_bucket": bucket[test_lo:test_hi],
+        }
+        for c in regime_cols:
+            fd[f"test_{c}"] = regime[c][test_lo:test_hi]
+        folds.append(fd)
+    return folds
+
+
+def walk_forward_enhanced(
+    panel: pd.DataFrame,
+    n_folds: int = 5,
+    min_train_frac: float = 0.5,
+    purge: int = 1,
+    alpha: float = 1.0,
+) -> list[dict]:
+    """Expanding-window WFO with ENHANCED features: original 5 + regime features +
+    interaction terms. The model itself learns regime-aware weights."""
+    n = len(panel)
+    start = int(n * min_train_frac)
+    edges = np.linspace(start, n, n_folds + 1).astype(int)
+    X = panel[ENHANCED_FEATURE_COLS].to_numpy()
     yz = panel["target_z"].to_numpy()
     act = panel["ret_next_bps"].to_numpy()
     hour = panel["hour"].to_numpy()
@@ -304,6 +390,21 @@ def run_cell_wfo(
         return None
     cost = COST_BPS[sym]
     folds = walk_forward(panel, n_folds=n_folds)
+    trades = gate_trades(folds, q=q, cost_bps=cost, side=side)
+    s = cell_stats(trades["net"], trades["fold_id"])
+    return {"symbol": sym, "freq": freq, "side": side, "q": q, **s}
+
+
+def run_cell_wfo_enhanced(
+    sym: str, freq: str, side: str = "long", q: float = 0.95, n_folds: int = 5
+) -> dict | None:
+    """Run WFO with ENHANCED features (original 5 + regime + interactions).
+    The model itself learns regime-aware weights."""
+    panel = build_enhanced_panel(sym, freq)
+    if panel is None or len(panel) < 200:
+        return None
+    cost = COST_BPS[sym]
+    folds = walk_forward_enhanced(panel, n_folds=n_folds)
     trades = gate_trades(folds, q=q, cost_bps=cost, side=side)
     s = cell_stats(trades["net"], trades["fold_id"])
     return {"symbol": sym, "freq": freq, "side": side, "q": q, **s}
@@ -867,6 +968,50 @@ def main() -> None:
         if d["ic_by_vol"]:
             vol_ic = " ".join(f"{k}={v:+.3f}" for k, v in sorted(d["ic_by_vol"].items()))
             print(f"  → vol-cond IC: {vol_ic}  topHours={d['top_hours']}")
+
+    # ENHANCED MODEL EXPERIMENT — regime features baked INTO the model
+    print("\nENHANCED MODEL — regime features IN the Ridge model (interactions)")
+    print(f"{'variant':>22} {'n':>5} {'meanNet':>8} {'t':>6} {'hit':>5} {'posFold':>7}")
+    for sym in TIGHT_MAJORS:
+        base = run_cell_wfo(sym, "2h", side="long", q=0.95)
+        enh = run_cell_wfo_enhanced(sym, "2h", side="long", q=0.95)
+        if base:
+            print(f"{sym:>7} baseline      {base['n']:>5} {base['mean_net_bps']:>+8.3f} "
+                  f"{base['t_stat']:>+6.2f} {base['hit_rate']*100:>4.0f}% {base['pos_fold_pct']:>7.2f}")
+        if enh:
+            print(f"{sym:>7} enhanced      {enh['n']:>5} {enh['mean_net_bps']:>+8.3f} "
+                  f"{enh['t_stat']:>+6.2f} {enh['hit_rate']*100:>4.0f}% {enh['pos_fold_pct']:>7.2f}")
+
+    # Pooled enhanced vs baseline
+    print("\nPOOLED ENHANCED vs BASELINE (EUR/GBP/JPY 2h long q0.95)")
+    print(f"{'variant':>22} {'n':>5} {'meanNet':>8} {'dayT':>6} {'dayP':>7} {'hit':>5}")
+    for label, use_enhanced in [("baseline", False), ("enhanced", True)]:
+        nets, buckets = [], []
+        for sym in TIGHT_MAJORS:
+            if use_enhanced:
+                panel = build_enhanced_panel(sym, "2h")
+                if panel is None or len(panel) < 200:
+                    continue
+                folds = walk_forward_enhanced(panel, n_folds=5)
+            else:
+                src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+                if not src.exists():
+                    continue
+                panel = build_panel(build_freq_bars(pl.read_parquet(src), "2h"))
+                if len(panel) < 200:
+                    continue
+                folds = walk_forward(panel, n_folds=5)
+            tr = gate_trades(folds, q=0.95, cost_bps=COST_BPS[sym])
+            if tr["n"] > 0:
+                nets.append(tr["net"])
+                buckets.append(tr["bucket"])
+        if not nets:
+            continue
+        net = np.concatenate(nets)
+        bk = np.concatenate(buckets)
+        dc = day_clustered_tstat(net, bk)
+        print(f"{label:>22} {len(net):>5} {net.mean():>+8.3f} "
+              f"{dc['t_stat']:>+6.2f} {dc['p_value']:>7.3f} {(net>0).mean()*100:>4.0f}%")
 
     # REGIME + META-RULE EXPERIMENT — can we rescue the edge?
     print("\nREGIME + META-RULE EXPERIMENT (EUR/GBP/JPY 2h long q0.95)")
