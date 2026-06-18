@@ -3,6 +3,7 @@ import pandas as pd
 from scripts.fx_coint.hourly_nextbar_label import label_horizon_tercile
 from scripts.fx_coint.hourly_flow_features import add_channels, ARMS, build_panel
 from scripts.fx_coint.multiplicity import p_from_t, sidak_alpha, bh_reject
+from scripts.fx_coint.hourly_flow_direction_eval import pooled_metrics
 
 
 def _synth(n=3000, seed=0):
@@ -60,6 +61,20 @@ def test_build_panel_shapes():
     assert X.dtype == np.float64 and X.ndim == 3
     assert X.shape[1] == len(ARMS["both"]) and X.shape[2] == 24
     assert len(y) == X.shape[0] == len(pos)
+
+
+def test_pooled_metrics_detects_perfect_direction():
+    rng = np.random.default_rng(0)
+    fwd = rng.normal(0, 5, 2000)
+    y = np.sign(fwd).astype(int)
+    pred = y.copy()                      # perfect directional caller
+    m = pooled_metrics(pred, fwd, y, cost=0.0)
+    assert m["dir_acc"] > 0.99
+    assert m["net"] > 0 and m["ci_lo"] > 0
+    # random predictions -> ~chance, CI spans 0
+    pred_rand = rng.choice([-1, 1], size=2000)
+    mr = pooled_metrics(pred_rand, fwd, y, cost=0.0)
+    assert 0.45 < mr["dir_acc"] < 0.55
 
 
 def test_multiplicity_helpers():
