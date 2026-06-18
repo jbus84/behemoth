@@ -123,3 +123,65 @@ def cell_stats(net: np.ndarray, fold_id: np.ndarray) -> dict:
         "hit_rate": float((net > 0).mean()),
         "total_net_bps": float(net.sum()),
     }
+
+
+def run_cell_wfo(
+    sym: str, freq: str, side: str = "long", q: float = 0.9, n_folds: int = 5
+) -> dict | None:
+    src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+    if not src.exists():
+        return None
+    panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+    if len(panel) < 200:
+        return None
+    cost = COST_BPS[sym]
+    folds = walk_forward(panel, n_folds=n_folds)
+    trades = gate_trades(folds, q=q, cost_bps=cost, side=side)
+    s = cell_stats(trades["net"], trades["fold_id"])
+    return {"symbol": sym, "freq": freq, "side": side, "q": q, **s}
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--symbol", default="all", choices=UNIVERSE + ["all"])
+    ap.add_argument("--freq", default="all", choices=FREQS + ["all"])
+    ap.add_argument("--q", type=float, default=0.9)
+    args = ap.parse_args()
+    syms = UNIVERSE if args.symbol == "all" else [args.symbol]
+    freqs = FREQS if args.freq == "all" else [args.freq]
+
+    rows = [r for s in syms for f in freqs
+            if (r := run_cell_wfo(s, f, side="long", q=args.q)) is not None]
+    if not rows:
+        print("No cells produced (missing data?).")
+        return
+    rej = bh_reject([r["p_value"] for r in rows], q=0.10)
+    hdr = (f"{'pair':>7} {'freq':>4} {'q':>4} {'n':>5} {'meanNet':>8} {'t':>6} "
+           f"{'posFold':>7} {'hit':>5} {'totNet':>8} {'BH':>3} {'GO':>3}")
+    print(hdr)
+    print("-" * len(hdr))
+    for r, sig in zip(rows, rej):
+        go = bool(r["mean_net_bps"] > 0 and sig and r["pos_fold_pct"] >= 0.6)
+        print(f"{r['symbol']:>7} {r['freq']:>4} {r['q']:>4.2f} {r['n']:>5} "
+              f"{r['mean_net_bps']:>+8.3f} {r['t_stat']:>+6.2f} {r['pos_fold_pct']:>7.2f} "
+              f"{r['hit_rate']*100:>4.0f}% {r['total_net_bps']:>+8.1f} "
+              f"{str(sig):>3} {str(go):>3}")
+
+    print("\nq-sensitivity (mean net bps, long-only):")
+    print(f"{'pair':>7} {'freq':>4} {'q0.80':>7} {'q0.90':>7} {'q0.95':>7}")
+    for s in syms:
+        for f in freqs:
+            vals = []
+            for qq in (0.80, 0.90, 0.95):
+                rr = run_cell_wfo(s, f, side="long", q=qq)
+                vals.append(rr["mean_net_bps"] if rr else float("nan"))
+            print(f"{s:>7} {f:>4} {vals[0]:>+7.3f} {vals[1]:>+7.3f} {vals[2]:>+7.3f}")
+
+    jpy = run_cell_wfo("USDJPY", "3h", side="short", q=0.9)
+    if jpy:
+        print(f"\nUSDJPY 3h SHORT-side: n={jpy['n']} meanNet={jpy['mean_net_bps']:+.3f} "
+              f"t={jpy['t_stat']:+.2f} posFold={jpy['pos_fold_pct']:.2f} hit={jpy['hit_rate']*100:.0f}%")
+
+
+if __name__ == "__main__":
+    main()

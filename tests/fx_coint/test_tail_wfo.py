@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 import numpy as np
-import pandas as pd
 import polars as pl
 
 from scripts.fx_coint.reg_signal_hunt import build_freq_bars, build_panel
@@ -70,3 +69,18 @@ def test_cell_stats_known_arrays():
     # n<3 -> nan stats guard
     s2 = cell_stats(np.array([1.0, 2.0]), np.array([0, 0]))
     assert np.isnan(s2["t_stat"]) and np.isnan(s2["p_value"])
+
+
+def test_run_cell_wfo_on_synthetic(tmp_path, monkeypatch):
+    import scripts.fx_coint.tail_wfo as tw
+    df = _synthetic_1m(datetime(2025, 1, 6, 7, 0), 3000 * 60)
+    d = tmp_path / "data" / "tick_bars"
+    d.mkdir(parents=True)
+    df.write_parquet(d / "EURUSD_1m_flow.parquet")
+    monkeypatch.setattr(tw, "_REPO_ROOT", tmp_path)
+    row = tw.run_cell_wfo("EURUSD", "2h", side="long", q=0.9, n_folds=4)
+    assert row is not None
+    assert row["symbol"] == "EURUSD" and row["freq"] == "2h" and row["side"] == "long"
+    for k in ["n", "mean_net_bps", "t_stat", "p_value", "pos_fold_pct", "hit_rate"]:
+        assert k in row
+    assert row["n"] > 0
