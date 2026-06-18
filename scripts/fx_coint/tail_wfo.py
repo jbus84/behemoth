@@ -40,11 +40,14 @@ def walk_forward(
     min_train_frac: float = 0.5,
     purge: int = 1,
     alpha: float = 1.0,
+    feature_cols: list[str] | None = None,
 ) -> list[dict]:
+    """Expanding-window WFO.  If feature_cols is None, uses global FEATURE_COLS."""
+    cols = feature_cols if feature_cols is not None else FEATURE_COLS
     n = len(panel)
     start = int(n * min_train_frac)
     edges = np.linspace(start, n, n_folds + 1).astype(int)
-    X = panel[FEATURE_COLS].to_numpy()
+    X = panel[cols].to_numpy()
     yz = panel["target_z"].to_numpy()
     act = panel["ret_next_bps"].to_numpy()
     hour = panel["hour"].to_numpy()
@@ -1066,6 +1069,53 @@ def main() -> None:
                                       min_payoff=min_payoff)
             else:
                 tr = gate_trades(folds, q=0.95, cost_bps=COST_BPS[sym])
+            if tr["n"] > 0:
+                nets.append(tr["net"])
+                buckets.append(tr["bucket"])
+        if not nets:
+            continue
+        net = np.concatenate(nets)
+        bk = np.concatenate(buckets)
+        dc = day_clustered_tstat(net, bk)
+        print(f"{label:>25} {len(net):>5} {net.mean():>+8.3f} "
+              f"{dc['t_stat']:>+6.2f} {dc['p_value']:>7.3f} {(net>0).mean()*100:>4.0f}%")
+
+    # FEATURE ABLATION EXPERIMENT — does reducing the input space help?
+    print("\nFEATURE ABLATION (EUR/GBP/JPY 2h long q0.95) — single features + best pairs")
+    print(f"{'features':>25} {'n':>5} {'meanNet':>8} {'dayT':>6} {'dayP':>7} {'hit':>5}")
+    ablations: list[tuple[str, list[str]]] = [
+        ("baseline (all 5)", None),
+        ("r_1 only", ["r_1"]),
+        ("mom_short only", ["mom_short"]),
+        ("mom_long only", ["mom_long"]),
+        ("rvol_24 only", ["rvol_24"]),
+        ("hour only", ["hour"]),
+        ("r_1 + mom_short", ["r_1", "mom_short"]),
+        ("r_1 + mom_long", ["r_1", "mom_long"]),
+        ("mom_short + mom_long", ["mom_short", "mom_long"]),
+        ("r_1 + hour", ["r_1", "hour"]),
+        ("mom_short + hour", ["mom_short", "hour"]),
+        ("r_1 + mom_short + hour", ["r_1", "mom_short", "hour"]),
+        ("r_1 + mom_long + hour", ["r_1", "mom_long", "hour"]),
+        ("r_1 + mom_short + mom_long", ["r_1", "mom_short", "mom_long"]),
+        ("mom_short + mom_long + rvol", ["mom_short", "mom_long", "rvol_24"]),
+        ("r_1 + mom_short + mom_long + hour", ["r_1", "mom_short", "mom_long", "hour"]),
+    ]
+    for label, cols in ablations:
+        nets, buckets = [], []
+        for sym in TIGHT_MAJORS:
+            src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+            if not src.exists():
+                continue
+            panel = build_panel(build_freq_bars(pl.read_parquet(src), "2h"))
+            if len(panel) < 200:
+                continue
+            # Validate columns exist
+            use_cols = cols if cols is not None else FEATURE_COLS
+            if not all(c in panel.columns for c in use_cols):
+                continue
+            folds = walk_forward(panel, n_folds=5, feature_cols=use_cols)
+            tr = gate_trades(folds, q=0.95, cost_bps=COST_BPS[sym])
             if tr["n"] > 0:
                 nets.append(tr["net"])
                 buckets.append(tr["bucket"])
