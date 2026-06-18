@@ -453,3 +453,111 @@ alone.** Always decompose:
 
 Build `diagnose_why_tail_died` into every WFO result. It costs nothing and prevents chasing
 ghosts.
+
+---
+
+## UPDATE: Regime + meta-rule experiment — can we rescue the edge?
+
+Built `add_trailing_regime_features` + `gate_trades_regime` + `gate_trades_meta` and tested
+all combinations: baseline (no filters), regime-only (skew threshold), meta-only (payoff-ratio
+threshold), and both together. Features are computed from PAST data only (no look-ahead).
+
+### Pooled results (EUR/GBP/JPY 2h long q0.95)
+
+| variant | n | meanNet | dayT | dayP | hit |
+|---|---|---|---|---|---|
+| baseline (no filters) | **832** | **+1.27** | **+2.78** | **0.006** ✓ | 52% |
+| regime skew≥0.3 | 267 | +1.33 | +1.84 | 0.067 | 50% |
+| regime skew≥0.5 | 224 | +1.21 | +1.88 | 0.063 | 49% |
+| regime skew≥0.7 | 186 | +0.35 | +0.37 | 0.709 | 47% |
+| meta payoff≥1.0 | 34 | +2.77 | +1.04 | 0.309 | 62% |
+| meta payoff≥1.2 | 20 | +3.94 | +1.68 | 0.112 | 65% |
+| meta payoff≥1.5 | 12 | +2.69 | +0.86 | 0.409 | 50% |
+| regime≥0.3 + meta≥1.2 | 17 | +3.37 | +1.11 | 0.283 | 71% |
+| regime≥0.5 + meta≥1.2 | 16 | **+4.64** | +1.61 | 0.131 | **75%** |
+| regime≥0.3 + meta≥1.5 | 11 | +3.16 | +0.68 | 0.513 | 55% |
+| regime≥0.5 + meta≥1.5 | 10 | **+5.17** | +1.11 | 0.295 | 60% |
+
+### Per-pair breakdown (selected variants)
+
+**EURUSD:**
+- Baseline: +1.19 (n=271)
+- Regime skew≥0.5: **+1.67** (n=79) — improves but N collapses
+- Meta alone: noise (3–12 trades)
+
+**GBPUSD:**
+- Baseline: +0.92 (n=192)
+- Regime skew≥0.5: **−0.13** (n=92) — **kills** the edge
+- Meta payoff≥1.5: **+39.10** (n=1) — cherry-pick artifact, not a strategy
+
+**USDJPY:**
+- Baseline: +1.50 (n=369)
+- Regime skew≥0.3: **+2.93** (n=65) — **helps**
+- Regime≥0.5 + meta≥1.5: **+4.42** (n=6) — best per-trade, tiny N
+
+### What the experiment reveals
+
+**1. The regime filter works directionally for USDJPY but hurts GBPUSD.**
+The three pairs respond differently to the same filter because their payoff asymmetries have
+different sensitivities to regime. EURUSD is mixed. This means a **uniform pooled filter is
+wrong** — you'd need pair-specific thresholds, which introduces more degrees of freedom.
+
+**2. The meta-rule (payoff ratio) is too sparse to be useful.**
+payoff≥1.2 leaves only 20 pooled trades across all three pairs. The per-trade mean is high
+(+3.94) but the day-clustered t-stat (+1.68, p=0.112) is nowhere near significance. With
+<1 trade per month, this is not a tradeable signal — it's a cherry-picker.
+
+**3. Combined filters produce the highest per-trade mean (+5.17) but destroy statistical power.**
+16–17 trades, p=0.13–0.28. The hit rate is impressive (75%) but with N=16, a single bad
+day can flip the sign. This is the classic quality-vs-quantity trade-off, and quantity wins
+for significance.
+
+**4. The baseline is the ONLY variant that clears significance.**
+All filtered variants have p > 0.05. The baseline p=0.006 is already marginal — it survives
+a 3× Bonferroni for the q-sweep (→0.018), but it would not survive a 10-variant regime-sweep.
+
+### The fundamental trade-off
+
+| approach | n | per-trade mean | significance | verdict |
+|---|---|---|---|---|
+| Baseline (unfiltered) | 832 | +1.27 | **p=0.006** | Marginal but real |
+| Regime filter | ~250 | +1.20–1.35 | p=0.06–0.07 | Better quality, no significance |
+| Meta filter | ~20 | +2.7–3.9 | p=0.11–0.31 | Cherry-picking, not tradeable |
+| Combined | ~15 | +3.4–5.2 | p=0.13–0.30 | Highest per-trade, no power |
+
+**You cannot have both high-conviction filtering AND statistical power with this sample size.**
+
+If you had 10× the history, regime filtering would likely be the right move. With the current
+sample, the baseline is the only variant that clears the significance bar — and even that is
+NO-GO for deployment because of the era-split decay proven earlier.
+
+### Pair-specific observation: USDJPY is the only pair where regime detection genuinely helps
+
+USDJPY responds strongly to skew filtering (+2.93 at skew≥0.3 vs +1.50 baseline), and combined
+regime+meta produces the highest per-trade mean (+4.42). If you were to trade this signal on a
+single pair, USDJPY with skew≥0.3 would be the only honest choice — but it's still
+under-powered (n=65 is too few for day-clustered significance).
+
+### Bottom line
+
+**Regime detection and meta-rules are directionally correct but sample-size-starved.**
+
+The diagnosis was right (payoff asymmetry inversion is the mechanism), but the prescription
+(regime filtering) is not viable without 3–5× more data. The edge is real when the regime is
+right, but identifying the regime *ex ante* with trailing features costs too many observations
+to remain significant.
+
+The "surviving FX edge = weekly+ only" conclusion **still stands**.
+
+### Lesson
+
+**Any filter that drops >60% of trades will likely kill significance unless you have 5×+
+the data.** Before building a regime filter, compute the N trade-off explicitly:
+
+```
+required_n = (z_critical * std / min_detectable_mean) ** 2
+```
+
+If filtering drops you below required_n, the filter is not deployable regardless of how much
+it improves per-trade mean. Always test the filtered result with the SAME significance
+standard (day-clustered t) as the baseline.
