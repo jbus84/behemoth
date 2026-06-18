@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
-from scipy.stats import spearmanr
+from scipy.stats import spearmanr, t as _t_dist
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 
@@ -164,3 +164,34 @@ def eval_rules(
         "n_trades_C": int(gate.sum()),
         "n_bars": n,
     }
+
+
+def ic_pvalue(ic: float, n: int) -> float:
+    if n <= 2 or not np.isfinite(ic) or abs(ic) >= 1.0:
+        return float("nan")
+    tstat = ic * np.sqrt((n - 2) / (1 - ic * ic))
+    return float(2 * _t_dist.sf(abs(tstat), df=n - 2))
+
+
+def bh_reject(pvals: list[float], q: float = 0.10) -> list[bool]:
+    p = np.asarray(pvals, float)
+    m = len(p)
+    order = np.argsort(p)
+    thresh = q * (np.arange(1, m + 1)) / m
+    passed = p[order] <= thresh
+    reject = np.zeros(m, bool)
+    if passed.any():
+        kmax = np.max(np.where(passed)[0])
+        reject[order[: kmax + 1]] = True
+    return reject.tolist()
+
+
+def ic_by_hour(
+    pred_bps: np.ndarray, actual_bps: np.ndarray, hours: np.ndarray
+) -> dict[int, float]:
+    out: dict[int, float] = {}
+    for h in np.unique(hours).astype(int):
+        m = hours == h
+        if m.sum() >= 30:
+            out[int(h)] = float(spearmanr(pred_bps[m], actual_bps[m]).statistic)
+    return out

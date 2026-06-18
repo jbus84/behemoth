@@ -111,3 +111,15 @@ def test_eval_rules_cost_gating():
     pred2 = np.array([0.1, -0.1, 3.0, -3.0])
     r2 = eval_rules(pred2, actual, cost_bps=0.5)
     assert r2["n_trades_C"] == 2
+
+
+def test_bh_reject_and_ic_pvalue():
+    from scripts.fx_coint.reg_signal_hunt import bh_reject, ic_pvalue
+    # a tiny IC on huge N is significant; large IC on tiny N is not
+    assert ic_pvalue(0.05, 100000) < 0.01
+    assert ic_pvalue(0.2, 10) > 0.10
+    # BH: with one tiny p and rest large, only the tiny rejects
+    rej = bh_reject([0.001, 0.4, 0.6, 0.8], q=0.10)
+    assert rej == [True, False, False, False]
+    # all-null stays null
+    assert bh_reject([0.5, 0.6, 0.7], q=0.10) == [False, False, False]
