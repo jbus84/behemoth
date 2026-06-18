@@ -267,6 +267,45 @@ def era_split_test(pairs: list[str], freq: str = "2h", q: float = 0.95,
     }
 
 
+def temporal_slice_report(
+    pairs: list[str],
+    freq: str = "2h",
+    q: float = 0.95,
+    n_folds: int = 5,
+    bins: str = "Y",
+) -> list[dict]:
+    """Slice pooled long-top-decile NET trades into calendar bins (Y=year, Q=quarter, M=month)
+    and report day-clustered stats per bin. Exposes whether decay is smooth, a cliff, or
+    episodic — and whether recent weakness is a sample-size artefact."""
+    nets, bks = [], []
+    for sym in pairs:
+        tr = _long_trades_with_buckets(sym, freq, q, COST_BPS[sym], n_folds)
+        if len(tr["net"]):
+            nets.append(tr["net"])
+            bks.append(tr["bucket"])
+    if not nets:
+        return []
+    net = np.concatenate(nets)
+    bk = pd.to_datetime(pd.Series(np.concatenate(bks)))
+    df = pd.DataFrame({"net": net, "bucket": bk})
+    df["period"] = bk.dt.to_period(bins)
+    rows: list[dict] = []
+    for period, grp in df.groupby("period"):
+        if len(grp) < 3:
+            continue
+        dc = day_clustered_tstat(grp["net"].to_numpy(), grp["bucket"].to_numpy())
+        rows.append({
+            "period": str(period),
+            "n_trades": len(grp),
+            "n_days": dc["n_days"],
+            "mean_net": dc["daily_mean"],
+            "t_stat": dc["t_stat"],
+            "p_value": dc["p_value"],
+            "hit_rate": float((grp["net"] > 0).mean()),
+        })
+    return rows
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default="all", choices=UNIVERSE + ["all"])
@@ -336,6 +375,19 @@ def main() -> None:
         e = era[label]
         print(f"  {label:>6}: n_days={e['n_days']} dailyMean={e['daily_mean']:+.3f} "
               f"t={e['t_stat']:+.2f} p={e['p_value']:.3f}")
+
+    # Granular temporal slices — is the decay smooth, a cliff, or episodic?
+    for bins, label in (("Y", "YEARLY"), ("Q", "QUARTERLY")):
+        slices = temporal_slice_report(TIGHT_MAJORS, "2h", q=0.95, bins=bins)
+        if slices:
+            print(f"\nTEMPORAL SLICE — {label} (EUR/GBP/JPY 2h long q0.95 net), day-clustered:")
+            print(f"{'period':>8} {'n':>5} {'days':>5} {'meanNet':>8} {'t':>6} {'p':>7} {'hit':>5}")
+            for s in slices:
+                t_str = f"{s['t_stat']:>+6.2f}" if np.isfinite(s['t_stat']) else "   nan"
+                p_str = f"{s['p_value']:>7.3f}" if np.isfinite(s['p_value']) else "    nan"
+                print(f"{s['period']:>8} {s['n_trades']:>5} {s['n_days']:>5} "
+                      f"{s['mean_net']:>+8.3f} {t_str} {p_str} "
+                      f"{s['hit_rate']*100:>4.0f}%")
 
 
 if __name__ == "__main__":

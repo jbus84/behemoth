@@ -119,3 +119,17 @@ def test_era_split_test_partitions_by_median_date(tmp_path, monkeypatch):
     assert res["split_date"] is not None
     # both halves produce a day-clustered result with roughly balanced day counts
     assert res["first"]["n_days"] > 0 and res["second"]["n_days"] > 0
+
+
+def test_temporal_slice_report_groups_by_calendar_year(tmp_path, monkeypatch):
+    import scripts.fx_coint.tail_wfo as tw
+    df = _synthetic_1m(datetime(2024, 1, 6, 7, 0), 3000 * 60)
+    d = tmp_path / "data" / "tick_bars"
+    d.mkdir(parents=True)
+    df.write_parquet(d / "EURUSD_1m_flow.parquet")
+    monkeypatch.setattr(tw, "_REPO_ROOT", tmp_path)
+    slices = tw.temporal_slice_report(["EURUSD"], "2h", q=0.9, bins="Y")
+    assert len(slices) >= 1
+    for s in slices:
+        assert "period" in s and "n_trades" in s and "n_days" in s
+        assert s["n_days"] > 0
