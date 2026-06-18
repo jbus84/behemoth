@@ -3,6 +3,7 @@
 Grid {1,3,6h} x {price_only,+raw_flow,+engineered,+both}, pooled WFO with
 block-bootstrap CI + Sidak/BH. price_only is the ~0.50 control.
 """
+# ruff: noqa: E402  (imports follow sys.path bootstrap, by design)
 from __future__ import annotations
 
 import argparse
@@ -19,15 +20,19 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from scripts.fx_coint.hourly_flow_features import ARMS, add_channels, build_panel
 from scripts.fx_coint.hourly_multirocket_wfo import (
-    DEFAULT_COST_BPS, classify_regime, load_hourly,
+    DEFAULT_COST_BPS,
+    load_hourly,
 )
 from scripts.fx_coint.hourly_nextbar_label import label_horizon_tercile
-from scripts.fx_coint.hourly_flow_features import add_channels, ARMS, build_panel
 from scripts.fx_coint.hourly_pooled_decomp import (
-    SEEDS, make_model, fit_members, majority_vote, moving_block_bootstrap_ci,
+    SEEDS,
+    fit_members,
+    majority_vote,
+    moving_block_bootstrap_ci,
 )
-from scripts.fx_coint.multiplicity import p_from_t, sidak_alpha, bh_reject
+from scripts.fx_coint.multiplicity import bh_reject, p_from_t, sidak_alpha
 
 LOOKBACK = 24
 TRAIN_MO = 6
@@ -83,7 +88,9 @@ def run_cell(symbol, year, horizon, arm, seeds, model="QUANT") -> dict:
         fwd_all.append(base["fwd_ret_bps"].to_numpy()[te_idx])
         y_all.append(y[te_idx])
 
-    pred = np.concatenate(preds_all); fwd = np.concatenate(fwd_all); yt = np.concatenate(y_all)
+    pred = np.concatenate(preds_all)
+    fwd = np.concatenate(fwd_all)
+    yt = np.concatenate(y_all)
     m = pooled_metrics(pred, fwd, yt, cost)
     m.update(horizon=horizon, arm=arm)
     return m

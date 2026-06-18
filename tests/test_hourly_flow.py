@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
-from scripts.fx_coint.hourly_nextbar_label import label_horizon_tercile
-from scripts.fx_coint.hourly_flow_features import add_channels, ARMS, build_panel
-from scripts.fx_coint.multiplicity import p_from_t, sidak_alpha, bh_reject
+
 from scripts.fx_coint.hourly_flow_direction_eval import pooled_metrics
+from scripts.fx_coint.hourly_flow_features import ARMS, add_channels, build_panel
+from scripts.fx_coint.hourly_nextbar_label import label_horizon_tercile
+from scripts.fx_coint.multiplicity import bh_reject, p_from_t, sidak_alpha
 
 
 def _synth(n=3000, seed=0):

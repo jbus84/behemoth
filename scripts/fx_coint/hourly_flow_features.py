@@ -30,7 +30,8 @@ def add_channels(df: pd.DataFrame, z_window: int = 24, cum_window: int = 6) -> p
     out["actflow_z"] = _zcausal(out["actflow"], z_window)
     # flow-price divergence: flow_ofi orthogonalised to contemporaneous return,
     # via causal rolling univariate regression residual (beta uses past only).
-    x = out["mid_ret"]; y = out["flow_ofi"]
+    x = out["mid_ret"]
+    y = out["flow_ofi"]
     cov = (x * y).rolling(z_window, min_periods=z_window).mean().shift(1)
     var = (x * x).rolling(z_window, min_periods=z_window).mean().shift(1)
     beta = (cov / (var + 1e-12)).fillna(0.0)
