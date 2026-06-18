@@ -133,3 +133,34 @@ def fit_and_eval(
         "hours": test["hour"].to_numpy(),
         "sigma_med": sigma_med,
     }
+
+
+def eval_rules(
+    pred_bps: np.ndarray, actual_bps: np.ndarray, cost_bps: float, size_cap: float = 3.0
+) -> dict:
+    pred = np.asarray(pred_bps, float)
+    act = np.asarray(actual_bps, float)
+    n = len(pred)
+
+    net_a = float(np.mean(np.sign(pred) * act) - cost_bps) if n else float("nan")
+
+    scale = np.median(np.abs(pred))
+    if scale > 0:
+        w = np.clip(pred / scale, -size_cap, size_cap)
+        net_b = float(np.mean(w * act) - np.mean(np.abs(w)) * cost_bps)
+    else:
+        net_b = float("nan")
+
+    gate = np.abs(pred) > cost_bps
+    if gate.sum() > 0:
+        net_c = float(np.mean(np.sign(pred[gate]) * act[gate] - cost_bps))
+    else:
+        net_c = float("nan")
+
+    return {
+        "netA": net_a,
+        "netB": net_b,
+        "netC": net_c,
+        "n_trades_C": int(gate.sum()),
+        "n_bars": n,
+    }

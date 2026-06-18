@@ -97,3 +97,17 @@ def test_breakeven_ic_and_fit_keys():
         assert k in res
     assert len(res["pred_bps"]) == len(res["actual_bps"]) == res["n_test"]
     assert res["ic_star"] == breakeven_ic(0.64, res["sigma_med"])
+
+
+def test_eval_rules_cost_gating():
+    from scripts.fx_coint.reg_signal_hunt import eval_rules
+    # perfect predictor, moves all exceed cost -> netA positive and = mean|actual| - cost
+    pred = np.array([2.0, -2.0, 3.0, -3.0])
+    actual = np.array([2.0, -2.0, 3.0, -3.0])
+    r = eval_rules(pred, actual, cost_bps=0.5)
+    assert abs(r["netA"] - (np.mean(np.abs(actual)) - 0.5)) < 1e-9
+    assert r["n_trades_C"] == 4  # all |pred| > 0.5
+    # cost-gate excludes sub-cost predictions
+    pred2 = np.array([0.1, -0.1, 3.0, -3.0])
+    r2 = eval_rules(pred2, actual, cost_bps=0.5)
+    assert r2["n_trades_C"] == 2
