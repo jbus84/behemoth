@@ -113,3 +113,55 @@ cost at high conviction** — the first such result in this FX program. It is **
 validation, not yet GO for capital.** Next: (1) untouched-holdout / pre-registered test to kill
 the forking-paths concern, (2) block-bootstrap significance, (3) tick-exact fill verification,
 (4) only then a richer model (this is still the 5-feature floor).
+
+---
+
+## UPDATE: Forking-paths attacks — OOS-pairs & era split
+
+### (1) Out-of-sample pairs — same rule on the 3 excluded majors
+
+Applied the identical 2h-long q0.95 mechanical rule to AUDUSD, USDCHF, and USDCAD (pairs that
+played **no role** in selecting the 2h/3-pair/long/high-q cell).
+
+| pair | cost | n | grossMean | gross day-t (p) | netMean | net day-t (p) |
+|---|---|---|---|---|---|---|
+| AUDUSD | 1.06 | — | −0.92 | −0.23 (0.82) | −1.98 | −1.11 (0.27) |
+| USDCHF | 1.05 | — | +0.52 | **+3.48 (0.001)** | −0.53 | +2.52 (0.012) |
+| USDCAD | 0.97 | — | +0.75 | +0.68 (0.50) | −0.22 | −0.17 (0.87) |
+| **Pooled** | — | — | **+0.16** | **+2.27 (0.024)** | — | — |
+
+**Verdict:** the *gross* continuation signal **generalizes** — pooled OOS gross is significant
+(p=0.024) and USDCHF is strongly so (p=0.001). A forking-paths fluke would not produce a
+significant gross signal on pairs that never informed the choice. However, **net of their higher
+costs none of these clear** — consistent with the cost-tier thesis: the signal is real, but
+cost decides which pairs are tradeable. AUDUSD is the dissenter (negative gross).
+
+### (2) Era split-half — the red flag
+
+Split the EUR/GBP/JPY pooled 2h-long q0.95 **net** trades at the median trade date
+(~2023-04) and tested each half independently with day-clustered t.
+
+| era | n | meanNet | day-t (p) |
+|---|---|---|---|
+| first half (pre-2023-04) | 416 | **+2.08** | **+3.50 (0.001)** |
+| second half (post-2023-04) | 416 | +0.45 | +0.59 (0.555) |
+
+**The edge is concentrated in the older era and has decayed to insignificance in the last
+~2 years.** Mean dropped 4× and significance vanished. The headline p=0.006 was driven mostly
+by the early period.
+
+### Honest revised verdict (post-forking-paths attacks)
+
+- The signal is **real** — it generalizes gross to out-of-sample pairs (not a forking-paths
+  artifact at the gross level).
+- But it appears to have **decayed** — it is not significant in the recent half, which is the
+  half that matters for deployment. This is the classic profile of alpha that got competed away
+  (or a regime shift).
+
+**This downgrades the result from "GO for validation" to "signal real but decayed — NO-GO for
+deployment until the decay is understood."**
+
+The next question worth answering isn't "is it real?" (it is) but "why did it decay, and is the
+recent +0.45 bps a floor or a continuing slide?" — which needs a rolling-window-over-time view,
+not another pooled number. Supersedes the "surviving FX edge = weekly+ only" conclusion **only
+if** a subsequent rolling-window test shows recovery or stabilization in the recent era.
