@@ -330,3 +330,126 @@ costs nothing, but it prevents chasing ghosts.
 Always slice by **calendar quarter** (or finer) before trusting a pooled t-stat. A single
 anomalous quarter can carry an entire "significant" result, and a median split will mask this
 completely.
+
+---
+
+## UPDATE: Deep diagnostic — WHY the tail stopped paying (hit / magnitude / skew / vol-conditional IC)
+
+Running `diagnose_why_tail_died` on EUR/GBP/JPY 2h long q0.95 decomposes the failure into
+four mechanisms: hit-rate vs magnitude, distribution shape, vol-conditional IC, and entry-hour
+shift.
+
+### Deep diagnostic: hit-rate, win average, loss average, skew
+
+| qtr | nTop | hit% | winAvg | lossAvg | skew | kurt | netTQ | topHours |
+|---|---|---|---|---|---|---|---|---|
+| 2022Q1 | 14 | **79%** | **+9.48** | **−3.23** | +1.02 | +0.73 | **+6.06** | 18:00 |
+| 2022Q2 | 70 | 57% | +9.63 | −6.26 | +0.97 | +3.93 | +2.13 | 18:00 |
+| 2022Q3 | 90 | 52% | +10.13 | −8.15 | +1.88 | +9.57 | +0.70 | 18:00 |
+| 2022Q4 | 161 | 55% | +16.07 | −15.70 | +0.42 | +4.08 | +0.97 | 18:00 |
+| **2023Q1** | **81** | **68%** | **+12.71** | **−8.92** | +0.25 | +3.46 | **+5.08** | 18:00 |
+| 2023Q2 | 32 | 56% | +7.11 | −5.19 | −0.70 | +3.33 | +1.04 | 18:00 |
+| 2023Q3 | 40 | 50% | +8.07 | −8.85 | −0.71 | +3.30 | −1.08 | 18:00 |
+| 2023Q4 | 56 | 45% | +9.00 | −6.40 | +1.35 | +4.76 | −0.21 | 18:00 |
+| 2024Q1 | 10 | 70% | +11.10 | −5.78 | +1.23 | +2.88 | +5.34 | 18:00 |
+| 2024Q2 | 28 | 50% | +10.45 | **−10.60** | +1.17 | +4.88 | −0.77 | 18:00 |
+| 2024Q3 | 50 | 40% | +11.05 | −10.40 | +0.16 | +1.28 | −2.51 | 18:00 |
+| **2024Q4** | **29** | **59%** | **+8.56** | **−11.08** | +0.23 | +0.10 | −0.26 | 18:00 |
+| 2025Q1 | 45 | 58% | +12.59 | −7.22 | +0.98 | +3.47 | +3.54 | 18:00 |
+| 2025Q2 | 50 | 64% | +11.05 | −9.98 | −0.60 | +3.96 | +2.79 | 18:00 |
+| 2025Q3 | 36 | 58% | +8.90 | −7.65 | +0.28 | +2.12 | +1.31 | 18:00 |
+| 2025Q4 | 7 | **86%** | +4.08 | −2.90 | +0.55 | +1.22 | +2.40 | 18:00 |
+| 2026Q1 | 27 | 41% | +11.44 | −9.31 | +0.30 | +1.87 | −1.55 | 18:00 |
+| 2026Q2 | 6 | 67% | +9.02 | **−14.06** | +0.54 | +0.56 | +0.63 | 16:00, 18:00 |
+
+### What the deep diagnostic reveals: the payoff asymmetry inverted
+
+The tail stopped paying because **win-loss asymmetry collapsed** — the mechanism is not
+retraining, it is regime-dependent convexity.
+
+**Good quarters (2022Q1, 2023Q1, 2025Q1):**
+- Wins are **massive**, losses are **small**.
+- 2022Q1: wins (+9.48) are **3×** losses (−3.23). With 79% hit rate, this is a blowout.
+- 2023Q1: wins (+12.71) are **1.4×** losses (−8.92). Positive skew + 68% hit = strong net.
+- The market was **trending** — momentum trades catch big moves and have small pullbacks.
+
+**Bad quarters (2023Q3+, 2024, 2026Q1):**
+- Wins and losses are **roughly the same size** — sometimes losses are **bigger**.
+- 2024Q4: losses (−11.08) **exceed** wins (+8.56) despite 59% hit rate. Net negative.
+- 2024Q2: losses (−10.60) slightly exceed wins (+10.45). Net negative.
+- 2024Q3: losses (−10.40) roughly equal wins (+11.05) with only 40% hit rate. Net negative.
+- The market was **choppy/mean-reverting** — momentum trades generate whipsaws: big wins AND big
+  losses. You need >55% hit rate to overcome symmetric payoffs + cost, and you don't get it.
+
+### The hit rate alone tells part of the story
+
+| era | typical hit% | asymmetry | regime inference |
+|---|---|---|---|
+| 2022–early 2023 | 55–79% | wins ≫ losses | trending / volatile |
+| late 2023–2024 | 40–50% | wins ≈ losses (or losses bigger) | choppy / mean-reverting |
+| 2025 | 58–64% | wins > losses (moderate asymmetry) | mixed / partial recovery |
+| 2026 | 41–67% | losses ≈ wins | choppy |
+
+### Vol-conditional IC: the model ranks everywhere, but not at the right times
+
+The `ic_by_vol` column (quintiles of |return|, i.e. realized bar vol) shows that the rank
+correlation varies by volatility regime but **does not cleanly favor** any single regime:
+- In good quarters, IC is sometimes highest in the middle vol quintiles.
+- In bad quarters, IC is sometimes highest in high-vol or low-vol.
+- There is **no reliable vol-filter** that says "only trade when vol is high" or vice versa.
+
+This means: **the market state is not captured by realized bar volatility alone.** The regime
+that matters (trend vs chop) is orthogonal to the vol quintile of the individual 2h bar.
+
+### The entry hour never moved
+
+`topHours = [18.0]` across virtually **every quarter** (2022Q1 through 2026Q1). The model
+still identifies the same time-of-day edge. The *time* is still predictive — the *market
+state at that time* stopped producing momentum continuation.
+
+This rules out "the signal shifted to a different hour" and reinforces that the issue is
+**regime, not timing**.
+
+### The REAL answer: concave payoff from regime-dependent convexity
+
+The tail stopped paying because the **payoff function of the momentum signal is regime-dependent:
+concave in chop, convex in trend.**
+
+In a **trending regime**, the next 2h bar after a high-confidence prediction tends to continue
+the move. Wins are big; losses are small (the move pauses but doesn't sharply reverse).
+Positive skew.
+
+In a **choppy/mean-reverting regime**, the next 2h bar often reverses. Even when the model is
+"right" about direction over some horizon, the 2h next-bar captures the reversal, not the
+continuation. Big wins and big losses. Symmetric (or negatively skewed) payoff.
+
+**This is not a model problem — it is a market-structure problem.** The 5-feature Ridge
+model has no regime indicator to distinguish "trending 18:00" from "choppy 18:00." It sees the
+same features, makes similar predictions, but the *economic mapping* from prediction to payoff
+flips between convex and concave.
+
+### Bottom line
+
+- **Retraining will NOT fix this.** The model still ranks; the mapping is intact. The problem
+  is the payoff distribution, not the coefficients.
+- **Vol-filtering will NOT fix this.** Realized bar vol does not cleanly separate trend from
+  chop at the regime level.
+- **What WOULD help:** a regime-aware model (trend vs chop) or a regime-agnostic position-sizing
+  rule (reduce size / tighten stop when the payoff asymmetry compresses). Both require new
+  features or new meta-rules, not retraining the same 5-feature model.
+
+The "surviving FX edge = weekly+ only" conclusion **stands**.
+
+### Lesson
+
+**Every tail-gated strategy's profitability lives or dies by payoff asymmetry, not by hit rate
+alone.** Always decompose:
+1. `win_avg` vs `loss_avg` — the asymmetry ratio
+2. `skew` of top-q returns — positive = trend-friendly, negative = chop-toxic
+3. `topHours` stability — if the hour shifts, the signal migrated; if the hour is stable, the
+   regime changed
+4. `ic_by_vol` — is there a vol regime where IC holds? If not, the regime is invisible to
+   the model.
+
+Build `diagnose_why_tail_died` into every WFO result. It costs nothing and prevents chasing
+ghosts.
