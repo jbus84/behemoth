@@ -33,3 +33,40 @@ def test_build_freq_bars_session_and_contiguity():
     # 08..11 are contiguous with their predecessor -> contig True; 07:00 predecessor 06:00
     # is exactly 1h earlier -> contig True too.
     assert bars["contig"].iloc[1:].all()
+
+
+def test_build_freq_bars_overnight_gap_not_contiguous():
+    # Full 24h for day 1 and day 2 so we test the overnight gap properly.
+    # Day 1 (Monday 2025-01-06): 00:00-23:59 -> 24 hourly bars, but session [7,21) keeps hours 7-20 (14 bars)
+    day1_start = datetime(2025, 1, 6, 0, 0)
+    df_day1 = _synthetic_1m(day1_start, 24 * 60, seed=0)
+
+    # Day 2 (Tuesday 2025-01-07): 00:00-23:59 -> 24 hourly bars, but session [7,21) keeps hours 7-20 (14 bars)
+    day2_start = datetime(2025, 1, 7, 0, 0)
+    df_day2 = _synthetic_1m(day2_start, 24 * 60, seed=1)
+
+    df_combined = pl.concat([df_day1, df_day2])
+    bars = build_freq_bars(df_combined, "1h", session=(7, 21))
+
+    # Should have 28 bars total: 14 from day1 (07-20), 14 from day2 (07-20)
+    assert len(bars) == 28
+
+    # Verify day1 ends at 20:00 and day2 starts at 07:00
+    assert bars.iloc[13]["bucket"].hour == 20  # Last bar of day1
+    assert bars.iloc[14]["bucket"].hour == 7   # First bar of day2
+
+    # Within day1 (indices 1-13), consecutive bars are contiguous
+    assert bars["contig"].iloc[1:14].all()
+
+    # Day1's first bar (index 0) is not contiguous (no prior bar in filtered frame)
+    assert not bars.loc[0, "contig"]
+
+    # BUG CHECK: Day2's first bar (index 14) MUST be marked not contiguous.
+    # Its true predecessor in the filtered frame is day1's 20:00 bar (index 13),
+    # which is 11 hours earlier, NOT 1 hour. The bug is that the code computes
+    # contig on the unfiltered series where day2's 07:00 follows day2's 06:00 (1h apart).
+    # After filtering out 06:00, the label is stale.
+    assert not bars.loc[14, "contig"], "Day2's first bar (07:00) should NOT be contiguous; its true predecessor is 11h earlier (day1's 20:00)"
+
+    # Within day2 (indices 15-27), consecutive bars are contiguous
+    assert bars["contig"].iloc[15:28].all()

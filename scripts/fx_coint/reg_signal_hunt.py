@@ -47,10 +47,14 @@ def build_freq_bars(
         .to_pandas()
     )
     bars["bucket"] = pd.to_datetime(bars["bucket"])
+    # Apply session filter BEFORE computing contig so that contig reflects
+    # true adjacency in the returned frame
+    hour = bars["bucket"].dt.hour
+    keep = (hour >= session[0]) & (hour < session[1]) & (bars["bucket"].dt.dayofweek < 5)
+    bars = bars[keep].reset_index(drop=True)
+    # Now compute contig on the filtered frame
     step = np.timedelta64(FREQ_MINUTES[freq], "m")
     prev = bars["bucket"].shift(1).to_numpy()
     bars["contig"] = (bars["bucket"].to_numpy() - prev) == step
     bars.loc[0, "contig"] = False
-    hour = bars["bucket"].dt.hour
-    keep = (hour >= session[0]) & (hour < session[1]) & (bars["bucket"].dt.dayofweek < 5)
-    return bars[keep].reset_index(drop=True)
+    return bars
