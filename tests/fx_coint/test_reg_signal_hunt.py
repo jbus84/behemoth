@@ -131,6 +131,23 @@ def test_bh_reject_and_ic_pvalue():
     assert bh_reject([0.5, 0.6, 0.7], q=0.10) == [False, False, False]
 
 
+def test_decile_table_net_of_cost():
+    from scripts.fx_coint.reg_signal_hunt import decile_table
+    # perfect ranking: actual == pred, top decile has the largest positive returns
+    pred = np.linspace(-5.0, 5.0, 1000)
+    actual = pred.copy()
+    d = decile_table(pred, actual, cost_bps=0.5)
+    assert d["n_top"] == 100
+    # top decile mean return is large and positive -> net long clears cost
+    assert d["top_ret"] > 4.0
+    assert d["net_long_top"] == d["top_ret"] - 0.5
+    assert d["top_hit"] == 1.0  # all top-decile returns positive
+    # bottom decile is all negative -> shorting it clears cost, hit rate 1.0
+    assert d["bot_ret"] < -4.0
+    assert d["bot_hit"] == 1.0
+    assert d["net_short_bot"] == -d["bot_ret"] - 0.5
+
+
 def test_run_cell_on_synthetic(tmp_path, monkeypatch):
     import scripts.fx_coint.reg_signal_hunt as m
     df = _synthetic_1m(datetime(2025, 1, 6, 7, 0), 800 * 60)
