@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
-from scipy.stats import ttest_1samp
+from scipy.stats import spearmanr, ttest_1samp
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 
@@ -61,6 +61,7 @@ def walk_forward(
         folds.append({
             "train_pred": model.predict(scaler.transform(X[:split])),
             "test_pred": model.predict(scaler.transform(X[test_lo:test_hi])),
+            "test_target_z": yz[test_lo:test_hi],
             "test_actual_bps": act[test_lo:test_hi],
             "test_hour": hour[test_lo:test_hi],
             "test_bucket": bucket[test_lo:test_hi],
@@ -267,6 +268,143 @@ def era_split_test(pairs: list[str], freq: str = "2h", q: float = 0.95,
     }
 
 
+def diagnose_edge_death(
+    sym: str,
+    freq: str = "2h",
+    q: float = 0.95,
+    n_folds: int = 5,
+) -> list[dict]:
+    """Decompose WHY the edge died after 2023Q1.
+
+    Pools ALL WFO test observations (not just gated trades) and slices by calendar quarter.
+    Reports per-quarter:
+        - Spearman IC (pred vs target_z) — did the model stop ranking?
+        - Realized vol (std of ret_next_bps) — did returns compress?
+        - Gross mean (all obs + top-q only) — did the tail reward shrink?
+        - Net top-q — did it die because of vol, IC, or tail-adversity?
+
+    This distinguishes three failure modes:
+        1. IC collapse → model mapping broke → retraining MIGHT help.
+        2. IC stable + vol collapse → z-space prediction works but bps reward too small →
+           NO retraining fix; need lower cost or leverage.
+        3. IC stable + vol stable + topq gross negative → adverse selection in the tail →
+           NO retraining fix; the tail itself became toxic."""
+    src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+    if not src.exists():
+        return []
+    panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+    if len(panel) < 200:
+        return []
+
+    folds = walk_forward(panel, n_folds=n_folds)
+    preds, tzs, acts, buckets, thrs = [], [], [], [], []
+    for f in folds:
+        thr = np.quantile(f["train_pred"], q)
+        preds.append(f["test_pred"])
+        tzs.append(f["test_target_z"])
+        acts.append(f["test_actual_bps"])
+        buckets.append(f["test_bucket"])
+        thrs.append(np.full(len(f["test_pred"]), thr))
+
+    df = pd.DataFrame({
+        "pred": np.concatenate(preds),
+        "tz": np.concatenate(tzs),
+        "act": np.concatenate(acts),
+        "bucket": pd.to_datetime(np.concatenate(buckets)),
+        "thr": np.concatenate(thrs),
+    })
+    df["qtr"] = df["bucket"].dt.to_period("Q")
+    cost = COST_BPS[sym]
+    rows: list[dict] = []
+    for qtr, grp in df.groupby("qtr"):
+        if len(grp) < 10:
+            continue
+        ic = (float(spearmanr(grp["pred"], grp["tz"]).correlation)
+              if len(grp) > 2 else float("nan"))
+        vol = float(grp["act"].std())
+        gross_all = float(grp["act"].mean())
+        sel = grp["pred"] >= grp["thr"]
+        gross_topq = float(grp.loc[sel, "act"].mean()) if sel.sum() > 0 else float("nan")
+        net_topq = gross_topq - cost if np.isfinite(gross_topq) else float("nan")
+        rows.append({
+            "qtr": str(qtr),
+            "n": len(grp),
+            "n_topq": int(sel.sum()),
+            "ic": ic,
+            "vol": vol,
+            "gross_all": gross_all,
+            "gross_topq": gross_topq,
+            "net_topq": net_topq,
+            "cost": cost,
+        })
+    return rows
+
+
+def diagnose_edge_death_pooled(
+    pairs: list[str],
+    freq: str = "2h",
+    q: float = 0.95,
+    n_folds: int = 5,
+) -> list[dict]:
+    """Pooled version of `diagnose_edge_death`: aggregates across `pairs` for higher
+    statistical power per quarter. This gives clean IC, vol, and top-q gross at the
+    multi-pair level — the level the strategy actually trades."""
+    all_frames = []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+        if len(panel) < 200:
+            continue
+        folds = walk_forward(panel, n_folds=n_folds)
+        preds, tzs, acts, buckets, thrs = [], [], [], [], []
+        for f in folds:
+            thr = np.quantile(f["train_pred"], q)
+            preds.append(f["test_pred"])
+            tzs.append(f["test_target_z"])
+            acts.append(f["test_actual_bps"])
+            buckets.append(f["test_bucket"])
+            thrs.append(np.full(len(f["test_pred"]), thr))
+        all_frames.append(pd.DataFrame({
+            "pred": np.concatenate(preds),
+            "tz": np.concatenate(tzs),
+            "act": np.concatenate(acts),
+            "bucket": pd.to_datetime(np.concatenate(buckets)),
+            "thr": np.concatenate(thrs),
+        }))
+    if not all_frames:
+        return []
+    df = pd.concat(all_frames, ignore_index=True)
+    df["qtr"] = df["bucket"].dt.to_period("Q")
+    rows: list[dict] = []
+    for qtr, grp in df.groupby("qtr"):
+        if len(grp) < 20:
+            continue
+        ic = (float(spearmanr(grp["pred"], grp["tz"]).correlation)
+              if len(grp) > 2 else float("nan"))
+        vol = float(grp["act"].std())
+        gross_all = float(grp["act"].mean())
+        sel = grp["pred"] >= grp["thr"]
+        gross_topq = float(grp.loc[sel, "act"].mean()) if sel.sum() > 0 else float("nan")
+        # Weighted average cost of selected trades
+        costs = [COST_BPS[sym] for sym in pairs]
+        avg_cost = float(np.mean(costs))
+        net_topq = gross_topq - avg_cost if np.isfinite(gross_topq) else float("nan")
+        rows.append({
+            "qtr": str(qtr),
+            "n": len(grp),
+            "n_topq": int(sel.sum()),
+            "ic": ic,
+            "vol": vol,
+            "gross_all": gross_all,
+            "gross_topq": gross_topq,
+            "net_topq": net_topq,
+            "avg_cost": avg_cost,
+        })
+    return rows
+
+
 def temporal_slice_report(
     pairs: list[str],
     freq: str = "2h",
@@ -388,6 +526,15 @@ def main() -> None:
                 print(f"{s['period']:>8} {s['n_trades']:>5} {s['n_days']:>5} "
                       f"{s['mean_net']:>+8.3f} {t_str} {p_str} "
                       f"{s['hit_rate']*100:>4.0f}%")
+
+    # Death diagnostics: WHY did the edge die? IC collapse, vol compression, or tail toxicity?
+    print("\nDIAGNOSTIC — POOLED tight majors: WHY did the edge die? (IC / vol / gross)")
+    print(f"{'qtr':>7} {'n':>6} {'nTop':>5} {'IC':>6} {'vol':>6} "
+          f"{'gAll':>7} {'gTopQ':>7} {'netTQ':>7}")
+    for d in diagnose_edge_death_pooled(TIGHT_MAJORS, "2h", q=0.95):
+        print(f"{d['qtr']:>7} {d['n']:>6} {d['n_topq']:>5} "
+              f"{d['ic']:>+6.3f} {d['vol']:>6.3f} "
+              f"{d['gross_all']:>+7.3f} {d['gross_topq']:>+7.3f} {d['net_topq']:>+7.3f}")
 
 
 if __name__ == "__main__":

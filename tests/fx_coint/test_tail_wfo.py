@@ -40,7 +40,9 @@ def test_gate_trades_uses_train_threshold_long_and_short():
     test_hour = np.array([12, 13, 14, 15])
     test_bucket = np.array(["2025-01-06T12:00", "2025-01-06T13:00",
                             "2025-01-06T14:00", "2025-01-06T15:00"], dtype="datetime64[ns]")
-    folds = [{"train_pred": train, "test_pred": test_pred, "test_actual_bps": test_act,
+    folds = [{"train_pred": train, "test_pred": test_pred,
+              "test_target_z": test_act * 0.1,  # dummy vol-normalised target
+              "test_actual_bps": test_act,
               "test_hour": test_hour, "test_bucket": test_bucket}]
     # long: thr=quantile(0..99,0.9)=89.1 -> selects test_pred 90,95 -> net = act - cost
     res = gate_trades(folds, q=0.9, cost_bps=0.5, side="long")
