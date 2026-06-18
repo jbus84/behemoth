@@ -405,6 +405,95 @@ def diagnose_edge_death_pooled(
     return rows
 
 
+def diagnose_why_tail_died(
+    pairs: list[str],
+    freq: str = "2h",
+    q: float = 0.95,
+    n_folds: int = 5,
+) -> list[dict]:
+    """Deep diagnostic: decompose the "tail stopped paying" failure into four mechanisms.
+
+    1. Hit-rate vs magnitude: did wins get smaller or did hit-rate collapse?
+    2. Distribution shape: did skew / kurtosis of top-q returns change (fatter left tail)?
+    3. Conditional IC by vol quintile: does ranking work in low-vol but die in high-vol?
+    4. Hour-of-day shift: did the profitable entry hours change?
+
+    These answer *why* the tail is toxic, not just *that* it is."""
+    all_frames = []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+        if len(panel) < 200:
+            continue
+        folds = walk_forward(panel, n_folds=n_folds)
+        preds, tzs, acts, hours, buckets, thrs = [], [], [], [], [], []
+        for f in folds:
+            thr = np.quantile(f["train_pred"], q)
+            preds.append(f["test_pred"])
+            tzs.append(f["test_target_z"])
+            acts.append(f["test_actual_bps"])
+            hours.append(f["test_hour"])
+            buckets.append(f["test_bucket"])
+            thrs.append(np.full(len(f["test_pred"]), thr))
+        all_frames.append(pd.DataFrame({
+            "pred": np.concatenate(preds),
+            "tz": np.concatenate(tzs),
+            "act": np.concatenate(acts),
+            "hour": np.concatenate(hours),
+            "bucket": pd.to_datetime(np.concatenate(buckets)),
+            "thr": np.concatenate(thrs),
+        }))
+    if not all_frames:
+        return []
+    df = pd.concat(all_frames, ignore_index=True)
+    df["qtr"] = df["bucket"].dt.to_period("Q")
+    costs = [COST_BPS[sym] for sym in pairs]
+    avg_cost = float(np.mean(costs))
+    rows: list[dict] = []
+    for qtr, grp in df.groupby("qtr"):
+        if len(grp) < 20:
+            continue
+        sel = grp["pred"] >= grp["thr"]
+        top = grp.loc[sel, "act"]
+        if sel.sum() < 5:
+            continue
+        wins = top[top > 0]
+        losses = top[top <= 0]
+        hr = float((top > 0).mean())
+        win_avg = float(wins.mean()) if len(wins) else float("nan")
+        loss_avg = float(losses.mean()) if len(losses) else float("nan")
+        skew = float(top.skew())
+        kurt = float(top.kurtosis())
+        # Conditional IC: rank correlation in each VOL QUINTILE of the quarter
+        grp = grp.copy()
+        grp["vol_q"] = pd.qcut(grp["act"].abs(), q=5, labels=["q1", "q2", "q3", "q4", "q5"],
+                               duplicates="drop")
+        ic_by_vol: dict[str, float] = {}
+        for vq, vg in grp.groupby("vol_q"):
+            if len(vg) > 5:
+                ic_by_vol[str(vq)] = float(spearmanr(vg["pred"], vg["tz"]).correlation)
+        # Top-3 hours by count in this quarter
+        top_hours = grp.loc[sel, "hour"].mode().head(3).tolist()
+        rows.append({
+            "qtr": str(qtr),
+            "n": len(grp),
+            "n_topq": int(sel.sum()),
+            "hit_rate": hr,
+            "win_avg": win_avg,
+            "loss_avg": loss_avg,
+            "expectancy": hr * win_avg + (1 - hr) * loss_avg if np.isfinite(win_avg) and np.isfinite(loss_avg) else float("nan"),
+            "skew": skew,
+            "kurt": kurt,
+            "ic_by_vol": ic_by_vol,
+            "top_hours": top_hours,
+            "gross_topq": float(top.mean()),
+            "net_topq": float(top.mean()) - avg_cost,
+        })
+    return rows
+
+
 def temporal_slice_report(
     pairs: list[str],
     freq: str = "2h",
@@ -535,6 +624,18 @@ def main() -> None:
         print(f"{d['qtr']:>7} {d['n']:>6} {d['n_topq']:>5} "
               f"{d['ic']:>+6.3f} {d['vol']:>6.3f} "
               f"{d['gross_all']:>+7.3f} {d['gross_topq']:>+7.3f} {d['net_topq']:>+7.3f}")
+
+    # Deeper diagnostic: hit-vs-magnitude, distribution shape, vol-conditional IC, hour shift.
+    print("\nDEEP DIAGNOSTIC — WHY did the tail stop paying? (hit / mag / skew / vol-cond IC)")
+    print(f"{'qtr':>7} {'nTop':>5} {'hit%':>5} {'winAvg':>8} {'lossAvg':>8} "
+          f"{'skew':>7} {'kurt':>7} {'netTQ':>7}")
+    for d in diagnose_why_tail_died(TIGHT_MAJORS, "2h", q=0.95):
+        print(f"{d['qtr']:>7} {d['n_topq']:>5} {d['hit_rate']*100:>4.0f}% "
+              f"{d['win_avg']:>+8.3f} {d['loss_avg']:>+8.3f} "
+              f"{d['skew']:>+7.3f} {d['kurt']:>+7.3f} {d['net_topq']:>+7.3f}")
+        if d["ic_by_vol"]:
+            vol_ic = " ".join(f"{k}={v:+.3f}" for k, v in sorted(d["ic_by_vol"].items()))
+            print(f"  → vol-cond IC: {vol_ic}  topHours={d['top_hours']}")
 
 
 if __name__ == "__main__":
