@@ -165,3 +165,81 @@ The next question worth answering isn't "is it real?" (it is) but "why did it de
 recent +0.45 bps a floor or a continuing slide?" — which needs a rolling-window-over-time view,
 not another pooled number. Supersedes the "surviving FX edge = weekly+ only" conclusion **only
 if** a subsequent rolling-window test shows recovery or stabilization in the recent era.
+
+---
+
+## UPDATE: Granular temporal slices — the regime-burst reality
+
+A simple median split said "pre-2023 good, post-2023 bad." Running yearly and **quarterly**
+`temporal_slice_report` on the pooled EUR/GBP/JPY 2h-long q0.95 net trades exposes what
+actually happened.
+
+### Yearly view
+
+| year | n | days | meanNet | t | p | hit |
+|---|---|---|---|---|---|---|
+| 2022 | 335 | 132 | **+2.59** | **+2.54** | **0.012** | 51% |
+| 2023 | 209 | 107 | +1.72 | +2.00 | 0.048 | 52% |
+| 2024 | 117 | 62 | **−2.09** | −1.75 | 0.085 | 49% |
+| 2025 | 138 | 82 | +2.66 | +1.95 | 0.055 | 57% |
+| 2026 | 33 | 18 | −0.39 | −0.14 | 0.888 | 45% |
+
+### Quarterly view (the truth)
+
+| quarter | n | days | meanNet | t | p | hit |
+|---|---|---|---|---|---|---|
+| 2022Q1 | 14 | 7 | +4.76 | +2.02 | 0.090 | 79% |
+| 2022Q2 | 70 | 37 | +2.62 | +1.58 | 0.122 | 49% |
+| 2022Q3 | 90 | 40 | +2.45 | +1.25 | 0.220 | 47% |
+| 2022Q4 | 161 | 48 | +2.36 | +1.26 | 0.215 | 53% |
+| **2023Q1** | **81** | **36** | **+4.75** | **+2.95** | **0.006** | **64%** |
+| 2023Q2 | 32 | 19 | +0.10 | +0.05 | 0.963 | 53% |
+| 2023Q3 | 40 | 20 | +0.09 | +0.07 | 0.943 | 48% |
+| 2023Q4 | 56 | 32 | +0.30 | +0.18 | 0.856 | 38% |
+| 2024Q1 | 10 | 8 | +2.80 | +0.87 | 0.413 | 70% |
+| 2024Q2 | 28 | 14 | −0.96 | −0.65 | 0.528 | 50% |
+| 2024Q3 | 50 | 23 | **−3.78** | −1.68 | 0.107 | 40% |
+| 2024Q4 | 29 | 17 | −3.03 | −1.27 | 0.222 | 55% |
+| 2025Q1 | 45 | 30 | +4.08 | +1.86 | 0.073 | 56% |
+| 2025Q2 | 50 | 34 | +2.04 | +0.78 | 0.438 | 60% |
+| 2025Q3 | 36 | 13 | +0.87 | +0.52 | 0.613 | 50% |
+| 2025Q4 | 7 | 5 | +2.98 | +1.58 | 0.189 | 71% |
+| 2026Q1 | 27 | 16 | −0.92 | −0.32 | 0.755 | 41% |
+| 2026Q2 | 6 | 2 | +3.88 | nan | nan | 67% |
+
+### What this actually means
+
+The median-split story of "gradual decay" is **wrong**. The real profile is:
+
+1. **Strong 2022** — consistently positive all four quarters (+2.4 to +4.8 bps).
+2. **One monster quarter: 2023Q1** (+4.75 bps, p=0.006, 64% hit, 36 trading days). **This single
+   quarter alone likely accounts for the bulk of the "first half" significance** (the pre-2023
+   half had 168 days; 2022 + 2023Q1 = 132 + 36 = 168 days).
+3. **Immediate death after 2023Q1** — 2023Q2–Q4 averaged +0.15 bps (noise). Three consecutive
+   quarters of nothing.
+4. **Mostly dead/negative 2024** — three of four quarters negative, including −3.78 in Q3.
+5. **Suggestive but unconfirmed 2025** — Q1 +4.08 (p=0.073, 30 days) and Q2 +2.04, but Q3 flat
+   and Q4 tiny sample. The yearly +2.66 is encouraging but not BH-significant.
+
+This is the signature of a **conditional alpha tied to a specific macro/volatility regime**
+(possibly the SVB/banking stress period of early 2023) rather than a durable structural edge.
+When that regime ended, the edge died immediately. It did not "decay gradually" — it fell off a
+cliff after Q1 2023.
+
+### Honest revised verdict (post-granular slicing)
+
+**Signal is real but regime-conditional and currently extinct. NO-GO for deployment.**
+
+The 2025Q1/Q2 recovery is tantalizing but under-powered and possibly another transient regime
+burst. Until a rolling regime-detector can identify *ex ante* when the edge is "on," this is
+untradeable.
+
+The "surviving FX edge = weekly+ only" conclusion **stands**. Weekly/monthly mean-reversion
+([[project_fx_weekly_meanreversion_lead.md]]) remains the only demonstrated, regime-robust
+retail-FX edge in this program.
+
+### Lesson
+
+Always slice by **calendar quarter** (or finer) before trusting a pooled t-stat. A single
+anomalous quarter can carry an entire "significant" result, and a median split will mask this
+completely.
