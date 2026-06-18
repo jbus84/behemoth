@@ -64,3 +64,34 @@ def walk_forward(
             "test_hour": hour[test_lo:test_hi],
         })
     return folds
+
+
+def gate_trades(folds: list[dict], q: float, cost_bps: float, side: str = "long") -> dict:
+    nets: list[np.ndarray] = []
+    fids: list[np.ndarray] = []
+    hours: list[np.ndarray] = []
+    for i, f in enumerate(folds):
+        tp = f["test_pred"]
+        if side == "long":
+            thr = np.quantile(f["train_pred"], q)
+            sel = tp >= thr
+            net = f["test_actual_bps"][sel] - cost_bps
+        elif side == "short":
+            thr = np.quantile(f["train_pred"], 1.0 - q)
+            sel = tp <= thr
+            net = -f["test_actual_bps"][sel] - cost_bps
+        else:
+            raise ValueError(f"side must be 'long' or 'short', got {side!r}")
+        if sel.any():
+            nets.append(net)
+            fids.append(np.full(int(sel.sum()), i))
+            hours.append(f["test_hour"][sel])
+    if not nets:
+        return {"net": np.array([]), "fold_id": np.array([], int), "hour": np.array([]), "n": 0}
+    net_all = np.concatenate(nets)
+    return {
+        "net": net_all,
+        "fold_id": np.concatenate(fids),
+        "hour": np.concatenate(hours),
+        "n": len(net_all),
+    }

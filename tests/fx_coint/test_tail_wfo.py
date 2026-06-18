@@ -30,3 +30,26 @@ def test_walk_forward_folds_expanding_and_oos():
         assert len(f["train_pred"]) > prev_train
         prev_train = len(f["train_pred"])
         assert len(f["test_pred"]) == len(f["test_actual_bps"]) == len(f["test_hour"]) > 0
+
+
+def test_gate_trades_uses_train_threshold_long_and_short():
+    from scripts.fx_coint.tail_wfo import gate_trades
+    # one fold: train preds 0..99, q=0.9 -> thr ~ 89.1; test preds chosen around it
+    train = np.arange(100.0)
+    test_pred = np.array([50.0, 90.0, 95.0, 10.0])
+    test_act = np.array([1.0, 2.0, 3.0, 4.0])
+    test_hour = np.array([12, 13, 14, 15])
+    folds = [{"train_pred": train, "test_pred": test_pred,
+              "test_actual_bps": test_act, "test_hour": test_hour}]
+    # long: thr=quantile(0..99,0.9)=89.1 -> selects test_pred 90,95 -> net = act - cost
+    res = gate_trades(folds, q=0.9, cost_bps=0.5, side="long")
+    assert res["n"] == 2
+    assert np.allclose(sorted(res["net"]), sorted([2.0 - 0.5, 3.0 - 0.5]))
+    assert set(res["hour"].tolist()) == {13, 14}
+    # short: thr_low=quantile(0..99,0.1)=9.9 -> selects test_pred 10? (10>=9.9 false for <=) -> none<=9.9
+    res_s = gate_trades(folds, q=0.9, cost_bps=0.5, side="short")
+    assert res_s["n"] == 0
+    # widen: q=0.85 -> thr_low=quantile(.,0.15)=14.85 -> selects 10.0 -> net = -act - cost
+    res_s2 = gate_trades(folds, q=0.85, cost_bps=0.5, side="short")
+    assert res_s2["n"] == 1
+    assert np.allclose(res_s2["net"], [-4.0 - 0.5])
