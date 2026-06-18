@@ -42,9 +42,12 @@ from datetime import datetime, timedelta
 from scripts.fx_coint.reg_signal_hunt import build_freq_bars
 
 
-def _synthetic_1m(start: datetime, n: int) -> pl.DataFrame:
+def _synthetic_1m(start: datetime, n: int, seed: int = 0) -> pl.DataFrame:
     ts = [start + timedelta(minutes=i) for i in range(n)]
-    mid = 1.10 + np.cumsum(np.full(n, 1e-5))
+    rng = np.random.default_rng(seed)
+    # random walk with tiny drift so bar-return variance is non-zero (sigma_h > 0)
+    steps = 1e-5 + rng.normal(0.0, 5e-5, n)
+    mid = 1.10 + np.cumsum(steps)
     return pl.DataFrame({
         "bucket": ts,
         "mid": mid,
