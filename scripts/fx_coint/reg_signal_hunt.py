@@ -195,3 +195,68 @@ def ic_by_hour(
         if m.sum() >= 30:
             out[int(h)] = float(spearmanr(pred_bps[m], actual_bps[m]).statistic)
     return out
+
+
+def run_cell(sym: str, freq: str) -> dict | None:
+    src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+    if not src.exists():
+        return None
+    df_1m = pl.read_parquet(src)
+    bars = build_freq_bars(df_1m, freq)
+    panel = build_panel(bars)
+    if len(panel) < 200:
+        return None
+    cost = COST_BPS[sym]
+    res = fit_and_eval(panel, cost_bps=cost)
+    rules = eval_rules(res["pred_bps"], res["actual_bps"], cost_bps=cost)
+    return {
+        "symbol": sym,
+        "freq": freq,
+        "n_test": res["n_test"],
+        "ic": res["ic"],
+        "ic_star": res["ic_star"],
+        "clears": res["clears"],
+        "pval": ic_pvalue(res["ic"], res["n_test"]),
+        "netA": rules["netA"],
+        "netB": rules["netB"],
+        "netC": rules["netC"],
+        "n_trades_C": rules["n_trades_C"],
+        "sigma_med": res["sigma_med"],
+        "_eval": res,  # retained for IC-by-hour printing in main()
+    }
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--symbol", default="all", choices=PAIRS + ["all"])
+    ap.add_argument("--freq", default="all", choices=FREQS + ["all"])
+    args = ap.parse_args()
+    syms = PAIRS if args.symbol == "all" else [args.symbol]
+    freqs = FREQS if args.freq == "all" else [args.freq]
+
+    rows = [r for s in syms for f in freqs if (r := run_cell(s, f)) is not None]
+    if not rows:
+        print("No cells produced (missing data?).")
+        return
+    rej = bh_reject([r["pval"] for r in rows], q=0.10)
+    for r, sig in zip(rows, rej):
+        r["bh_sig"] = sig
+
+    hdr = f"{'pair':>7} {'freq':>4} {'N':>6} {'IC':>7} {'IC*':>7} {'clr':>4} {'BH':>3} {'netA':>7} {'netB':>7} {'netC':>7} {'nC':>6}"
+    print(hdr)
+    print("-" * len(hdr))
+    for r in rows:
+        print(f"{r['symbol']:>7} {r['freq']:>4} {r['n_test']:>6} {r['ic']:>7.4f} "
+              f"{r['ic_star']:>7.4f} {str(r['clears']):>4} {str(r['bh_sig']):>3} "
+              f"{r['netA']:>+7.3f} {r['netB']:>+7.3f} {r['netC']:>+7.3f} {r['n_trades_C']:>6}")
+
+    for r in rows:
+        if r["clears"]:
+            e = r["_eval"]
+            curve = ic_by_hour(e["pred_bps"], e["actual_bps"], e["hours"])
+            print(f"\nIC-by-hour {r['symbol']} {r['freq']}: "
+                  + " ".join(f"{h}:{v:+.3f}" for h, v in sorted(curve.items())))
+
+
+if __name__ == "__main__":
+    main()

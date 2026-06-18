@@ -123,3 +123,16 @@ def test_bh_reject_and_ic_pvalue():
     assert rej == [True, False, False, False]
     # all-null stays null
     assert bh_reject([0.5, 0.6, 0.7], q=0.10) == [False, False, False]
+
+
+def test_run_cell_on_synthetic(tmp_path, monkeypatch):
+    import scripts.fx_coint.reg_signal_hunt as m
+    df = _synthetic_1m(datetime(2025, 1, 6, 7, 0), 800 * 60)
+    d = tmp_path / "data" / "tick_bars"
+    d.mkdir(parents=True)
+    df.write_parquet(d / "EURUSD_1m_flow.parquet")
+    monkeypatch.setattr(m, "_REPO_ROOT", tmp_path)
+    row = m.run_cell("EURUSD", "1h")
+    assert row is not None
+    assert row["symbol"] == "EURUSD" and row["freq"] == "1h"
+    assert set(["ic", "ic_star", "clears", "pval", "netA", "netB", "netC"]).issubset(row)
