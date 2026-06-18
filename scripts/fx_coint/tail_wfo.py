@@ -69,7 +69,83 @@ def walk_forward(
     return folds
 
 
-def gate_trades(folds: list[dict], q: float, cost_bps: float, side: str = "long") -> dict:
+def add_trailing_regime_features(
+    panel: pd.DataFrame, window: int = 30
+) -> pd.DataFrame:
+    """Add no-look-ahead trailing regime / meta features to the panel.
+
+    All features are computed from PAST returns only (shift(1)) so they are
+    observable at decision time.  Key features:
+        - skew_ret: trailing skew of next-bar returns (trending = positive skew)
+        - auto_ret: lag-1 autocorrelation of next-bar returns (trend = positive)
+        - vol_ret: trailing std of next-bar returns
+        - hit_ret: trailing hit rate (fraction of positive returns)
+        - payoff_ret: trailing payoff ratio (mean win / mean |loss|)
+    """
+    panel = panel.copy()
+    r = panel["ret_next_bps"]
+    # Use shift(1) so the feature at bar t only uses returns ending at bar t,
+    # never the future return t→t+1.
+    rs = r.shift(1)
+    panel["skew_ret"] = rs.rolling(window, min_periods=window // 2).skew()
+    panel["vol_ret"] = rs.rolling(window, min_periods=window // 2).std()
+    panel["auto_ret"] = rs.rolling(window + 1, min_periods=window // 2).apply(
+        lambda x: x.autocorr(lag=1) if len(x.dropna()) > 2 else np.nan, raw=False
+    )
+    wins = rs.where(rs > 0)
+    losses = rs.where(rs <= 0).abs()
+    panel["hit_ret"] = (rs > 0).rolling(window, min_periods=window // 2).mean()
+    panel["payoff_ret"] = (
+        wins.rolling(window, min_periods=window // 2).mean()
+        / losses.rolling(window, min_periods=window // 2).mean()
+    )
+    return panel
+
+
+def walk_forward_regime_aware(
+    panel: pd.DataFrame,
+    n_folds: int = 5,
+    min_train_frac: float = 0.5,
+    purge: int = 1,
+    alpha: float = 1.0,
+) -> list[dict]:
+    """Expanding-window WFO that also forwards regime / meta features for each fold."""
+    n = len(panel)
+    start = int(n * min_train_frac)
+    edges = np.linspace(start, n, n_folds + 1).astype(int)
+    X = panel[FEATURE_COLS].to_numpy()
+    yz = panel["target_z"].to_numpy()
+    act = panel["ret_next_bps"].to_numpy()
+    hour = panel["hour"].to_numpy()
+    bucket = panel["bucket"].to_numpy()
+    regime_cols = ["skew_ret", "auto_ret", "vol_ret", "hit_ret", "payoff_ret"]
+    regime = {c: panel[c].to_numpy() for c in regime_cols}
+
+    folds: list[dict] = []
+    for k in range(n_folds):
+        split = edges[k]
+        test_lo, test_hi = edges[k] + purge, edges[k + 1]
+        if test_hi - test_lo < 1 or split < 10:
+            continue
+        scaler = StandardScaler().fit(X[:split])
+        model = Ridge(alpha=alpha).fit(scaler.transform(X[:split]), yz[:split])
+        fd: dict = {
+            "train_pred": model.predict(scaler.transform(X[:split])),
+            "test_pred": model.predict(scaler.transform(X[test_lo:test_hi])),
+            "test_target_z": yz[test_lo:test_hi],
+            "test_actual_bps": act[test_lo:test_hi],
+            "test_hour": hour[test_lo:test_hi],
+            "test_bucket": bucket[test_lo:test_hi],
+        }
+        for c in regime_cols:
+            fd[f"test_{c}"] = regime[c][test_lo:test_hi]
+        folds.append(fd)
+    return folds
+
+
+def gate_trades(
+    folds: list[dict], q: float, cost_bps: float, side: str = "long"
+) -> dict:
     nets: list[np.ndarray] = []
     fids: list[np.ndarray] = []
     hours: list[np.ndarray] = []
@@ -101,6 +177,91 @@ def gate_trades(folds: list[dict], q: float, cost_bps: float, side: str = "long"
         "hour": np.concatenate(hours),
         "bucket": np.concatenate(buckets),
         "n": len(net_all),
+    }
+
+
+def gate_trades_regime(
+    folds: list[dict],
+    q: float,
+    cost_bps: float,
+    side: str = "long",
+    regime_col: str = "test_skew_ret",
+    min_regime: float = 0.0,
+) -> dict:
+    """Gate trades by a trailing regime feature computed from past data.
+    Only takes top-q trades when the regime indicator >= min_regime."""
+    nets, fids, hours, buckets = [], [], [], []
+    for i, f in enumerate(folds):
+        tp = f["test_pred"]
+        if side == "long":
+            thr = np.quantile(f["train_pred"], q)
+            sel = tp >= thr
+        elif side == "short":
+            thr = np.quantile(f["train_pred"], 1.0 - q)
+            sel = tp <= thr
+        else:
+            raise ValueError(f"side must be 'long' or 'short', got {side!r}")
+        # Regime gate: require past-data regime indicator above threshold
+        if regime_col in f:
+            regime_ok = f[regime_col] >= min_regime
+            sel = sel & regime_ok
+        net = f["test_actual_bps"][sel] - cost_bps
+        if sel.any():
+            nets.append(net)
+            fids.append(np.full(int(sel.sum()), i))
+            hours.append(f["test_hour"][sel])
+            buckets.append(f["test_bucket"][sel])
+    if not nets:
+        return {"net": np.array([]), "fold_id": np.array([], int),
+                "hour": np.array([]), "bucket": np.array([], "datetime64[ns]"), "n": 0}
+    return {
+        "net": np.concatenate(nets),
+        "fold_id": np.concatenate(fids),
+        "hour": np.concatenate(hours),
+        "bucket": np.concatenate(buckets),
+        "n": len(np.concatenate(nets)),
+    }
+
+
+def gate_trades_meta(
+    folds: list[dict],
+    q: float,
+    cost_bps: float,
+    side: str = "long",
+    meta_col: str = "test_payoff_ret",
+    min_payoff: float = 1.2,
+) -> dict:
+    """Gate trades by trailing payoff ratio (win_avg / |loss_avg|).
+    Only takes top-q trades when the past payoff asymmetry >= min_payoff."""
+    nets, fids, hours, buckets = [], [], [], []
+    for i, f in enumerate(folds):
+        tp = f["test_pred"]
+        if side == "long":
+            thr = np.quantile(f["train_pred"], q)
+            sel = tp >= thr
+        elif side == "short":
+            thr = np.quantile(f["train_pred"], 1.0 - q)
+            sel = tp <= thr
+        else:
+            raise ValueError(f"side must be 'long' or 'short', got {side!r}")
+        if meta_col in f:
+            payoff_ok = f[meta_col] >= min_payoff
+            sel = sel & payoff_ok
+        net = f["test_actual_bps"][sel] - cost_bps
+        if sel.any():
+            nets.append(net)
+            fids.append(np.full(int(sel.sum()), i))
+            hours.append(f["test_hour"][sel])
+            buckets.append(f["test_bucket"][sel])
+    if not nets:
+        return {"net": np.array([]), "fold_id": np.array([], int),
+                "hour": np.array([]), "bucket": np.array([], "datetime64[ns]"), "n": 0}
+    return {
+        "net": np.concatenate(nets),
+        "fold_id": np.concatenate(fids),
+        "hour": np.concatenate(hours),
+        "bucket": np.concatenate(buckets),
+        "n": len(np.concatenate(nets)),
     }
 
 
@@ -144,6 +305,76 @@ def run_cell_wfo(
     cost = COST_BPS[sym]
     folds = walk_forward(panel, n_folds=n_folds)
     trades = gate_trades(folds, q=q, cost_bps=cost, side=side)
+    s = cell_stats(trades["net"], trades["fold_id"])
+    return {"symbol": sym, "freq": freq, "side": side, "q": q, **s}
+
+
+def run_cell_wfo_regime(
+    sym: str,
+    freq: str,
+    side: str = "long",
+    q: float = 0.95,
+    n_folds: int = 5,
+    regime_col: str = "test_skew_ret",
+    min_regime: float = 0.0,
+    meta_col: str = "test_payoff_ret",
+    min_payoff: float = 0.0,
+) -> dict | None:
+    """Run WFO with regime-aware and/or meta-rule gating.  Set min_regime > 0 or
+    min_payoff > 0 to activate the respective filter."""
+    src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+    if not src.exists():
+        return None
+    panel = add_trailing_regime_features(
+        build_panel(build_freq_bars(pl.read_parquet(src), freq)), window=30
+    )
+    if len(panel) < 200:
+        return None
+    cost = COST_BPS[sym]
+    folds = walk_forward_regime_aware(panel, n_folds=n_folds)
+    # If both filters requested, apply directly on fold data (both must pass)
+    if min_regime > 0 and min_payoff > 0:
+        nets, fids, hours, buckets = [], [], [], []
+        for i, f in enumerate(folds):
+            tp = f["test_pred"]
+            if side == "long":
+                thr = np.quantile(f["train_pred"], q)
+                sel = tp >= thr
+            else:
+                thr = np.quantile(f["train_pred"], 1.0 - q)
+                sel = tp <= thr
+            if regime_col in f:
+                sel = sel & (f[regime_col] >= min_regime)
+            if meta_col in f:
+                sel = sel & (f[meta_col] >= min_payoff)
+            net = f["test_actual_bps"][sel] - cost
+            if sel.any():
+                nets.append(net)
+                fids.append(np.full(int(sel.sum()), i))
+                hours.append(f["test_hour"][sel])
+                buckets.append(f["test_bucket"][sel])
+        trades = {"net": np.array([]), "fold_id": np.array([], int),
+                  "hour": np.array([]), "bucket": np.array([], "datetime64[ns]"), "n": 0}
+        if nets:
+            trades = {
+                "net": np.concatenate(nets),
+                "fold_id": np.concatenate(fids),
+                "hour": np.concatenate(hours),
+                "bucket": np.concatenate(buckets),
+                "n": len(np.concatenate(nets)),
+            }
+    elif min_regime > 0:
+        trades = gate_trades_regime(
+            folds, q=q, cost_bps=cost, side=side,
+            regime_col=regime_col, min_regime=min_regime,
+        )
+    elif min_payoff > 0:
+        trades = gate_trades_meta(
+            folds, q=q, cost_bps=cost, side=side,
+            meta_col=meta_col, min_payoff=min_payoff,
+        )
+    else:
+        trades = gate_trades(folds, q=q, cost_bps=cost, side=side)
     s = cell_stats(trades["net"], trades["fold_id"])
     return {"symbol": sym, "freq": freq, "side": side, "q": q, **s}
 
@@ -636,6 +867,102 @@ def main() -> None:
         if d["ic_by_vol"]:
             vol_ic = " ".join(f"{k}={v:+.3f}" for k, v in sorted(d["ic_by_vol"].items()))
             print(f"  → vol-cond IC: {vol_ic}  topHours={d['top_hours']}")
+
+    # REGIME + META-RULE EXPERIMENT — can we rescue the edge?
+    print("\nREGIME + META-RULE EXPERIMENT (EUR/GBP/JPY 2h long q0.95)")
+    print(f"{'variant':>22} {'n':>5} {'meanNet':>8} {'t':>6} {'hit':>5} {'posFold':>7}")
+    variants = [
+        ("baseline (no filters)", 0.0, 0.0),
+        ("regime skew≥0.0", 0.0, 0.0),  # placebo — should match baseline
+        ("regime skew≥0.3", 0.3, 0.0),
+        ("regime skew≥0.5", 0.5, 0.0),
+        ("regime skew≥0.7", 0.7, 0.0),
+        ("meta payoff≥1.0", 0.0, 1.0),
+        ("meta payoff≥1.2", 0.0, 1.2),
+        ("meta payoff≥1.5", 0.0, 1.5),
+        ("regime≥0.3 + meta≥1.2", 0.3, 1.2),
+        ("regime≥0.5 + meta≥1.2", 0.5, 1.2),
+        ("regime≥0.3 + meta≥1.5", 0.3, 1.5),
+        ("regime≥0.5 + meta≥1.5", 0.5, 1.5),
+    ]
+    for sym in TIGHT_MAJORS:
+        for label, min_skew, min_payoff in variants:
+            rr = run_cell_wfo_regime(
+                sym, "2h", side="long", q=0.95,
+                min_regime=min_skew, min_payoff=min_payoff,
+            )
+            if rr:
+                print(f"{sym:>7} {label:>14} {rr['n']:>5} {rr['mean_net_bps']:>+8.3f} "
+                      f"{rr['t_stat']:>+6.2f} {rr['hit_rate']*100:>4.0f}% {rr['pos_fold_pct']:>7.2f}")
+
+    # POOLED version of the same experiment
+    print("\nPOOLED REGIME + META EXPERIMENT (EUR/GBP/JPY 2h long q0.95)")
+    print(f"{'variant':>25} {'n':>5} {'meanNet':>8} {'dayT':>6} {'dayP':>7} {'hit':>5}")
+    for label, min_skew, min_payoff in variants:
+        nets, buckets = [], []
+        for sym in TIGHT_MAJORS:
+            src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+            if not src.exists():
+                continue
+            panel = add_trailing_regime_features(
+                build_panel(build_freq_bars(pl.read_parquet(src), "2h")), window=30
+            )
+            if len(panel) < 200:
+                continue
+            folds = walk_forward_regime_aware(panel, n_folds=5)
+            if min_skew > 0 and min_payoff > 0:
+                tr = _gate_both(folds, q=0.95, cost_bps=COST_BPS[sym],
+                                min_skew=min_skew, min_payoff=min_payoff)
+            elif min_skew > 0:
+                tr = gate_trades_regime(folds, q=0.95, cost_bps=COST_BPS[sym],
+                                        min_regime=min_skew)
+            elif min_payoff > 0:
+                tr = gate_trades_meta(folds, q=0.95, cost_bps=COST_BPS[sym],
+                                      min_payoff=min_payoff)
+            else:
+                tr = gate_trades(folds, q=0.95, cost_bps=COST_BPS[sym])
+            if tr["n"] > 0:
+                nets.append(tr["net"])
+                buckets.append(tr["bucket"])
+        if not nets:
+            continue
+        net = np.concatenate(nets)
+        bk = np.concatenate(buckets)
+        dc = day_clustered_tstat(net, bk)
+        print(f"{label:>25} {len(net):>5} {net.mean():>+8.3f} "
+              f"{dc['t_stat']:>+6.2f} {dc['p_value']:>7.3f} {(net>0).mean()*100:>4.0f}%")
+
+
+def _gate_both(
+    folds: list[dict], q: float, cost_bps: float,
+    min_skew: float = 0.3, min_payoff: float = 1.2,
+) -> dict:
+    """Combined gate: both regime skew AND payoff ratio must pass."""
+    nets, fids, hours, buckets = [], [], [], []
+    for i, f in enumerate(folds):
+        tp = f["test_pred"]
+        thr = np.quantile(f["train_pred"], q)
+        sel = tp >= thr
+        if "test_skew_ret" in f:
+            sel = sel & (f["test_skew_ret"] >= min_skew)
+        if "test_payoff_ret" in f:
+            sel = sel & (f["test_payoff_ret"] >= min_payoff)
+        net = f["test_actual_bps"][sel] - cost_bps
+        if sel.any():
+            nets.append(net)
+            fids.append(np.full(int(sel.sum()), i))
+            hours.append(f["test_hour"][sel])
+            buckets.append(f["test_bucket"][sel])
+    if not nets:
+        return {"net": np.array([]), "fold_id": np.array([], int),
+                "hour": np.array([]), "bucket": np.array([], "datetime64[ns]"), "n": 0}
+    return {
+        "net": np.concatenate(nets),
+        "fold_id": np.concatenate(fids),
+        "hour": np.concatenate(hours),
+        "bucket": np.concatenate(buckets),
+        "n": len(np.concatenate(nets)),
+    }
 
 
 if __name__ == "__main__":
