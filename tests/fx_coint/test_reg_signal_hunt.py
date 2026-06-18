@@ -70,3 +70,18 @@ def test_build_freq_bars_overnight_gap_not_contiguous():
 
     # Within day2 (indices 15-27), consecutive bars are contiguous
     assert bars["contig"].iloc[15:28].all()
+
+
+def test_build_panel_no_lookahead_and_volnorm():
+    from scripts.fx_coint.reg_signal_hunt import build_freq_bars, build_panel
+    df = _synthetic_1m(datetime(2025, 1, 6, 7, 0), 200 * 60)
+    bars = build_freq_bars(df, "1h", session=(0, 24))
+    panel = build_panel(bars, vol_lookback=24)
+    assert len(panel) > 50
+    # target_z reconstructs ret_next_bps via sigma_h
+    recon = panel["target_z"] * panel["sigma_h"]
+    assert np.allclose(recon.to_numpy(), panel["ret_next_bps"].to_numpy(), atol=1e-6)
+    # r_1 at row i equals ret_next_bps at row i-1 (feature is the realized last-bar
+    # return; no future info) — check correlation is ~1 on the contiguous interior
+    last_ret = panel["ret_next_bps"].shift(1).to_numpy()[1:]
+    assert np.corrcoef(panel["r_1"].to_numpy()[1:], last_ret)[0, 1] > 0.99

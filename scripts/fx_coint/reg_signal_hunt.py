@@ -58,3 +58,40 @@ def build_freq_bars(
     bars["contig"] = (bars["bucket"].to_numpy() - prev) == step
     bars.loc[0, "contig"] = False
     return bars
+
+
+def build_panel(bars: pd.DataFrame, vol_lookback: int = 24) -> pd.DataFrame:
+    b = bars.reset_index(drop=True)
+    mid = b["mid"].to_numpy()
+    r = np.empty(len(b))
+    r[0] = np.nan
+    r[1:] = (np.log(mid[1:]) - np.log(mid[:-1])) * 1e4
+    # break returns across non-contiguous bars
+    r[~b["contig"].to_numpy()] = np.nan
+    rs = pd.Series(r)
+
+    feats = pd.DataFrame({"bucket": b["bucket"]})
+    feats["r_1"] = rs.to_numpy()
+    feats["mom_short"] = rs.rolling(5, min_periods=3).sum().to_numpy()
+    feats["mom_long"] = rs.rolling(18, min_periods=9).sum().shift(5).to_numpy()
+    feats["rvol_24"] = rs.rolling(vol_lookback, min_periods=vol_lookback // 2).std().shift(1).to_numpy()
+    feats["hour"] = b["bucket"].dt.hour.astype(float).to_numpy()
+    feats["sigma_h"] = feats["rvol_24"]  # trailing vol, known at decision time
+
+    ret_next = rs.shift(-1).to_numpy()  # forward 1-bar return
+    feats["ret_next_bps"] = ret_next
+    feats["target_z"] = ret_next / feats["sigma_h"].to_numpy()
+
+    finite = np.isfinite(feats[FEATURE_COLS].to_numpy()).all(axis=1)
+    finite &= np.isfinite(feats["target_z"].to_numpy())
+    finite &= feats["sigma_h"].to_numpy() > 0
+
+    result = feats[finite]
+
+    # Drop rows that come immediately after an index gap to preserve shift relationships
+    if len(result) > 1:
+        result_idx = result.index.to_numpy()
+        gaps = np.where(np.diff(result_idx) != 1)[0] + 1  # +1 to get the row after the gap
+        result = result.drop(result.index[gaps])
+
+    return result.reset_index(drop=True)
