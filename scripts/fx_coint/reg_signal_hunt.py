@@ -208,7 +208,9 @@ def run_cell(sym: str, freq: str) -> dict | None:
     if len(panel) < 200:
         return None
     cost = COST_BPS[sym]
-    res = fit_and_eval(panel, cost_bps=cost)
+    # purge=1 is correct because the target is next-bar at every freq; if a
+    # multi-bar-horizon target is ever added, purge must scale with that horizon.
+    res = fit_and_eval(panel, cost_bps=cost, purge=1)
     rules = eval_rules(res["pred_bps"], res["actual_bps"], cost_bps=cost)
     return {
         "symbol": sym,
