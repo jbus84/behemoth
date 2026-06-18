@@ -106,3 +106,16 @@ def test_day_clustered_tstat_groups_by_date():
     # empty input guard
     r0 = day_clustered_tstat(np.array([]), np.array([], dtype="datetime64[ns]"))
     assert r0["n_days"] == 0 and np.isnan(r0["t_stat"])
+
+
+def test_era_split_test_partitions_by_median_date(tmp_path, monkeypatch):
+    import scripts.fx_coint.tail_wfo as tw
+    df = _synthetic_1m(datetime(2025, 1, 6, 7, 0), 4000 * 60)
+    d = tmp_path / "data" / "tick_bars"
+    d.mkdir(parents=True)
+    df.write_parquet(d / "EURUSD_1m_flow.parquet")
+    monkeypatch.setattr(tw, "_REPO_ROOT", tmp_path)
+    res = tw.era_split_test(["EURUSD"], "2h", q=0.9, n_folds=4)
+    assert res["split_date"] is not None
+    # both halves produce a day-clustered result with roughly balanced day counts
+    assert res["first"]["n_days"] > 0 and res["second"]["n_days"] > 0

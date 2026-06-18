@@ -203,6 +203,70 @@ def pooled_long_test(
     }
 
 
+OOS_PAIRS = ["AUDUSD", "USDCHF", "USDCAD"]
+
+
+def _long_trades_with_buckets(sym: str, freq: str, q: float, cost_bps: float,
+                              n_folds: int = 5) -> dict:
+    """Helper: long top-(1-q) WFO trades for one pair, returning net + buckets. cost_bps=0
+    gives the GROSS signal (used for the out-of-sample-pairs generalization test)."""
+    src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+    if not src.exists():
+        return {"net": np.array([]), "bucket": np.array([], "datetime64[ns]")}
+    panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+    if len(panel) < 200:
+        return {"net": np.array([]), "bucket": np.array([], "datetime64[ns]")}
+    folds = walk_forward(panel, n_folds=n_folds)
+    tr = gate_trades(folds, q=q, cost_bps=cost_bps, side="long")
+    return {"net": tr["net"], "bucket": tr["bucket"]}
+
+
+def oos_pairs_test(freq: str = "2h", q: float = 0.95, n_folds: int = 5) -> dict:
+    """Generalization test: apply the identical long-top-decile rule to pairs EXCLUDED from
+    the selected edge (OOS_PAIRS). Reports per-pair and pooled GROSS (cost=0) day-clustered
+    significance — a real signal generalizes gross to pairs that didn't inform the choice."""
+    per_pair, gross_nets, gross_bks = {}, [], []
+    for sym in OOS_PAIRS:
+        g = _long_trades_with_buckets(sym, freq, q, 0.0, n_folds)
+        nt = _long_trades_with_buckets(sym, freq, q, COST_BPS[sym], n_folds)
+        per_pair[sym] = {
+            "gross": day_clustered_tstat(g["net"], g["bucket"]),
+            "net": day_clustered_tstat(nt["net"], nt["bucket"]),
+            "n": len(g["net"]),
+        }
+        if len(g["net"]):
+            gross_nets.append(g["net"])
+            gross_bks.append(g["bucket"])
+    pooled = (day_clustered_tstat(np.concatenate(gross_nets), np.concatenate(gross_bks))
+              if gross_nets else {"n_days": 0, "daily_mean": float("nan"),
+                                  "t_stat": float("nan"), "p_value": float("nan")})
+    return {"per_pair": per_pair, "pooled_gross": pooled}
+
+
+def era_split_test(pairs: list[str], freq: str = "2h", q: float = 0.95,
+                   n_folds: int = 5) -> dict:
+    """Stability test: split the pooled long-top-decile NET trades at the median trade date
+    and report day-clustered significance in each half. A robust edge holds in both halves;
+    a decayed/forking-paths edge concentrates in one era."""
+    nets, bks = [], []
+    for sym in pairs:
+        tr = _long_trades_with_buckets(sym, freq, q, COST_BPS[sym], n_folds)
+        if len(tr["net"]):
+            nets.append(tr["net"])
+            bks.append(tr["bucket"])
+    if not nets:
+        return {"split_date": None, "first": None, "second": None}
+    net = np.concatenate(nets)
+    bk = pd.to_datetime(pd.Series(np.concatenate(bks)))
+    split = bk.sort_values().iloc[len(bk) // 2]
+    first = bk < split
+    return {
+        "split_date": str(split.date()),
+        "first": day_clustered_tstat(net[first.to_numpy()], bk[first.to_numpy()].to_numpy()),
+        "second": day_clustered_tstat(net[~first.to_numpy()], bk[~first.to_numpy()].to_numpy()),
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default="all", choices=UNIVERSE + ["all"])
@@ -254,6 +318,24 @@ def main() -> None:
             print(f"{qq:>5.2f} {p['n']:>6} {p['mean_net_bps']:>+8.3f} {p['naive_t']:>+7.2f} "
                   f"{p['naive_p']:>7.3f} {p['day_n']:>5} {p['day_t']:>+6.2f} {p['day_p']:>7.3f} "
                   f"{p['hit_rate']*100:>4.0f}%")
+
+    # Forking-paths attacks: does the selected edge generalize OOS and hold across eras?
+    oos = oos_pairs_test("2h", q=0.95)
+    print("\nOOS-PAIRS test (identical 2h long q0.95 rule on EXCLUDED majors), day-clustered:")
+    print(f"{'pair':>7} {'n':>5} {'grossMean':>9} {'grossP':>7} {'netP':>7}")
+    for sym in OOS_PAIRS:
+        pp = oos["per_pair"][sym]
+        print(f"{sym:>7} {pp['n']:>5} {pp['gross']['daily_mean']:>+9.3f} "
+              f"{pp['gross']['p_value']:>7.3f} {pp['net']['p_value']:>7.3f}")
+    pg = oos["pooled_gross"]
+    print(f"  pooled GROSS: dailyMean={pg['daily_mean']:+.3f} t={pg['t_stat']:+.2f} p={pg['p_value']:.3f}")
+
+    era = era_split_test(TIGHT_MAJORS, "2h", q=0.95)
+    print(f"\nERA split-half (EUR/GBP/JPY 2h long q0.95 net) at {era['split_date']}, day-clustered:")
+    for label in ("first", "second"):
+        e = era[label]
+        print(f"  {label:>6}: n_days={e['n_days']} dailyMean={e['daily_mean']:+.3f} "
+              f"t={e['t_stat']:+.2f} p={e['p_value']:.3f}")
 
 
 if __name__ == "__main__":
