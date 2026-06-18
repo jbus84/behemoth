@@ -60,6 +60,15 @@ jointly.
 Bars confirmed genuine time-bars (1h truncation of 1-min bars, ≤1min stale) — not the
 stale-tick-bar artifact, so the negative result is about the market, not the data.
 
+## Caveat (strengthens the NO-GO)
+
+`breadth_t` (mean fold IC / SE over folds) treats WFO folds as independent. They are not —
+6-month windows rolling by 1 month overlap, and same-calendar slices co-move across USD
+pairs — so the true SE is larger and `breadth_t` is *optimistic*. The flow arms fail to
+clear the bar even with this optimistically small SE, so the NO-GO is more robust, not less.
+The only breadth-t≈3 row (`price_only` h1) is dismissed on sign-stability (0.58 ≈ coin-flip)
+and IR-vs-cost, not on breadth-t. (Verified by independent whole-branch review, 2026-06-18.)
+
 ## Method that worked (keep)
 
 Needle detection = continuous IC (not dirAcc) on a **low-variance ridge** signal +
