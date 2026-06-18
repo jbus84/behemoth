@@ -12,7 +12,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
-from scipy.stats import spearmanr, t as _t_dist
+from scipy.stats import spearmanr
+from scipy.stats import t as _t_dist
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 

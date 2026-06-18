@@ -1,7 +1,8 @@
-import polars as pl
-import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
+
+import numpy as np
+import polars as pl
+
 from scripts.fx_coint.reg_signal_hunt import build_freq_bars
 
 
@@ -88,7 +89,12 @@ def test_build_panel_no_lookahead_and_volnorm():
 
 
 def test_breakeven_ic_and_fit_keys():
-    from scripts.fx_coint.reg_signal_hunt import breakeven_ic, fit_and_eval, build_freq_bars, build_panel
+    from scripts.fx_coint.reg_signal_hunt import (
+        breakeven_ic,
+        build_freq_bars,
+        build_panel,
+        fit_and_eval,
+    )
     assert abs(breakeven_ic(0.64, 16.0) - 0.04) < 1e-9
     df = _synthetic_1m(datetime(2025, 1, 6, 7, 0), 400 * 60)
     panel = build_panel(build_freq_bars(df, "1h", session=(0, 24)))
