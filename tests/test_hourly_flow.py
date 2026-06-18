@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scripts.fx_coint.hourly_nextbar_label import label_horizon_tercile
 from scripts.fx_coint.hourly_flow_features import add_channels, ARMS, build_panel
+from scripts.fx_coint.multiplicity import p_from_t, sidak_alpha, bh_reject
 
 
 def _synth(n=3000, seed=0):
@@ -59,3 +60,12 @@ def test_build_panel_shapes():
     assert X.dtype == np.float64 and X.ndim == 3
     assert X.shape[1] == len(ARMS["both"]) and X.shape[2] == 24
     assert len(y) == X.shape[0] == len(pos)
+
+
+def test_multiplicity_helpers():
+    assert abs(p_from_t(0.0, 100) - 1.0) < 1e-9
+    assert p_from_t(1.96, 100) < 0.06 and p_from_t(1.96, 100) > 0.04
+    assert sidak_alpha(0.05, 12) < 0.05
+    # BH: one tiny p among 12 should reject; all-large should not
+    assert bh_reject([0.0001] + [0.9] * 11)[0] is True
+    assert bh_reject([0.9] * 12) == [False] * 12
