@@ -40,9 +40,8 @@ class RBParticleFilter:
 
     def predict(self, tilt: float) -> None:
         p = self.p
-        n = p.n_particles
         # --- regime transition (sticky Markov) ---
-        u = self.rng.random(n)
+        u = self.rng.random(p.n_particles)
         stay = np.where(self.regime == TREND, p.p_stay_trend, p.p_stay_revert)
         switch = u >= stay
         self.regime = np.where(switch, 1 - self.regime, self.regime)
@@ -50,6 +49,4 @@ class RBParticleFilter:
         phi = np.where(self.regime == TREND, p.phi_trend, p.phi_revert)
         nudge = np.where(self.regime == TREND, p.tilt_gain * tilt, 0.0)
         self.mu_mean = phi * self.mu_mean + nudge
-        old_mu_var = self.mu_var.copy()
         self.mu_var = phi * phi * self.mu_var + p.q_mu
-        self.mu_var = np.maximum(self.mu_var, old_mu_var)
