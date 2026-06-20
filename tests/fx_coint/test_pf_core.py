@@ -1,6 +1,6 @@
 import numpy as np
 
-from scripts.fx_coint.pf_core import PFParams, RBParticleFilter
+from scripts.fx_coint.pf_core import PFParams, RBParticleFilter, run_filter
 
 
 def test_init_shapes_and_normalized_weights():
@@ -54,3 +54,22 @@ def test_posterior_drift_flips_with_signal():
         pf.update(-1.0)
     _, mu_hat, _ = pf.posterior()
     assert mu_hat < -0.3
+
+
+def test_run_filter_output_shapes():
+    obs = np.array([0.5, 0.4, -0.2, 1.1, 0.9])
+    out = run_filter(obs, tilt=0.3, params=PFParams(n_particles=300, seed=0))
+    assert out["mu_hat"].shape == (5,)
+    assert out["p_trend"].shape == (5,)
+    assert out["mu_var"].shape == (5,)
+
+
+def test_run_filter_is_causal():
+    # outputs for the first k steps must not change if later observations change
+    base = np.array([0.5, 0.4, -0.2, 1.1, 0.9])
+    alt = base.copy()
+    alt[3:] = [-5.0, -5.0]
+    o1 = run_filter(base, tilt=0.0, params=PFParams(n_particles=500, seed=7))
+    o2 = run_filter(alt, tilt=0.0, params=PFParams(n_particles=500, seed=7))
+    assert np.allclose(o1["mu_hat"][:3], o2["mu_hat"][:3])
+    assert np.allclose(o1["p_trend"][:3], o2["p_trend"][:3])

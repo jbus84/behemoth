@@ -94,3 +94,27 @@ class RBParticleFilter:
         cumsum = np.cumsum(weights)
         cumsum[-1] = 1.0
         return np.searchsorted(cumsum, positions).astype(int)
+
+
+def run_filter(observations: np.ndarray, tilt: float, params: PFParams) -> dict[str, np.ndarray]:
+    """Run the RBPF online: predict/update per observation, return posterior arrays.
+
+    Args:
+        observations: (T,) array of vol-normalized returns.
+        tilt: scalar ridge forecast injected each predict step.
+        params: PFParams instance with seed, particles, etc.
+
+    Returns:
+        dict with keys "p_trend", "mu_hat", "mu_var", each shape (T,).
+        Element [t] is the posterior computed from observations[0..t] inclusive.
+    """
+    pf = RBParticleFilter(params)
+    T = len(observations)
+    p_trend = np.empty(T)
+    mu_hat = np.empty(T)
+    mu_var = np.empty(T)
+    for t in range(T):
+        pf.predict(tilt)
+        pf.update(float(observations[t]))
+        p_trend[t], mu_hat[t], mu_var[t] = pf.posterior()
+    return {"p_trend": p_trend, "mu_hat": mu_hat, "mu_var": mu_var}
