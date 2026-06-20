@@ -27,3 +27,30 @@ def test_predict_tilts_only_trend_particles():
     is_trend = pf2.regime == 0
     assert np.allclose(pf2.mu_var[is_trend], expect_trend)
     assert np.allclose(pf2.mu_var[~is_trend], expect_revert)
+
+
+def test_systematic_resample_favors_heavy_weights():
+    rng = np.random.default_rng(0)
+    w = np.array([0.0, 0.0, 1.0, 0.0])
+    idx = RBParticleFilter.systematic_resample(w, rng)
+    assert np.all(idx == 2)
+
+
+def test_update_pulls_posterior_drift_toward_persistent_signal():
+    pf = RBParticleFilter(PFParams(n_particles=3000, q_mu=0.02, r_obs=0.3, seed=5))
+    for _ in range(15):
+        pf.predict(tilt=0.0)
+        pf.update(r_obs_value=1.0)   # persistent positive vol-normalized return
+    p_trend, mu_hat, mu_var = pf.posterior()
+    assert mu_hat > 0.3            # posterior drift turned positive
+    assert 0.0 <= p_trend <= 1.0
+    assert mu_var > 0.0
+
+
+def test_posterior_drift_flips_with_signal():
+    pf = RBParticleFilter(PFParams(n_particles=3000, seed=6))
+    for _ in range(15):
+        pf.predict(0.0)
+        pf.update(-1.0)
+    _, mu_hat, _ = pf.posterior()
+    assert mu_hat < -0.3
