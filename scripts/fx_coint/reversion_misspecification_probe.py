@@ -166,7 +166,6 @@ def test_2_interactions(df: pl.DataFrame, logmid: np.ndarray, oriented: np.ndarr
     times = df["bucket"].to_numpy().astype("datetime64[D]")
     oos = times > IS_END
 
-    factor_ew = oriented.mean(axis=1)
     _, res_ew = usd_factor_residual(oriented)
 
     h = 1
@@ -226,7 +225,6 @@ def test_3_extended_horizons(df: pl.DataFrame, logmid: np.ndarray, oriented: np.
     times = df["bucket"].to_numpy().astype("datetime64[D]")
     oos = times > IS_END
 
-    factor_ew = oriented.mean(axis=1)
     _, res_ew = usd_factor_residual(oriented)
     spread = np.column_stack([df[f"spr_{s}"].to_numpy() for s in syms])
 
