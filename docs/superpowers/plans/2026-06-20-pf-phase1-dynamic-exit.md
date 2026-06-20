@@ -73,11 +73,15 @@ def test_predict_tilts_only_trend_particles():
     # trend particles (regime 0) that did NOT switch get +1.0; the cross-sectional
     # mean drift must be strictly positive because trend particles were nudged up.
     assert pf.mu_mean.mean() > 0.1
-    # variance grows by process noise q_mu when q_mu>0
+    # predict applies the AR(1) Kalman variance time-update phi^2*var + q_mu per
+    # particle; from mu0_var=1.0 (above the stationary variance) it CONTRACTS.
     pf2 = RBParticleFilter(PFParams(n_particles=500, q_mu=0.04, seed=3))
-    v0 = pf2.mu_var.copy()
     pf2.predict(tilt=0.0)
-    assert np.all(pf2.mu_var >= v0)
+    expect_trend = pf2.p.phi_trend ** 2 * 1.0 + pf2.p.q_mu
+    expect_revert = pf2.p.phi_revert ** 2 * 1.0 + pf2.p.q_mu
+    is_trend = pf2.regime == 0
+    assert np.allclose(pf2.mu_var[is_trend], expect_trend)
+    assert np.allclose(pf2.mu_var[~is_trend], expect_revert)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
