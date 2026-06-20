@@ -7,8 +7,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys as _sys
+from pathlib import Path as _Path
 
-from scripts.fx_coint.phase0_scalp_common import (
+_ROOT = _Path(__file__).resolve().parents[2]
+if str(_ROOT) not in _sys.path:
+    _sys.path.insert(0, str(_ROOT))
+
+from scripts.fx_coint.phase0_scalp_common import (  # noqa: E402
     build_enriched_1m_bars,
     load_raw_ticks,
     save_enriched_bars,

@@ -12,9 +12,15 @@ import argparse
 import json
 import subprocess
 import sys
+import sys as _sys
 from pathlib import Path
+from pathlib import Path as _Path
 
-from scripts.fx_coint.phase0_scalp_common import DEFAULT_COST_BPS
+_ROOT = _Path(__file__).resolve().parents[2]
+if str(_ROOT) not in _sys.path:
+    _sys.path.insert(0, str(_ROOT))
+
+from scripts.fx_coint.phase0_scalp_common import DEFAULT_COST_BPS  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FAMILIES = {
