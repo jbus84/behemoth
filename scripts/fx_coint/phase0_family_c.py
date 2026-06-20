@@ -8,11 +8,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys as _sys
+from pathlib import Path as _Path
 
 import numpy as np
 import pandas as pd
 
-from scripts.fx_coint.phase0_scalp_common import (
+_ROOT = _Path(__file__).resolve().parents[2]
+if str(_ROOT) not in _sys.path:
+    _sys.path.insert(0, str(_ROOT))
+
+from scripts.fx_coint.phase0_scalp_common import (  # noqa: E402
     DEFAULT_COST_BPS,
     add_rolling_features,
     build_enriched_1m_bars,
@@ -104,7 +110,16 @@ def main() -> None:
     target_df = add_rolling_features(all_bars[target_sym], target_sym)
     target_df.attrs["symbol"] = target_sym
     target_df = compute_forward_returns(target_df, args.horizons)
-    peer_dfs = {s: all_bars[s] for s in peers}
+
+    # Align peers to the TARGET's 1-min bucket timeline (pairs have different per-minute
+    # tick coverage -> different bar counts; without this every peer column is NaN).
+    target_buckets = target_df["bucket"]
+    peer_dfs = {}
+    for s in peers:
+        aligned = all_bars[s].set_index("bucket").reindex(target_buckets).reset_index()
+        aligned["mid_ret"] = np.log(aligned["mid"].astype(float) / aligned["mid"].astype(float).shift(1))
+        aligned.attrs["symbol"] = s
+        peer_dfs[s] = aligned
 
     signal = build_peer_lag_signal(target_df, peer_dfs, window=args.window, max_lag=args.max_lag)
     signal = signal.where(target_df["vol_cluster_score"] > 1.0, np.nan)  # liquid-hours gate

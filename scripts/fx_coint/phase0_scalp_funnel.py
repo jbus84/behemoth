@@ -12,9 +12,15 @@ import argparse
 import json
 import subprocess
 import sys
+import sys as _sys
 from pathlib import Path
+from pathlib import Path as _Path
 
-from scripts.fx_coint.phase0_scalp_common import DEFAULT_COST_BPS
+_ROOT = _Path(__file__).resolve().parents[2]
+if str(_ROOT) not in _sys.path:
+    _sys.path.insert(0, str(_ROOT))
+
+from scripts.fx_coint.phase0_scalp_common import DEFAULT_COST_BPS  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FAMILIES = {
@@ -35,24 +41,24 @@ def run_family(family: str, symbol: str, year: int, horizons: list[int]) -> dict
     if result.returncode != 0:
         print(result.stderr)
         return {"family": family, "error": result.stderr, "results": {}}
-    for line in reversed([ln for ln in result.stdout.splitlines() if ln.strip()]):
-        try:
-            return json.loads(line)
-        except json.JSONDecodeError:
-            continue
-    # JSON is multi-line indented; fall back to parsing the whole stdout tail
+    # The family prints progress lines then a single pretty-printed JSON object; the only
+    # '{' in stdout is the JSON start, so parse from the first '{' to the last '}'.
+    out = result.stdout
     try:
-        start = result.stdout.index("{")
-        return json.loads(result.stdout[start:])
+        obj = json.loads(out[out.index("{"): out.rindex("}") + 1])
+        if isinstance(obj, dict):
+            return obj
     except (ValueError, json.JSONDecodeError):
-        return {"family": family, "error": "no JSON in stdout", "results": {}}
+        pass
+    return {"family": family, "error": "no JSON in stdout", "results": {}}
 
 
 def rank_families(results: dict) -> list:
     ranked = []
     for fam, data in results.items():
         best_net, best_verdict = float("-inf"), "FAIL"
-        for _h, m in data.get("results", {}).items():
+        res = data.get("results", {}) if isinstance(data, dict) else {}
+        for _h, m in res.items():
             net = m.get("net_lb95_bps", float("-inf"))
             if net > best_net:
                 best_net, best_verdict = net, m.get("verdict", "FAIL")
@@ -65,7 +71,8 @@ def apply_stopping_rules(results: dict) -> str:
     """CONTINUE if >=1 PASS; STOP if 0 PASS and <=1 NEAR_MISS; else ADVANCE_NEAR_MISS."""
     npass = nmiss = 0
     for data in results.values():
-        for m in data.get("results", {}).values():
+        res = data.get("results", {}) if isinstance(data, dict) else {}
+        for m in res.values():
             v = m.get("verdict", "FAIL")
             npass += v == "PASS"
             nmiss += v == "NEAR_MISS"
