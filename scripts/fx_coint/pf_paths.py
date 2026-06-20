@@ -34,16 +34,18 @@ def hold_path(
     buckets_ns: np.ndarray,
     mids: np.ndarray,
 ) -> np.ndarray:
-    """Return 1m mids in the held window (entry_bucket, entry_bucket+freq].
+    """Return 1m mids in the held window [B+freq, B+2*freq).
 
-    Window offset: (B, B+freq] — the bar immediately after the signal bar,
-    matching ret_next_bps semantics. Task 6 verifies alignment end-to-end.
+    Window: [B+freq, B+2*freq) — the next bar after the signal bar.
+    The caller anchors the entry at the signal bar's CLOSE mid (passed separately).
+    At hold-to-cap the last minute in this window equals the next bar's close mid,
+    so gross == test_actual_bps exactly when no early exit is triggered.
+    Task 6 verifies alignment end-to-end.
     """
     step_ns = FREQ_MINUTES[freq] * _NS_PER_MIN
     e = np.datetime64(entry_bucket, "ns").astype("int64")
-    lo, hi = e, e + step_ns  # window (B, B+freq]
-    i0 = np.searchsorted(buckets_ns, lo, side="right")
-    i1 = np.searchsorted(buckets_ns, hi, side="right")
+    i0 = np.searchsorted(buckets_ns, e + step_ns, side="left")
+    i1 = np.searchsorted(buckets_ns, e + 2 * step_ns, side="left")
     return mids[i0:i1]
 
 

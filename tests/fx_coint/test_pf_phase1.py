@@ -58,6 +58,10 @@ def _run_pair_phase1_synthetic(df_1m, sym="EURUSD", freq="2h", q=0.80, n_folds=4
         zip(panel["bucket"].to_numpy(), panel["sigma_h"].to_numpy(), strict=False)
     )
 
+    _bar_buckets = bars["bucket"].to_numpy().astype("datetime64[ns]")
+    _bar_mids = bars["mid"].to_numpy().astype(float)
+    close_by_bucket = dict(zip(_bar_buckets, _bar_mids, strict=False))
+
     net_base_list: list[float] = []
     net_pf_list: list[float] = []
     bucket_list = []
@@ -71,13 +75,16 @@ def _run_pair_phase1_synthetic(df_1m, sym="EURUSD", freq="2h", q=0.80, n_folds=4
 
         for tp, act, bk in zip(test_preds, test_actuals, test_buckets, strict=False):
             sigma_bps = float(sig_by_bucket.get(bk, np.nan))
+            bk_ns = np.datetime64(bk, "ns")
+            entry_mid = close_by_bucket.get(bk_ns)
             # --- PF exit ---
-            path = hold_path(bk, freq, buckets_ns, mids)
-            if len(path) >= 2 and sigma_bps > 0:
-                obs = path_to_volnorm_returns(path, sigma_bps)
+            minutes = hold_path(bk, freq, buckets_ns, mids)
+            if entry_mid is not None and np.isfinite(entry_mid) and len(minutes) >= 1 and sigma_bps > 0:
+                series = np.concatenate([[entry_mid], minutes])
+                obs = path_to_volnorm_returns(series, sigma_bps)
                 post = run_filter(obs, tilt=float(tp), params=params)
                 xi = exit_index(post, side="long", max_hold=len(obs))
-                gross_pf = float((np.log(path[xi + 1]) - np.log(path[0])) * 1e4)
+                gross_pf = float((np.log(minutes[xi]) - np.log(entry_mid)) * 1e4)
             else:
                 gross_pf = float(act)
 
@@ -105,11 +112,11 @@ def test_phase1_arrays_align_and_baseline_matches_fixed_horizon():
 
 
 def test_phase1_alignment_strengthened():
-    """Strengthened alignment check: hold_path endpoint log-return vs bar-close bps.
+    """Strengthened alignment check: cap-exit gross == test_actual_bps.
 
-    For entries where hold_path is non-empty, compare the path endpoint gross bps
-    (from path[0] to path[-1]) against test_actual_bps. The median abs difference
-    measures the window alignment (1m-path endpoint vs bar-close mid).
+    For entries where hold_path is non-empty, compare the cap-exit gross bps
+    (entry_mid=bar-close at B, exit at minutes[-1]=next bar close) against test_actual_bps.
+    With the corrected [B+f, B+2f) window this diff must be < 1e-6.
     """
     df_1m = _synthetic_1m(datetime(2022, 1, 3, 0, 0), n=1500 * 60, seed=42)
     bars = build_freq_bars(df_1m, "2h", session=(0, 24))
@@ -117,25 +124,85 @@ def test_phase1_alignment_strengthened():
     folds = walk_forward(panel, n_folds=4)
 
     buckets_ns, mids = _make_minute_idx(df_1m)
+    _bar_buckets = bars["bucket"].to_numpy().astype("datetime64[ns]")
+    _bar_mids = bars["mid"].to_numpy().astype(float)
+    close_by_bucket = dict(zip(_bar_buckets, _bar_mids, strict=False))
     diffs = []
 
     for f in folds:
         thr = float(np.quantile(f["train_pred"], 0.80))
         sel = f["test_pred"] >= thr
         for act, bk in zip(f["test_actual_bps"][sel], f["test_bucket"][sel], strict=False):
-            path = hold_path(bk, "2h", buckets_ns, mids)
-            if len(path) < 2:
+            bk_ns = np.datetime64(bk, "ns")
+            entry_mid = close_by_bucket.get(bk_ns)
+            if entry_mid is None or not np.isfinite(entry_mid):
                 continue
-            path_gross = (np.log(path[-1]) - np.log(path[0])) * 1e4
-            diffs.append(float(path_gross) - float(act))
+            minutes = hold_path(bk, "2h", buckets_ns, mids)
+            if len(minutes) < 1:
+                continue
+            cap_gross = (np.log(minutes[-1]) - np.log(entry_mid)) * 1e4
+            diffs.append(float(cap_gross) - float(act))
 
     diffs = np.array(diffs)
     assert len(diffs) >= 10, f"Too few path-endpoint samples: {len(diffs)}"
-    median_abs = float(np.median(np.abs(diffs)))
+    max_abs = float(np.max(np.abs(diffs)))
     print(
-        f"\nAlignment check: median |path_endpoint - bar_close| = {median_abs:.4f} bps"
+        f"\nAlignment check: max |cap_gross - test_actual_bps| = {max_abs:.2e} bps"
         f"  (n={len(diffs)})"
     )
-    assert median_abs < 5.0, (
-        f"Large path/bar-close gap: {median_abs:.4f} bps — possible window mismatch"
+    assert max_abs < 1e-6, (
+        f"Alignment gap {max_abs:.2e} bps — window or entry-mid mismatch"
+    )
+
+
+def test_hold_to_cap_reproduces_baseline():
+    """Load-bearing correctness gate: cap-exit gross == test_actual_bps to < 1e-6.
+
+    Uses real EURUSD data (symlinked parquet). Mirrors run_pair_phase1 construction:
+    entry_mid = close_by_bucket[B], minutes = hold_path window [B+f, B+2f),
+    cap_gross = log(minutes[-1]/entry_mid)*1e4.
+    """
+    from pathlib import Path
+
+    import polars as pl
+
+    _REPO_ROOT = Path(__file__).resolve().parents[2]
+    src = _REPO_ROOT / "data/tick_bars/EURUSD_1m_flow.parquet"
+    if not src.exists():
+        import pytest
+        pytest.skip("EURUSD_1m_flow.parquet not available")
+
+    from scripts.fx_coint.pf_paths import build_minute_index, hold_path
+    from scripts.fx_coint.reg_signal_hunt import build_freq_bars, build_panel
+    from scripts.fx_coint.tail_wfo import walk_forward
+
+    bars = build_freq_bars(pl.read_parquet(src), "2h")
+    panel = build_panel(bars)
+    folds = walk_forward(panel, n_folds=5)
+    buckets_ns, mids = build_minute_index("EURUSD")
+
+    _bar_buckets = bars["bucket"].to_numpy().astype("datetime64[ns]")
+    _bar_mids = bars["mid"].to_numpy().astype(float)
+    close_by_bucket = dict(zip(_bar_buckets, _bar_mids, strict=False))
+
+    diffs = []
+    for f in folds:
+        thr = float(np.quantile(f["test_pred"], 0.95))
+        sel = f["test_pred"] >= thr
+        for act, bk in zip(f["test_actual_bps"][sel], f["test_bucket"][sel], strict=False):
+            bk_ns = np.datetime64(bk, "ns")
+            entry_mid = close_by_bucket.get(bk_ns)
+            if entry_mid is None or not np.isfinite(entry_mid):
+                continue
+            minutes = hold_path(bk, "2h", buckets_ns, mids)
+            if len(minutes) < 1:
+                continue
+            cap_gross = (np.log(minutes[-1]) - np.log(entry_mid)) * 1e4
+            diffs.append(float(cap_gross) - float(act))
+
+    assert len(diffs) > 30, f"Too few entries: {len(diffs)}"
+    max_abs = float(np.max(np.abs(diffs)))
+    print(f"\n[EURUSD] max |cap_gross - test_actual_bps| = {max_abs:.2e} bps  (n={len(diffs)})")
+    assert max_abs < 1e-6, (
+        f"Alignment gap {max_abs:.2e} bps exceeds 1e-6 — construction mismatch"
     )

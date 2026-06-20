@@ -28,6 +28,7 @@ from scripts.fx_coint.tail_wfo import walk_forward  # noqa: E402
 
 def pf_exit_realized_bps(
     entry_bucket: np.datetime64,
+    entry_mid: float,
     side: str,
     tilt: float,
     sigma_bps: float,
@@ -38,19 +39,25 @@ def pf_exit_realized_bps(
 ) -> float:
     """Reconstruct hold path, run filter, apply exit policy, return gross signed bps.
 
-    Returns NaN if path is too short (caller falls back to fixed-horizon return).
+    entry_mid: the bar-CLOSE mid at the signal bucket (bars["mid"] at B).
+    The hold window is [B+freq, B+2*freq); entry_mid anchors the log-return.
+    At hold-to-cap (no early exit) exit price == minutes[-1] == next bar's close mid,
+    so gross == test_actual_bps exactly.
+
+    Returns NaN if path is too short or sigma invalid (caller falls back to fixed-horizon).
     """
     buckets_ns, mids = minute_idx
-    path = hold_path(entry_bucket, freq, buckets_ns, mids)
-    if len(path) < 2 or sigma_bps <= 0:
+    minutes = hold_path(entry_bucket, freq, buckets_ns, mids)
+    if len(minutes) < 1 or sigma_bps <= 0:
         return float("nan")  # caller falls back to baseline full-bar return
-    obs = path_to_volnorm_returns(path, sigma_bps)
+    series = np.concatenate([[entry_mid], minutes])
+    obs = path_to_volnorm_returns(series, sigma_bps)
+    if len(obs) < 1:
+        return float("nan")
     post = run_filter(obs, tilt=float(tilt), params=params)
     xi = exit_index(post, side=side, max_hold=len(obs))
-    # realized gross signed bps from path[0] (bar open) to path[xi+1] (exit minute)
     sign = 1.0 if side == "long" else -1.0
-    gross = sign * (np.log(path[xi + 1]) - np.log(path[0])) * 1e4
-    return float(gross)
+    return float(sign * (np.log(minutes[xi]) - np.log(entry_mid)) * 1e4)
 
 
 def run_pair_phase1(
@@ -83,6 +90,11 @@ def run_pair_phase1(
         zip(panel["bucket"].to_numpy(), panel["sigma_h"].to_numpy(), strict=False)
     )
 
+    # Build bucket → bar-close mid lookup (keys are np.datetime64[ns])
+    _bar_buckets = bars["bucket"].to_numpy().astype("datetime64[ns]")
+    _bar_mids = bars["mid"].to_numpy().astype(float)
+    close_by_bucket: dict = dict(zip(_bar_buckets, _bar_mids, strict=False))
+
     net_base_list: list[float] = []
     net_pf_list: list[float] = []
     bucket_list: list = []
@@ -96,11 +108,16 @@ def run_pair_phase1(
 
         for tp, act, bk in zip(test_preds, test_actuals, test_buckets, strict=False):
             sigma_bps = float(sig_by_bucket.get(bk, np.nan))
-            gross_pf = pf_exit_realized_bps(
-                bk, "long", float(tp), sigma_bps, freq, sym, minute_idx, params
-            )
-            if not np.isfinite(gross_pf):
-                gross_pf = float(act)  # fall back to fixed-horizon return
+            bk_ns = np.datetime64(bk, "ns")
+            entry_mid = close_by_bucket.get(bk_ns)
+            if entry_mid is None or not np.isfinite(entry_mid):
+                gross_pf = float(act)  # fall back: no bar-close mid available
+            else:
+                gross_pf = pf_exit_realized_bps(
+                    bk, entry_mid, "long", float(tp), sigma_bps, freq, sym, minute_idx, params
+                )
+                if not np.isfinite(gross_pf):
+                    gross_pf = float(act)  # fall back to fixed-horizon return
             net_base_list.append(float(act) - cost)
             net_pf_list.append(gross_pf - cost)
             bucket_list.append(bk)
@@ -119,10 +136,13 @@ def _collect_alignment_sample(
     q: float = 0.95,
     n_folds: int = 5,
 ) -> np.ndarray:
-    """For the strengthened alignment test: compare hold_path endpoint gross bps
-    to the bar-close ret_next_bps for entries where the path is non-empty.
+    """For the strengthened alignment test: compare hold_path cap-exit gross bps
+    to the bar-close ret_next_bps (test_actual_bps) for entries where the path is non-empty.
 
-    Returns array of (path_endpoint_gross - bar_close_ret) differences in bps.
+    Uses the corrected construction: entry_mid = bar-close mid at B, minutes = [B+f, B+2f),
+    cap-exit gross = sign*(log(minutes[-1]/entry_mid))*1e4.
+
+    Returns array of (cap_exit_gross - test_actual_bps) differences in bps.
     """
     src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
     bars = build_freq_bars(pl.read_parquet(src), freq)
@@ -130,6 +150,10 @@ def _collect_alignment_sample(
     folds = walk_forward(panel, n_folds=n_folds)
     minute_idx = build_minute_index(sym)
     buckets_ns, mids = minute_idx
+
+    _bar_buckets = bars["bucket"].to_numpy().astype("datetime64[ns]")
+    _bar_mids = bars["mid"].to_numpy().astype(float)
+    close_by_bucket: dict = dict(zip(_bar_buckets, _bar_mids, strict=False))
 
     diffs: list[float] = []
     for f in folds:
@@ -139,12 +163,15 @@ def _collect_alignment_sample(
         test_buckets = f["test_bucket"][sel]
 
         for act, bk in zip(test_actuals, test_buckets, strict=False):
-            path = hold_path(bk, freq, buckets_ns, mids)
-            if len(path) < 2:
+            bk_ns = np.datetime64(bk, "ns")
+            entry_mid = close_by_bucket.get(bk_ns)
+            if entry_mid is None or not np.isfinite(entry_mid):
                 continue
-            # path[0] = first 1m bar open AFTER entry bucket (open of the held bar)
-            # path[-1] = close of the last 1m bar in the hold window
-            path_gross = (np.log(path[-1]) - np.log(path[0])) * 1e4
-            diffs.append(float(path_gross) - float(act))
+            minutes = hold_path(bk, freq, buckets_ns, mids)
+            if len(minutes) < 1:
+                continue
+            # cap-exit: exit at last minute in window = next bar's close mid
+            cap_gross = (np.log(minutes[-1]) - np.log(entry_mid)) * 1e4
+            diffs.append(float(cap_gross) - float(act))
 
     return np.array(diffs)
