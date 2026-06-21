@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from scripts.fx_coint.path_geometry_opt import (
     BASELINE_CELL,
@@ -7,6 +8,9 @@ from scripts.fx_coint.path_geometry_opt import (
     cell_net,
     fold_trades,
     optimize_geometry,
+    paired_day_clustered_p,
+    positive_years,
+    year_block_bootstrap_ci,
 )
 
 
@@ -48,3 +52,24 @@ def test_fold_trades_structure_and_causality():
         # causal: max train bucket < min test bucket within a fold
         if f["train"] and f["test"]:
             assert max(t.bucket for t in f["train"]) < min(t.bucket for t in f["test"])
+
+
+def test_positive_years():
+    bk = pd.to_datetime(["2020-01-01", "2020-06-01", "2021-01-01"]).values
+    pos, tot = positive_years(np.array([1.0, 1.0, -2.0]), bk)
+    assert (pos, tot) == (1, 2)
+
+
+def test_bootstrap_ci_order():
+    rng = np.random.default_rng(0)
+    bk = pd.to_datetime(np.repeat(["2019", "2020", "2021", "2022"], 25)).values
+    lo, hi = year_block_bootstrap_ci(rng.normal(0.5, 1, 100), bk, n_boot=400, seed=1)
+    assert lo < hi
+
+
+def test_paired_day_clustered_zero_when_identical():
+    bk = pd.to_datetime(np.repeat(pd.date_range("2020-01-01", periods=10), 1)).values
+    net = np.arange(10.0)
+    base = np.arange(10.0)
+    r = paired_day_clustered_p(net, base, bk)
+    assert np.isclose(r["mean_diff"], 0.0)
