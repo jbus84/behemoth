@@ -52,3 +52,26 @@ def test_horizon_net_track_shapes_and_more_entries_at_h1():
     # hourly sampling => H=1 and H=4 have comparable entry counts (both ~hourly grid),
     # and BOTH are far larger than the old disjoint 4-bar/day 4h panel (~196)
     assert t4["n"] > 500
+
+
+# ---------------------------------------------------------------------------
+# Task 3: dual inference helpers
+# ---------------------------------------------------------------------------
+from scripts.fx_coint.horizon_retest import dual_inference, non_overlap_mask  # noqa: E402
+
+
+def test_non_overlap_mask_spacing():
+    bk = pd.to_datetime(["2022-01-03 07:00","2022-01-03 08:00","2022-01-03 11:00",
+                         "2022-01-03 12:00"]).values
+    m = non_overlap_mask(bk, H_hours=3)
+    # 07:00 kept; 08:00 too close (kept-prev 07:00 +3h=10:00) -> drop; 11:00 kept; 12:00 drop
+    assert m.tolist() == [True, False, True, False]
+
+
+def test_dual_inference_agree_flag_false_on_noise():
+    rng = np.random.default_rng(0)
+    bk = pd.to_datetime(np.repeat(pd.date_range("2019-01-01", periods=200, freq="3h"), 1)).values
+    net = rng.normal(0.0, 1.0, len(bk))   # pure noise -> not significant
+    r = dual_inference(net, bk, H_hours=3, label="noise")
+    assert r["agree"] is False
+    assert r["raw_n"] == len(bk) and r["eff_n"] <= r["raw_n"]

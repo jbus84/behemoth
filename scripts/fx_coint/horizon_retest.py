@@ -14,12 +14,16 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from scripts.fx_coint.path_geometry_opt import positive_years, year_block_bootstrap_ci  # noqa: E402
 from scripts.fx_coint.reg_signal_hunt import (  # noqa: E402
     COST_BPS,
     FEATURE_COLS,
     build_freq_bars,
     build_panel,
 )
+from scripts.fx_coint.tail_wfo import day_clustered_tstat  # noqa: E402
+
+_NS_PER_HOUR = 3_600_000_000_000
 
 
 def build_horizon_panel(bars: pd.DataFrame, H: int, vol_lookback: int = 24) -> pd.DataFrame:
@@ -78,3 +82,50 @@ def horizon_net_track(
     net = np.concatenate(nets) if nets else np.array([])
     bk = np.concatenate(bks) if bks else np.array([], dtype="datetime64[ns]")
     return {"net": net, "bucket": bk, "n": len(net)}
+
+
+def non_overlap_mask(bucket: np.ndarray, H_hours: int) -> np.ndarray:
+    """Greedy left-to-right boolean mask keeping entries >= H_hours apart."""
+    order = np.argsort(bucket)
+    ns = np.array(bucket, dtype="datetime64[ns]").astype("int64")
+    keep = np.zeros(len(bucket), dtype=bool)
+    last = -np.inf
+    for idx in order:
+        if ns[idx] - last >= H_hours * _NS_PER_HOUR:
+            keep[idx] = True
+            last = ns[idx]
+    return keep
+
+
+def summarize_track(net, bucket, label):
+    """Summarize a net-return track with day-clustered t, bootstrap CI, positive-years."""
+    net = np.asarray(net, float)
+    if len(net) < 3:
+        return {"label": label, "n": len(net), "mean": float("nan"), "day_t": float("nan"),
+                "day_p": float("nan"), "ci_lo": float("nan"), "ci_hi": float("nan"),
+                "pos_y": 0, "n_y": 0}
+    dc = day_clustered_tstat(net, bucket)
+    lo, hi = year_block_bootstrap_ci(net, bucket)
+    pos, ny = positive_years(net, bucket)
+    return {"label": label, "n": len(net), "mean": float(net.mean()),
+            "day_t": dc["t_stat"], "day_p": dc["p_value"], "ci_lo": lo, "ci_hi": hi,
+            "pos_y": pos, "n_y": ny}
+
+
+def dual_inference(net, bucket, H_hours, label):
+    """Overlapping-clustered + non-overlapping dual inference summary.
+
+    agree=True only if BOTH tracks have day_p<0.05, ci_lo>0, and mean>0.
+    """
+    net = np.asarray(net, float)
+    mask = non_overlap_mask(bucket, H_hours)
+    ov = summarize_track(net, bucket, f"{label}/overlap")
+    no = summarize_track(net[mask], bucket[mask], f"{label}/nonoverlap")
+
+    def _ok(s):
+        return (np.isfinite(s["day_p"]) and s["day_p"] < 0.05
+                and s["ci_lo"] > 0 and s["mean"] > 0)
+
+    agree = bool(_ok(ov) and _ok(no))
+    return {"overlapping": ov, "nonoverlap": no, "eff_n": int(mask.sum()),
+            "raw_n": len(net), "agree": agree}
