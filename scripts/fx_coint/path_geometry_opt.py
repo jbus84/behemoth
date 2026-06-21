@@ -14,6 +14,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from scripts.fx_coint.path_bracket import evaluate_bracket  # noqa: E402
 from scripts.fx_coint.path_geometry_paths import build_minute_index, hold_path  # noqa: E402
 from scripts.fx_coint.reg_signal_hunt import (  # noqa: E402
     COST_BPS,
@@ -48,6 +49,38 @@ def _mk_trade(bk, sigma, close, bn, mids, freq, n_bars, cost_bps):
     if len(mins) < 1:
         return None
     return Trade(float(em), mins, "long", float(sigma), bk, float(cost_bps))
+
+
+_STOPS = [None, 1.0, 1.5, 2.0, 3.0]
+_TPS = [None, 2.0, 3.0, 4.0]
+GRID = [(s, t) for s in _STOPS for t in _TPS]
+BASELINE_CELL = (None, None)
+
+
+def cell_net(trades, cell):
+    s, t = cell
+    return np.array([evaluate_bracket(tr.entry_mid, tr.minutes, tr.side, tr.sigma_bps,
+                                      s, t, tr.cost_bps) for tr in trades], dtype=float)
+
+
+def optimize_geometry(folds):
+    net_oos, bk_oos, base_oos, cells = [], [], [], []
+    for f in folds:
+        if not f["train"] or not f["test"]:
+            continue
+        best, best_mean = BASELINE_CELL, -np.inf
+        for cell in GRID:
+            m = np.nanmean(cell_net(f["train"], cell))
+            if m > best_mean:
+                best_mean, best = m, cell
+        te_net = cell_net(f["test"], best)
+        te_base = cell_net(f["test"], BASELINE_CELL)
+        net_oos.append(te_net)
+        base_oos.append(te_base)
+        bk_oos.append(np.array([tr.bucket for tr in f["test"]], dtype="datetime64[ns]"))
+        cells.append(best)
+    return {"net_oos": np.concatenate(net_oos), "baseline_oos": np.concatenate(base_oos),
+            "bucket_oos": np.concatenate(bk_oos), "selected_cells": cells}
 
 
 def fold_trades(sym, freq="2h", q=0.95, n_folds=5, n_bars=1, min_train_frac=0.5, purge=1):
