@@ -22,7 +22,10 @@ from scripts.fx_coint.tail_wfo import walk_forward  # noqa: E402
 
 
 def _panel_and_closes(sym, freq):
-    bars = build_freq_bars(pl.read_parquet(_REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"), freq)
+    from scripts.fx_coint.reg_signal_hunt import FREQ_MINUTES
+    FREQ_MINUTES.setdefault("1d", 1440)
+    session = (0, 24) if freq == "1d" else (7, 21)
+    bars = build_freq_bars(pl.read_parquet(_REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"), freq, session=session)
     panel = build_panel(bars)
     close = dict(zip(bars["bucket"].to_numpy(), bars["mid"].to_numpy(), strict=False))
     sig = dict(zip(panel["bucket"].to_numpy(), panel["sigma_h"].to_numpy(), strict=False))
@@ -92,6 +95,38 @@ def jittered_entries(signal_entries, bars, freq, k_bars, sig):
             s = float(sig.get(bj, np.nan))
             if np.isfinite(s) and s > 0:
                 out.append((bj, side, s))
+    return out
+
+
+def reversion_entries(sym, freq="1d", q=0.90, L=10, warmup=60):
+    """Causal expanding-window tail-decile fade entries (mirrors validate_reversion_cell)."""
+    from scripts.fx_coint.reg_signal_hunt import FREQ_MINUTES
+    FREQ_MINUTES.setdefault("1d", 1440)
+    bars = build_freq_bars(
+        pl.read_parquet(_REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"),
+        freq, session=(0, 24))
+    mid = bars["mid"].to_numpy()
+    bk = bars["bucket"].to_numpy()
+    r = np.empty(len(mid))
+    r[0] = np.nan
+    r[1:] = (np.log(mid[1:]) - np.log(mid[:-1])) * 1e4
+    r[~bars["contig"].to_numpy()] = np.nan
+    rs = pd.Series(r)
+    sig = (rs.rolling(L, min_periods=L // 2).sum()
+           / (rs.rolling(20, min_periods=10).std() * np.sqrt(L))).to_numpy()
+    vol = (rs.rolling(20, min_periods=10).std()).to_numpy()  # daily bps vol scale
+    out, hist = [], []
+    for i in range(len(mid)):
+        s = sig[i]
+        if len(hist) >= warmup and np.isfinite(s) and np.isfinite(vol[i]) and vol[i] > 0:
+            hi = np.quantile(hist, q)
+            lo = np.quantile(hist, 1 - q)
+            if s >= hi:
+                out.append((bk[i], "short", float(vol[i])))
+            elif s <= lo:
+                out.append((bk[i], "long", float(vol[i])))
+        if np.isfinite(s):
+            hist.append(s)
     return out
 
 
