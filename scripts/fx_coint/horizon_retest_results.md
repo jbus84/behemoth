@@ -15,3 +15,5 @@
 ## H=4h  raw_n=2023 eff_n=824  agree=False BH=keep-null  -> no
    overlap : mean=+0.646 day_p=0.1151 ci=[-0.675,+1.116] pos=3/5
    nonovlp : mean=-1.019 day_p=0.4440 ci=[-2.445,+1.150] pos=1/5
+
+> **NOTE:** even the overlapping track fails on its own — its year-block bootstrap CI includes zero at every horizon (e.g. H=3 ci=[-0.67,+1.24]); the marginal day-clustered p-values rest on autocorrelated samples. The non-overlapping (independent) track is negative across all 60 greedy phase offsets at every horizon (verified in final review). NO_GO is robust.

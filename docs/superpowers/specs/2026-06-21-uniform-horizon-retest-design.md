@@ -38,9 +38,10 @@ honest, overlap-aware inference.
   by `sigma_h`. Entry can occur at **any** 1h bar. This is the core new code — the existing
   `build_panel` only does next-1-bar.
 - **Causal ridge WFO per horizon** (same expanding-fold scheme as `tail_wfo.walk_forward`),
-  tail-long = top-q predicted, held H hours. Realized return uses the **1-minute path** over
-  `[entry bar close, entry + H hours)` anchored at the bar-close mid (reuse the verified
-  Phase-A/B path machinery).
+  tail-long = top-q predicted, held H hours. Realized return is the **bar-close-to-bar-close**
+  forward-H return (`ret_fwd_bps`), cost charged once. (The 1-minute path is NOT used here —
+  it is only needed for bracket geometry, which is downstream. This supersedes an earlier
+  draft that mentioned the 1-min path.)
 - Old disjoint-bucket 2h/3h/4h construction is **retired** for this comparison; all horizons
   re-baselined under one uniform rule.
 
