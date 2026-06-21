@@ -116,7 +116,9 @@ def _fmt(g: dict) -> str:
 
 
 def main() -> None:
-    g = gate_one_edge(
+    from scripts.fx_coint.path_ensemble import reversion_entries
+    blocks = []
+    g1 = gate_one_edge(
         TIGHT_MAJORS,
         lambda s, f: tail_long_entries(s, f, q=0.95),
         freq="2h",
@@ -124,10 +126,21 @@ def main() -> None:
         label="2h tail-long",
         min_off_days=3,
     )
-    block = _fmt(g)
-    print(block)
+    blocks.append(_fmt(g1))
+    # reversion: daily bars, hold 2 bars (~2 days); offset must clear the 2-day hold
+    g2 = gate_one_edge(
+        TIGHT_MAJORS,
+        lambda s, f: reversion_entries(s, f, q=0.90, L=10),
+        freq="1d",
+        n_bars=2,
+        label="2-3d reversion",
+        min_off_days=5,
+    )
+    blocks.append(_fmt(g2))
+    out = "\n\n".join(blocks)
+    print(out)
     (Path(__file__).resolve().parent / "path_shift_results.md").write_text(
-        "# Path-shift gate (gate 1) results\n\n" + block + "\n"
+        "# Path-shift gate (gate 1) results\n\n" + out + "\n"
     )
 
 

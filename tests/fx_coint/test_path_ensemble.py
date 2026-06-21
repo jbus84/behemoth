@@ -32,3 +32,12 @@ def test_build_ensemble_columns_and_terminal_matches_baseline():
     # MFE >= 0 >= MAE by construction
     assert (df["mfe_sigma"] >= 0).all()
     assert (df["mae_sigma"] <= 0).all()
+
+
+def test_reversion_entries_signed_and_causal():
+    from scripts.fx_coint.path_ensemble import reversion_entries
+    ents = reversion_entries("EURUSD", freq="1d", q=0.90, L=10)
+    assert len(ents) > 20
+    sides = {side for _, side, _ in ents}
+    assert sides <= {"long", "short"}
+    assert all(s > 0 for _, _, s in ents)
