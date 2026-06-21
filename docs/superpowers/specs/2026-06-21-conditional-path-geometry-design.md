@@ -50,9 +50,28 @@ are comparable across pairs and time. This ensemble IS the conditional distribut
 Reuses `pf_paths.build_minute_index` / `hold_path`. The 2-3d reversion edge requires a
 multi-day extension of `hold_path` (the only new path machinery).
 
-### (b) Unconditional reference ensemble
-The same 1-minute path construction at **random non-signal entry times**, matched by pair and
-by hour/session. This is the null fan — the random-walk baseline the conditional must beat.
+### (b) Unconditional reference ensemble — random-offset placebo
+The null fan is built by taking the **real signal entries and shifting each by a random
+whole-day offset** (same time-of-day, different day), within a bounded window, excluding
+offsets that land on or near an actual signal day. This **decouples the precise signal moment
+from the path that follows while holding the local environment fixed** — same pair, same
+hour-of-day/session, similar regime — so the only thing destroyed is signal alignment. It is a
+strictly better null than sampling unrelated random bars (rejected), because it controls for
+everything except the hypothesis under test. The offset must be large enough that the shifted
+hold window cannot overlap the real one, and is a fixed known shift (causal, no forward peek).
+This same construction is the rigorous shuffled-label null for Phase B gate 3 (replacing
+Phase-1's turnover-scramble placeholder).
+
+**Data augmentation via offsets is explicitly rejected** — jittering entries to enlarge the
+sample manufactures correlated near-duplicates and false statistical power (the overlapping-
+window trap). Offsets are used only for the null and the robustness probe below, never to
+inflate n.
+
+### (b2) Small-offset robustness probe
+Re-run the conditional ensemble with each entry jittered by ±1–3 bars (same day). A genuine
+edge degrades gracefully; if the conditional distribution or any geometry result swings wildly
+or vanishes under a few-bar jitter, it is fragile or hides look-ahead. Reported as a
+diagnostic alongside gate 1.
 
 ### (c) Bracket evaluator
 Walk each 1-minute path step-by-step. Given geometry `(stop = s·σ, take_profit = tp·σ,
@@ -88,7 +107,8 @@ best-OOS-geometry cell, isolating the marginal improvement.
 - **BH-FDR** across all geometry cells.
 - Headline = the **selected-OOS** result (which already pays the selection cost), NOT the
   best in-sample cell.
-- **Shuffled-label null:** geometry optimized on randomized entries must not beat baseline.
+- **Shuffled-label null = the random-offset placebo (2b):** geometry optimized on
+  offset-shifted entries must not beat baseline.
 
 ---
 
@@ -98,8 +118,9 @@ best-OOS-geometry cell, isolating the marginal improvement.
    unconditional null fan (2b)? Test the **terminal-return** distribution AND the **path
    shape** — specifically max-favorable-excursion (MFE) vs max-adverse-excursion (MAE)
    profiles — via two-sample tests (e.g. KS / bootstrap on terminal bps and on MFE/MAE).
-   **If the conditional fan is statistically indistinguishable from random-walk, STOP** — no
-   geometry can help, learned cheaply.
+   **If the conditional fan is statistically indistinguishable from the offset-placebo null,
+   STOP** — no geometry can help, learned cheaply. The same gate is also run as a small-offset
+   robustness probe (2b2): the conditional metrics must be stable under a ±1–3 bar jitter.
 2. **Geometry-beats-baseline gate.** Does any OOS-selected geometry cell beat the
    fixed-horizon baseline net of cost, with day-clustered significance and bootstrap CI
    clearing zero, pooled across pairs?
