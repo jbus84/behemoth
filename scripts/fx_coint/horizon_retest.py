@@ -18,6 +18,7 @@ from scripts.fx_coint.path_geometry_opt import positive_years, year_block_bootst
 from scripts.fx_coint.reg_signal_hunt import (  # noqa: E402
     COST_BPS,
     FEATURE_COLS,
+    bh_reject,
     build_freq_bars,
     build_panel,
 )
@@ -129,3 +130,50 @@ def dual_inference(net, bucket, H_hours, label):
     agree = bool(_ok(ov) and _ok(no))
     return {"overlapping": ov, "nonoverlap": no, "eff_n": int(mask.sum()),
             "raw_n": len(net), "agree": agree}
+
+
+TIGHT = ["EURUSD", "GBPUSD", "USDJPY"]
+
+
+def pooled_horizon(H: int, pairs: list[str] = TIGHT) -> dict:
+    """Concatenate horizon_net_track net/bucket across pairs, run dual_inference."""
+    nets, bks = [], []
+    for sym in pairs:
+        t = horizon_net_track(sym, H)
+        if t["n"]:
+            nets.append(t["net"])
+            bks.append(t["bucket"])
+    net = np.concatenate(nets)
+    bk = np.concatenate(bks)
+    return dual_inference(net, bk, H_hours=H, label=f"H={H}")
+
+
+def _fmt(H: int, r: dict, reject: bool) -> str:
+    ov, no = r["overlapping"], r["nonoverlap"]
+    go = "GO" if (r["agree"] and reject) else "no"
+    return (
+        f"## H={H}h  raw_n={r['raw_n']} eff_n={r['eff_n']}  agree={r['agree']} "
+        f"BH={'reject' if reject else 'keep-null'}  -> {go}\n"
+        f"   overlap : mean={ov['mean']:+.3f} day_p={ov['day_p']:.4f} "
+        f"ci=[{ov['ci_lo']:+.3f},{ov['ci_hi']:+.3f}] pos={ov['pos_y']}/{ov['n_y']}\n"
+        f"   nonovlp : mean={no['mean']:+.3f} day_p={no['day_p']:.4f} "
+        f"ci=[{no['ci_lo']:+.3f},{no['ci_hi']:+.3f}] pos={no['pos_y']}/{no['n_y']}"
+    )
+
+
+def main() -> None:
+    results = {H: pooled_horizon(H) for H in (1, 2, 3, 4)}
+    pvals = np.array([results[H]["overlapping"]["day_p"] for H in (1, 2, 3, 4)])
+    finite = np.isfinite(pvals)
+    rej = np.zeros(4, dtype=bool)
+    if finite.any():
+        rr = bh_reject(pvals[finite].tolist(), q=0.05)
+        rej[np.where(finite)[0]] = rr
+    blocks = [_fmt(H, results[H], bool(rej[i])) for i, H in enumerate((1, 2, 3, 4))]
+    out = "# Uniform 1h-grid multi-horizon net-edge re-test\n\n" + "\n\n".join(blocks) + "\n"
+    print(out)
+    (Path(__file__).resolve().parent / "horizon_retest_results.md").write_text(out)
+
+
+if __name__ == "__main__":
+    main()

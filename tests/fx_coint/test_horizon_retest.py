@@ -75,3 +75,16 @@ def test_dual_inference_agree_flag_false_on_noise():
     r = dual_inference(net, bk, H_hours=3, label="noise")
     assert r["agree"] is False
     assert r["raw_n"] == len(bk) and r["eff_n"] <= r["raw_n"]
+
+
+# ---------------------------------------------------------------------------
+# Task 4: pooled_horizon
+# ---------------------------------------------------------------------------
+from scripts.fx_coint.horizon_retest import pooled_horizon  # noqa: E402
+
+
+def test_pooled_horizon_runs_and_reports_both_tracks():
+    r = pooled_horizon(2)
+    assert r["raw_n"] > 300
+    assert "overlapping" in r and "nonoverlap" in r and "agree" in r
+    assert r["eff_n"] < r["raw_n"]   # H=2 overlapping => fewer independent
