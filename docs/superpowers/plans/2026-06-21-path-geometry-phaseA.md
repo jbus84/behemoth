@@ -14,7 +14,8 @@
 - The "distribution" is the **empirical conditional path ensemble** — actual historical 1-minute intra-hold paths. No simulator in Phase A. (spec §1)
 - All selection is **causal**: 2h tail-long entries come from `tail_wfo.walk_forward` (train-split ridge, OOS test entries); reversion entries from the existing causal expanding-window decile fade. Never full-sample. (spec §3)
 - Vol-normalize every path by the entry bar's `sigma_h` (panel column) so pairs/time are comparable; excursions/returns reported in **σ units** and in **bps**. (spec §2a)
-- Unconditional null entries are **matched by pair and hour-of-day**, drawn from non-signal bars. (spec §2b)
+- Unconditional null entries are a **random-offset placebo**: real signal entries shifted by a random whole-day offset (same time-of-day, different day, hold window non-overlapping, excluding real-signal days). NOT random unrelated bars; NOT data augmentation. (spec §2b)
+- A **small-offset robustness probe** (±1–3 bar jitter, same day) is reported alongside gate 1; the conditional metrics must be stable under it. (spec §2b2)
 - Net of real cost uses `reg_signal_hunt.COST_BPS[sym]`. (spec §2c)
 - Edges/pairs: TIGHT_MAJORS = `["EURUSD","GBPUSD","USDJPY"]` first; helpers must accept any of the 6 majors. (spec §3)
 - Gate-1 decision: if the conditional ensemble is statistically indistinguishable from the unconditional fan, **STOP** that edge. (spec §4 gate 1)
@@ -240,7 +241,7 @@ git commit -m "feat(fx_coint): signed path excursion metrics (terminal/MFE/MAE i
 - Consumes: `path_geometry_paths.build_minute_index/hold_path`, `path_metrics.path_excursions`, `tail_wfo.walk_forward`, `reg_signal_hunt.build_freq_bars/build_panel/COST_BPS`.
 - Produces:
   - `tail_long_entries(sym, freq="2h", q=0.95, n_folds=5) -> list[tuple]` — list of `(entry_bucket: np.datetime64, side: str, sigma_bps: float)` for OOS ridge-selected long entries (test_pred ≥ train q-quantile). side always `"long"`.
-  - `unconditional_entries(sym, freq, n_target, exclude: set, seed=0) -> list[tuple]` — random non-signal bars matched by hour-of-day distribution of `exclude` (the signal entries), returning `(bucket, "long", sigma_bps)`, none in `exclude`.
+  - `offset_placebo_entries(sym, freq, signal_entries, min_off_days=3, max_off_days=60, seed=0) -> list[tuple]` — for each signal entry `(B, side, sigma)`, shift B by a random whole-day offset (sign random, `min_off_days ≤ |k| ≤ max_off_days`), KEEPING the same time-of-day and side; the shifted bucket must exist in the panel, must not be a real signal day (`B' not in {signal days}`), and its hold window must not overlap the original. Returns `(B', side, sigma_bps_at_B')`. Preserves count and side mix; same hour-of-day by construction. (This is the null AND, in Phase B, the shuffled-label null.)
   - `build_ensemble(sym, entries, freq, n_bars=1) -> pd.DataFrame` — for each entry, reconstruct the held path (anchor = bars close mid at bucket), compute `path_excursions`, return one row per entry with columns `bucket, sigma_bps, terminal_bps, terminal_sigma, mfe_sigma, mae_sigma, n_steps`. Drops entries with empty paths.
 
 - [ ] **Step 1: Write the failing test** (real data; small, deterministic checks)
@@ -258,12 +259,18 @@ def test_tail_long_entries_nonempty_and_long():
     assert all(side == "long" for _, side, _ in ents)
     assert all(s > 0 for _, _, s in ents)
 
-def test_unconditional_matches_count_and_excludes_signals():
+def test_offset_placebo_same_tod_excludes_signals():
+    import pandas as pd
+    from scripts.fx_coint.path_ensemble import offset_placebo_entries
     ents = tail_long_entries("EURUSD", freq="2h", q=0.95)
     excl = {b for b, _, _ in ents}
-    unc = unconditional_entries("EURUSD", "2h", n_target=len(ents), exclude=excl, seed=1)
-    assert len(unc) == len(ents)
-    assert not (excl & {b for b, _, _ in unc})
+    plc = offset_placebo_entries("EURUSD", "2h", ents, min_off_days=3, max_off_days=60, seed=1)
+    assert len(plc) > 0.8 * len(ents)            # most entries place-able
+    assert not (excl & {b for b, _, _ in plc})   # none land on a real signal bar
+    # same time-of-day preserved (offset is whole days)
+    sig_h = pd.to_datetime(pd.Series([b for b, _, _ in ents])).dt.hour.value_counts(normalize=True)
+    plc_h = pd.to_datetime(pd.Series([b for b, _, _ in plc])).dt.hour.value_counts(normalize=True)
+    assert set(plc_h.index).issubset(set(sig_h.index))
 
 def test_build_ensemble_columns_and_terminal_matches_baseline():
     ents = tail_long_entries("EURUSD", freq="2h", q=0.95)
@@ -329,25 +336,55 @@ def tail_long_entries(sym, freq="2h", q=0.95, n_folds=5):
     return out
 
 
-def unconditional_entries(sym, freq, n_target, exclude, seed=0):
+_NS_PER_DAY = 86_400_000_000_000
+
+
+def offset_placebo_entries(sym, freq, signal_entries, min_off_days=3, max_off_days=60, seed=0):
+    """Null = real entries shifted by a random whole-day offset (same time-of-day).
+
+    Decouples the signal moment from the path while holding pair/hour/regime fixed.
+    Whole-day shift preserves time-of-day exactly; |offset| >= min_off_days guarantees
+    the shifted hold window cannot overlap the original (hold << 1 day for intraday edges,
+    and >= a few days for the daily reversion edge — set min_off_days accordingly).
+    """
     rng = np.random.default_rng(seed)
     panel, _close, sig = _panel_and_closes(sym, freq)
-    buckets = panel["bucket"].to_numpy()
-    hours = pd.to_datetime(pd.Series(buckets)).dt.hour.to_numpy()
-    excl_hours = pd.to_datetime(pd.Series(list(exclude))).dt.hour.to_numpy() if exclude else hours
-    # sample non-signal bars with hour drawn to match the signal hour distribution
-    pool_idx = np.array([i for i, b in enumerate(buckets) if b not in exclude
-                         and np.isfinite(sig.get(b, np.nan)) and sig.get(b, 0) > 0])
-    pool_hours = hours[pool_idx]
-    target_hours = rng.choice(excl_hours, size=n_target, replace=True)
+    valid = {int(np.datetime64(b, "ns").astype("int64")): b for b in panel["bucket"].to_numpy()
+             if np.isfinite(sig.get(b, np.nan)) and sig.get(b, 0) > 0}
+    signal_ns = {int(np.datetime64(b, "ns").astype("int64")) for b, _, _ in signal_entries}
     out = []
-    for h in target_hours:
-        cand = pool_idx[pool_hours == h]
-        if len(cand) == 0:
-            cand = pool_idx
-        i = int(rng.choice(cand))
-        b = buckets[i]
-        out.append((b, "long", float(sig.get(b))))
+    for b, side, _s in signal_entries:
+        b_ns = int(np.datetime64(b, "ns").astype("int64"))
+        placed = False
+        for _ in range(20):  # retry until a valid, non-signal, in-panel slot is found
+            k = int(rng.integers(min_off_days, max_off_days + 1)) * (1 if rng.random() < 0.5 else -1)
+            cand = b_ns + k * _NS_PER_DAY
+            if cand in valid and cand not in signal_ns:
+                out.append((valid[cand], side, float(sig.get(valid[cand]))))
+                placed = True
+                break
+        # if no slot found in 20 tries, drop this entry (keeps the null clean)
+        _ = placed
+    return out
+
+
+def jittered_entries(signal_entries, bars, freq, k_bars, sig):
+    """Small-offset robustness: shift each entry by k_bars (can be +/-) within the panel.
+
+    bars = panel bucket array (sorted); returns entries at bucket index +k_bars where valid.
+    """
+    idx_of = {int(np.datetime64(b, "ns").astype("int64")): i for i, b in enumerate(bars)}
+    out = []
+    for b, side, _s in signal_entries:
+        i = idx_of.get(int(np.datetime64(b, "ns").astype("int64")))
+        if i is None:
+            continue
+        j = i + k_bars
+        if 0 <= j < len(bars):
+            bj = bars[j]
+            s = float(sig.get(bj, np.nan))
+            if np.isfinite(s) and s > 0:
+                out.append((bj, side, s))
     return out
 
 
@@ -388,10 +425,10 @@ git commit -m "feat(fx_coint): conditional + matched-unconditional path ensemble
 - Test: `tests/fx_coint/test_path_shift_gate.py`
 
 **Interfaces:**
-- Consumes: `path_ensemble.{tail_long_entries,unconditional_entries,build_ensemble}`, `tail_wfo.day_clustered_tstat` (for reference), `reg_signal_hunt.COST_BPS`.
+- Consumes: `path_ensemble.{tail_long_entries,offset_placebo_entries,jittered_entries,build_ensemble,_panel_and_closes}`, `reg_signal_hunt.COST_BPS`.
 - Produces:
   - `shift_tests(cond: np.ndarray, uncond: np.ndarray, seed=0, n_boot=2000) -> dict` — for one metric column: KS two-sample (`ks_stat`,`ks_p`), and a bootstrap mean-difference test (`mean_cond`,`mean_uncond`,`diff`,`boot_p` two-sided).
-  - `gate_one_edge(sym_list, entries_fn, freq, n_bars, label, seed=0) -> dict` — pool conditional ensembles across `sym_list`, build matched unconditional, run `shift_tests` on `terminal_sigma`, `mfe_sigma`, `mae_sigma`; return a dict of results + an overall `shifted: bool` (True if any metric KS_p<0.05 AND bootstrap diff CI excludes 0 after Bonferroni across the 3 metrics).
+  - `gate_one_edge(sym_list, entries_fn, freq, n_bars, label, min_off_days=3, seed=0) -> dict` — pool conditional ensembles across `sym_list`, build the **offset-placebo** null per pair, run `shift_tests` on `terminal_sigma`, `mfe_sigma`, `mae_sigma`; ALSO compute the small-offset robustness probe (conditional mean of each metric at jitter k∈{-2,-1,0,1,2} bars). Return results + overall `shifted: bool` (any metric KS_p AND boot_p < 0.05/3 Bonferroni) + a `robustness` block.
   - `main()` — run `gate_one_edge` for the 2h tail-long edge over TIGHT_MAJORS; print and write `scripts/fx_coint/path_shift_results.md`.
 
 - [ ] **Step 1: Write the failing test**
@@ -445,9 +482,11 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from scripts.fx_coint.path_ensemble import (  # noqa: E402
+    _panel_and_closes,
     build_ensemble,
+    jittered_entries,
+    offset_placebo_entries,
     tail_long_entries,
-    unconditional_entries,
 )
 
 TIGHT_MAJORS = ["EURUSD", "GBPUSD", "USDJPY"]
@@ -471,37 +510,48 @@ def shift_tests(cond: np.ndarray, uncond: np.ndarray, seed: int = 0,
             "diff": float(obs), "boot_p": boot_p, "n_cond": nc, "n_uncond": len(uncond)}
 
 
-def gate_one_edge(sym_list, entries_fn, freq, n_bars, label, seed=0) -> dict:
+def gate_one_edge(sym_list, entries_fn, freq, n_bars, label, min_off_days=3, seed=0) -> dict:
+    metrics = ["terminal_sigma", "mfe_sigma", "mae_sigma"]
     cond_frames, uncond_frames = [], []
+    robust = {k: [] for k in (-2, -1, 0, 1, 2)}
     for sym in sym_list:
         ents = entries_fn(sym, freq)
         cond_frames.append(build_ensemble(sym, ents, freq, n_bars=n_bars))
-        excl = {b for b, _, _ in ents}
-        unc = unconditional_entries(sym, freq, n_target=len(ents), exclude=excl, seed=seed)
-        uncond_frames.append(build_ensemble(sym, unc, freq, n_bars=n_bars))
+        plc = offset_placebo_entries(sym, freq, ents, min_off_days=min_off_days, seed=seed)
+        uncond_frames.append(build_ensemble(sym, plc, freq, n_bars=n_bars))
+        # small-offset robustness: mean terminal_sigma at jitter k
+        panel, _c, sig = _panel_and_closes(sym, freq)
+        bars = panel["bucket"].to_numpy()
+        for k in robust:
+            je = jittered_entries(ents, bars, freq, k, sig)
+            df = build_ensemble(sym, je, freq, n_bars=n_bars)
+            if len(df):
+                robust[k].append(df["terminal_sigma"].to_numpy())
     cond = pd.concat(cond_frames, ignore_index=True)
     uncond = pd.concat(uncond_frames, ignore_index=True)
-    metrics = ["terminal_sigma", "mfe_sigma", "mae_sigma"]
-    res = {m: shift_tests(cond[m].to_numpy(), uncond[m].to_numpy(), seed=seed)
-           for m in metrics}
-    # Bonferroni across 3 metrics
+    res = {m: shift_tests(cond[m].to_numpy(), uncond[m].to_numpy(), seed=seed) for m in metrics}
     shifted = any(res[m]["ks_p"] < 0.05 / len(metrics) and res[m]["boot_p"] < 0.05 / len(metrics)
                   for m in metrics)
+    robustness = {k: float(np.concatenate(v).mean()) if v else float("nan")
+                  for k, v in robust.items()}
     return {"label": label, "n_cond": len(cond), "n_uncond": len(uncond),
-            "metrics": res, "shifted": shifted}
+            "metrics": res, "shifted": shifted, "robustness": robustness}
 
 
 def _fmt(g) -> str:
     lines = [f"## {g['label']}  (n_cond={g['n_cond']} n_uncond={g['n_uncond']})  SHIFTED={g['shifted']}"]
     for m, r in g["metrics"].items():
-        lines.append(f"  {m:>15}: cond={r['mean_cond']:+.3f} unc={r['mean_uncond']:+.3f} "
+        lines.append(f"  {m:>15}: cond={r['mean_cond']:+.3f} unc(placebo)={r['mean_uncond']:+.3f} "
                      f"diff={r['diff']:+.3f} ks_p={r['ks_p']:.4f} boot_p={r['boot_p']:.4f}")
+    rob = g["robustness"]
+    lines.append("  robustness terminal_sigma by jitter (bars): " +
+                 " ".join(f"{k:+d}={rob[k]:+.3f}" for k in sorted(rob)))
     return "\n".join(lines)
 
 
 def main():
     g = gate_one_edge(TIGHT_MAJORS, lambda s, f: tail_long_entries(s, f, q=0.95),
-                      freq="2h", n_bars=1, label="2h tail-long")
+                      freq="2h", n_bars=1, label="2h tail-long", min_off_days=3)
     block = _fmt(g)
     print(block)
     (Path(__file__).resolve().parent / "path_shift_results.md").write_text(
@@ -603,11 +653,11 @@ def main():
     from scripts.fx_coint.path_ensemble import reversion_entries
     blocks = []
     g1 = gate_one_edge(TIGHT_MAJORS, lambda s, f: tail_long_entries(s, f, q=0.95),
-                       freq="2h", n_bars=1, label="2h tail-long")
+                       freq="2h", n_bars=1, label="2h tail-long", min_off_days=3)
     blocks.append(_fmt(g1))
-    # reversion: daily bars, hold 2 bars (~2 days); entries are signed
+    # reversion: daily bars, hold 2 bars (~2 days); offset must clear the 2-day hold
     g2 = gate_one_edge(TIGHT_MAJORS, lambda s, f: reversion_entries(s, f, q=0.90, L=10),
-                       freq="1d", n_bars=2, label="2-3d reversion")
+                       freq="1d", n_bars=2, label="2-3d reversion", min_off_days=5)
     blocks.append(_fmt(g2))
     out = "\n\n".join(blocks)
     print(out)
@@ -639,7 +689,8 @@ git commit -m "feat(fx_coint): reversion edge config + gate-1 for both edges"
 
 ## Self-Review notes
 
-- **Spec coverage:** §2a conditional ensemble → Task 3; §2b unconditional null → Task 3 (`unconditional_entries`); §2c bracket evaluator → Phase B (NOT this plan — gate 1 needs only excursions); §3 causal selection → Tasks 3/5 (walk_forward OOS, expanding decile); §4 gate 1 → Tasks 4/5; §5 phasing (Phase A only here) → whole plan. Bracket evaluator, optimizer, gates 2-3 are Phase B (separate plan).
+- **Spec coverage:** §2a conditional ensemble → Task 3; §2b offset-placebo null → Task 3 (`offset_placebo_entries`); §2b2 small-offset robustness → Task 3 (`jittered_entries`) + Task 4 (`gate_one_edge` robustness block); §2c bracket evaluator → Phase B (NOT this plan — gate 1 needs only excursions); §3 causal selection → Tasks 3/5 (walk_forward OOS, expanding decile); §4 gate 1 → Tasks 4/5; §5 phasing (Phase A only here) → whole plan. Bracket evaluator, optimizer, gates 2-3 are Phase B (separate plan).
 - **Type consistency:** entries are `list[tuple[np.datetime64, str, float]]` everywhere; `build_ensemble` returns a DataFrame with `terminal_sigma/mfe_sigma/mae_sigma/terminal_bps`; `shift_tests` consumes 1-D arrays of those columns.
-- **Known risk:** `unconditional_entries` hour-matching uses signal hours sampled with replacement; if a pair has sparse pool hours it falls back to the full pool — acceptable for a coarse null. The bucket key types (np.datetime64[ns]) must match between `close`/`sig` dict keys and `f["test_bucket"]`; if a KeyError/dtype mismatch appears, normalize both to `datetime64[ns]` in `_panel_and_closes` and the entries.
+- **Offset discipline:** the placebo is a whole-day shift (preserves time-of-day), `|offset| ≥ min_off_days` so the shifted hold window cannot overlap the original (3 days for the 2h edge whose hold ≪ 1 day; 5 days for the reversion edge whose hold ≈ 2 days). Offsets are used ONLY for the null and the ±1–3 bar robustness probe — never to inflate sample size (data augmentation is explicitly rejected; it would create correlated near-duplicates and false power).
+- **Known risk:** `offset_placebo_entries` drops an entry if no valid non-signal slot is found in 20 tries; the placebo n may be slightly below the conditional n — acceptable (KS/permutation handle unequal n). The bucket key types (np.datetime64[ns]) must match between `close`/`sig` dict keys and `f["test_bucket"]`; if a KeyError/dtype mismatch appears, normalize both to `datetime64[ns]` in `_panel_and_closes` and the entries.
 - **Decision wiring:** Phase A's deliverable is the gate-1 verdict per edge. A `SHIFTED=False` is a legitimate early STOP (cheap kill); `SHIFTED=True` greenlights Phase B. Either way the result is recorded in `path_shift_results.md`.
