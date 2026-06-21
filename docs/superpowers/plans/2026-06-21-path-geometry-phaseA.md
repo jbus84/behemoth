@@ -250,7 +250,7 @@ git commit -m "feat(fx_coint): signed path excursion metrics (terminal/MFE/MAE i
 # tests/fx_coint/test_path_ensemble.py
 import numpy as np
 from scripts.fx_coint.path_ensemble import (
-    tail_long_entries, unconditional_entries, build_ensemble,
+    tail_long_entries, build_ensemble,
 )
 
 def test_tail_long_entries_nonempty_and_long():
@@ -665,7 +665,7 @@ def main():
         "# Path-shift gate (gate 1) results\n\n" + out + "\n")
 ```
 
-Note: `gate_one_edge`'s `entries_fn` is called as `entries_fn(sym, freq)`; the reversion lambda ignores extra kwargs by fixing `q`/`L`. `build_ensemble`/`unconditional_entries` already accept `freq="1d"` since `hold_path` uses `FREQ_MINUTES[freq]` (now including `"1d"`).
+Note: `gate_one_edge`'s `entries_fn` is called as `entries_fn(sym, freq)`; the reversion lambda fixes `q`/`L`. `build_ensemble` / `offset_placebo_entries` already accept `freq="1d"` since `hold_path` uses `FREQ_MINUTES[freq]` (now including `"1d"`).
 
 - [ ] **Step 4: Run tests, then re-run the gate**
 
