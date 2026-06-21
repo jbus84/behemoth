@@ -122,6 +122,15 @@ def gate2(opt):
             "ci_lo": lo, "ci_hi": hi, "pos_y": pos, "n_y": ny}
 
 
+from scripts.fx_coint.path_ensemble import (  # noqa: E402
+    _panel_and_closes,
+    offset_placebo_entries,
+    tail_long_entries,
+)
+from scripts.fx_coint.path_shift_gate import TIGHT_MAJORS, gate_one_edge  # noqa: E402
+from scripts.fx_coint.reg_signal_hunt import bh_reject  # noqa: E402
+
+
 def fold_trades(sym, freq="2h", q=0.95, n_folds=5, n_bars=1, min_train_frac=0.5, purge=1):
     panel, close = _bars_panel(sym, freq)
     bn, mids = build_minute_index(sym)
@@ -149,3 +158,102 @@ def fold_trades(sym, freq="2h", q=0.95, n_folds=5, n_bars=1, min_train_frac=0.5,
               for j in np.where(test_pred >= thr)[0]]
         out.append({"train": [t for t in tr if t], "test": [t for t in te if t]})
     return out
+
+
+def prescreen(timeframes=("1h", "2h", "3h", "4h"), pairs=TIGHT_MAJORS, seed=0):
+    res = {}
+    for tf in timeframes:
+        g = gate_one_edge(
+            pairs,
+            lambda s, f: tail_long_entries(s, f, q=0.95),
+            freq=tf,
+            n_bars=1,
+            label=f"tail-long {tf}",
+            min_off_days=3,
+            seed=seed,
+        )
+        res[tf] = bool(g["shifted"])
+    return res
+
+
+def _placebo_folds(sym, freq, n_bars, seed):
+    ents = tail_long_entries(sym, freq, q=0.95)
+    plc = offset_placebo_entries(sym, freq, ents, seed=seed)
+    _panel, close, _sig = _panel_and_closes(sym, freq)
+    close_dict = dict(zip(close.keys(), close.values(), strict=False)) if hasattr(close, "keys") else close
+    bn, mids = build_minute_index(sym)
+    cost = COST_BPS[sym]
+    trades = [_mk_trade(b, s, close_dict, bn, mids, freq, n_bars, cost) for b, _side, s in plc]
+    trades = sorted([t for t in trades if t], key=lambda t: t.bucket)
+    if len(trades) < 10:
+        return []
+    edges = np.linspace(int(len(trades) * 0.5), len(trades), 6).astype(int)
+    folds = []
+    for k in range(5):
+        split = edges[k]
+        lo, hi = edges[k] + 1, edges[k + 1]
+        if hi - lo < 1 or split < 5:
+            continue
+        folds.append({"train": trades[:split], "test": trades[lo:hi]})
+    return folds
+
+
+def placebo_optimize(sym, freq, n_bars, seed=0):
+    folds = _placebo_folds(sym, freq, n_bars, seed)
+    if not folds:
+        return None
+    return gate2(optimize_geometry(folds))
+
+
+def _pool_folds(pairs, freq, n_bars):
+    folds = []
+    for sym in pairs:
+        for f in fold_trades(sym, freq=freq, n_bars=n_bars):
+            folds.append(f)
+    return folds
+
+
+def main():
+    shifted = prescreen()
+    survivors = [tf for tf, s in shifted.items() if s]
+    lines = [
+        "# Path-geometry Phase B results",
+        "",
+        f"## B0 pre-screen: {shifted}  -> survivors {survivors}",
+        "",
+    ]
+    fdr_pvals: list[float] = []
+    fdr_labels: list[str] = []
+    for tf in survivors:
+        for n_bars in (1, 2):
+            folds = _pool_folds(TIGHT_MAJORS, tf, n_bars)
+            opt = optimize_geometry(folds)
+            g = gate2(opt)
+            plc_results = [placebo_optimize(s, tf, n_bars, seed=0) for s in TIGHT_MAJORS]
+            plc_means = [p["mean_diff"] for p in plc_results if p]
+            null_mean = float(np.nanmean(plc_means)) if plc_means else float("nan")
+            lines.append(
+                f"### {tf} n_bars={n_bars}: base={g['mean_base']:+.2f} geom={g['mean_geom']:+.2f} "
+                f"diff={g['mean_diff']:+.2f} day_t={g['day_t']:+.2f} day_p={g['day_p']:.4f} "
+                f"pos={g['pos_y']}/{g['n_y']} boot95=[{g['ci_lo']:+.2f},{g['ci_hi']:+.2f}] "
+                f"null_diff={null_mean:+.2f} cells={set(opt['selected_cells'])}"
+            )
+            fdr_pvals.append(g["day_p"])
+            fdr_labels.append(f"{tf}/{n_bars}bar")
+    if fdr_pvals:
+        rej = bh_reject(fdr_pvals, q=0.05)
+        lines.append("")
+        lines.append(
+            f"## BH-FDR across {len(fdr_pvals)} cells (q=0.05): "
+            + ", ".join(
+                f"{lab}={'REJECT' if r else 'keep-null'}"
+                for lab, r in zip(fdr_labels, rej, strict=False)
+            )
+        )
+    out = "\n".join(lines)
+    print(out)
+    (Path(__file__).resolve().parent / "path_geometry_results.md").write_text(out + "\n")
+
+
+if __name__ == "__main__":
+    main()

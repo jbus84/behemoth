@@ -73,3 +73,13 @@ def test_paired_day_clustered_zero_when_identical():
     base = np.arange(10.0)
     r = paired_day_clustered_p(net, base, bk)
     assert np.isclose(r["mean_diff"], 0.0)
+
+
+from scripts.fx_coint.path_geometry_opt import prescreen  # noqa: E402
+
+
+def test_prescreen_returns_bool_per_tf_and_2h_true():
+    res = prescreen(timeframes=("2h",), pairs=["EURUSD", "GBPUSD", "USDJPY"], seed=0)
+    assert set(res.keys()) == {"2h"}
+    assert isinstance(res["2h"], bool)
+    assert res["2h"] is True  # 2h shifted in Phase A
