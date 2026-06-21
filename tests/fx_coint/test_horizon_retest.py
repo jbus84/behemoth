@@ -35,3 +35,20 @@ def test_non_contiguous_window_dropped():
     # buckets whose [i, i+3] window includes the broken bar 20 must be absent
     broken_buckets = set(bars["bucket"].iloc[17:20])
     assert not (broken_buckets & set(p["bucket"]))
+
+
+# ---------------------------------------------------------------------------
+# Task 2: horizon_net_track
+# ---------------------------------------------------------------------------
+from scripts.fx_coint.horizon_retest import horizon_net_track  # noqa: E402
+
+
+def test_horizon_net_track_shapes_and_more_entries_at_h1():
+    t1 = horizon_net_track("EURUSD", H=1)
+    t4 = horizon_net_track("EURUSD", H=4)
+    assert t1["n"] > 200 and t4["n"] > 200
+    assert t1["net"].shape == (t1["n"],)
+    assert t1["bucket"].shape == (t1["n"],)
+    # hourly sampling => H=1 and H=4 have comparable entry counts (both ~hourly grid),
+    # and BOTH are far larger than the old disjoint 4-bar/day 4h panel (~196)
+    assert t4["n"] > 500
