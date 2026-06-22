@@ -105,7 +105,6 @@ def main():
                 per_feat_fixed.setdefault(f, []).append(stats.spearmanr(fv[ok], fixed_ret[ok])[0])
                 per_feat_triple.setdefault(f, []).append(stats.spearmanr(fv[ok], trip_ret[ok])[0])
         avg_hold = np.mean(holds)
-        avg_hold_h = avg_hold / np.mean([b for b in [bph]])  # bph last sym ~ representative
         print("=" * 92)
         print(f"{label}  —  vertical=24h, symmetric barriers=1.0*24h-move, {N_EVENTS} events/sym")
         print(f"  avg hold {avg_hold:.0f} bars (~{avg_hold/ bph:.1f}h)  | vertical-touched {np.mean(vtouch)*100:.0f}%  "

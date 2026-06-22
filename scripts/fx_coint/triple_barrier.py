@@ -27,7 +27,6 @@ def triple_barrier(logp: np.ndarray, ts_ns: np.ndarray, ev: np.ndarray,
                    vert_ns: int, width: np.ndarray):
     """width[k] = horizontal half-width in log-return units for event ev[k] (>0).
     Returns: t1_idx, ret_bps (first-touch), hold_bars, touched (1=up,-1=dn,0=vert)."""
-    n = len(logp)
     vert = vertical_idx(ts_ns, ev, vert_ns)
     t1 = np.empty(len(ev), dtype=np.int64)
     ret = np.empty(len(ev))
