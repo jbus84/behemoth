@@ -130,7 +130,8 @@ def main() -> None:
             for s in POOL:
                 dd = data[s][[f, f"y{h}"]].dropna()
                 if len(dd) < 500:
-                    ics.append(np.nan); continue
+                    ics.append(np.nan)
+                    continue
                 ics.append(stats.spearmanr(dd[f], dd[f"y{h}"])[0])
             ics = np.array(ics)
             ic = np.nanmean(ics)

@@ -29,17 +29,22 @@ HORIZONS = [24, 48]
 
 # ---------- helpers ----------
 def ffd_w(d, thres=1e-4):
-    w = [1.0]; k = 1
+    w = [1.0]
+    k = 1
     while True:
         w_ = -w[-1] * (d - k + 1) / k
         if abs(w_) < thres:
             break
-        w.append(w_); k += 1
+        w.append(w_)
+        k += 1
     return np.array(w[::-1])
 
 
 def ffd(s, d=0.1):
-    w = ffd_w(d); width = len(w); v = s.to_numpy(float); out = np.full(len(v), np.nan)
+    w = ffd_w(d)
+    width = len(w)
+    v = s.to_numpy(float)
+    out = np.full(len(v), np.nan)
     for i in range(width - 1, len(v)):
         out[i] = np.dot(w, v[i - width + 1: i + 1])
     return pd.Series(out, index=s.index)
@@ -48,8 +53,11 @@ def ffd(s, d=0.1):
 def roll_ols_t(y: pd.Series, x: pd.Series, win: int) -> pd.Series:
     """Vectorized rolling t-stat of slope in y ~ a + b x over `win`."""
     n = win
-    Sx = x.rolling(n).sum(); Sy = y.rolling(n).sum()
-    Sxx = (x * x).rolling(n).sum(); Sxy = (x * y).rolling(n).sum(); Syy = (y * y).rolling(n).sum()
+    Sx = x.rolling(n).sum()
+    Sy = y.rolling(n).sum()
+    Sxx = (x * x).rolling(n).sum()
+    Sxy = (x * y).rolling(n).sum()
+    Syy = (y * y).rolling(n).sum()
     den = n * Sxx - Sx * Sx
     b = (n * Sxy - Sx * Sy) / den
     a = (Sy - b * Sx) / n
@@ -62,7 +70,8 @@ def roll_ols_t(y: pd.Series, x: pd.Series, win: int) -> pd.Series:
 def adf_sup(logp: pd.Series, wins=(60, 120, 240)) -> pd.Series:
     """SADF approximation: max rolling AR(1) t-stat (Dy ~ a + b*y_lag) over several
     window lengths -> explosiveness (b>0 => bubble/collapse)."""
-    dy = logp.diff(); ylag = logp.shift(1)
+    dy = logp.diff()
+    ylag = logp.shift(1)
     ts = [roll_ols_t(dy, ylag, w) for w in wins]
     return pd.concat(ts, axis=1).max(axis=1)
 
@@ -100,7 +109,8 @@ def plugin_entropy_sign(r: pd.Series, win=168, word=3, step=6) -> pd.Series:
 
 
 def build(sym_file):
-    df = pd.read_parquet(sym_file); df["bucket"] = pd.to_datetime(df["bucket"])
+    df = pd.read_parquet(sym_file)
+    df["bucket"] = pd.to_datetime(df["bucket"])
     df = df.set_index("bucket").sort_index()
     logp = np.log(df["mid"])
     r = (logp.diff() * 1e4).where(lambda x: x.abs() < 500)
@@ -136,8 +146,10 @@ def partial_ic(x, y, Z):
     def rank(v): return stats.rankdata(v)
     xr, yr = rank(x), rank(y)
     Zr = np.column_stack([np.ones(len(x))] + [rank(Z[:, j]) for j in range(Z.shape[1])])
-    bx = np.linalg.lstsq(Zr, xr, rcond=None)[0]; rx = xr - Zr @ bx
-    by = np.linalg.lstsq(Zr, yr, rcond=None)[0]; ry = yr - Zr @ by
+    bx = np.linalg.lstsq(Zr, xr, rcond=None)[0]
+    rx = xr - Zr @ bx
+    by = np.linalg.lstsq(Zr, yr, rcond=None)[0]
+    ry = yr - Zr @ by
     if rx.std() < 1e-9 or ry.std() < 1e-9:
         return np.nan, 1.0
     pic = np.corrcoef(rx, ry)[0, 1]
@@ -153,7 +165,6 @@ def main():
              if c not in ("base", "skew48") and not c.startswith("y")]
 
     rows = []
-    cond_rows = []
     for f in cands:
         for h in HORIZONS:
             full, halves1, halves2, novs, ccs = [], [], [], [], []
@@ -163,7 +174,8 @@ def main():
                     continue
                 Z = dd[["base", "skew48"]].to_numpy()
                 pic, cc = partial_ic(dd[f].to_numpy(), dd[f"y{h}"].to_numpy(), Z)
-                full.append(pic); ccs.append(cc)
+                full.append(pic)
+                ccs.append(cc)
                 half = len(dd) // 2
                 halves1.append(partial_ic(dd[f].to_numpy()[:half], dd[f"y{h}"].to_numpy()[:half], Z[:half])[0])
                 halves2.append(partial_ic(dd[f].to_numpy()[half:], dd[f"y{h}"].to_numpy()[half:], Z[half:])[0])
@@ -173,7 +185,8 @@ def main():
                                            no[["base", "skew48"]].to_numpy())[0])
             if len(full) < 5:
                 continue
-            full = np.array(full); ic = full.mean()
+            full = np.array(full)
+            ic = full.mean()
             t = ic / (full.std(ddof=1) / np.sqrt(len(full)))
             sgn = int((np.sign(full) == np.sign(ic)).sum())
             half_ok = np.sign(np.nanmean(halves1)) == np.sign(np.nanmean(halves2)) == np.sign(ic)

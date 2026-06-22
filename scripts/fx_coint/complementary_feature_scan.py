@@ -34,18 +34,22 @@ HORIZONS = [6, 24, 48]
 
 
 def ffd_weights(d: float, thres: float = 1e-4) -> np.ndarray:
-    w = [1.0]; k = 1
+    w = [1.0]
+    k = 1
     while True:
         w_ = -w[-1] * (d - k + 1) / k
         if abs(w_) < thres:
             break
-        w.append(w_); k += 1
+        w.append(w_)
+        k += 1
     return np.array(w[::-1])
 
 
 def ffd(series: pd.Series, d: float = 0.1, thres: float = 1e-4) -> pd.Series:
-    w = ffd_weights(d, thres); width = len(w)
-    v = series.to_numpy(float); out = np.full(len(v), np.nan)
+    w = ffd_weights(d, thres)
+    width = len(w)
+    v = series.to_numpy(float)
+    out = np.full(len(v), np.nan)
     for i in range(width - 1, len(v)):
         out[i] = np.dot(w, v[i - width + 1 : i + 1])
     return pd.Series(out, index=series.index)
@@ -139,7 +143,8 @@ def main() -> None:
                 if len(dd) < 500 or dd[f].nunique() < 5:
                     continue
                 pic, rxz = partial_spearman(dd[f], dd[f"y{h}"], dd["base"])
-                pics.append(pic); corrs.append(rxz)
+                pics.append(pic)
+                corrs.append(rxz)
                 rawics.append(stats.spearmanr(dd[f], dd[f"y{h}"])[0])
             if len(pics) < 5:
                 continue

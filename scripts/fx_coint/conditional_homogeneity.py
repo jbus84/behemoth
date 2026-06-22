@@ -9,7 +9,8 @@ Method (all on per-symbol VOL-STANDARDIZED 1h log returns, so scale is removed):
   - Target:   next-bar standardized return.
   - Per-symbol OLS with Newey-West (HAC) t-stats  -> sign + magnitude per symbol.
   - Sign-agreement across symbols per feature.
-  - POOLED homogeneity test: pooled OLS vs pooled+symbol-interactions; F-test on
+  - POOLED homogeneity test: pooled OLS vs pooled+symbol-interactions
+  F-test on
     the interaction block = "do coefficients differ by symbol?" (Chow-style).
   - Leave-JPY-out pooled fit to see if JPY is the lone heterogeneity source.
 

@@ -28,17 +28,21 @@ HORIZONS = [24, 48]
 
 
 def ffd_weights(d: float, thres: float = 1e-4) -> np.ndarray:
-    w = [1.0]; k = 1
+    w = [1.0]
+    k = 1
     while True:
         w_ = -w[-1] * (d - k + 1) / k
         if abs(w_) < thres:
             break
-        w.append(w_); k += 1
+        w.append(w_)
+        k += 1
     return np.array(w[::-1])
 
 
 def ffd(s: pd.Series, d: float = 0.1) -> pd.Series:
-    w = ffd_weights(d); width = len(w); v = s.to_numpy(float)
+    w = ffd_weights(d)
+    width = len(w)
+    v = s.to_numpy(float)
     out = np.full(len(v), np.nan)
     for i in range(width - 1, len(v)):
         out[i] = np.dot(w, v[i - width + 1: i + 1])
@@ -47,7 +51,8 @@ def ffd(s: pd.Series, d: float = 0.1) -> pd.Series:
 
 def build(sym_file: str, usd_cum: pd.Series) -> pd.DataFrame:
     df = pd.read_parquet(sym_file)
-    df["bucket"] = pd.to_datetime(df["bucket"]); df = df.set_index("bucket").sort_index()
+    df["bucket"] = pd.to_datetime(df["bucket"])
+    df = df.set_index("bucket").sort_index()
     logp = np.log(df["mid"])
     r = (logp.diff() * 1e4).where(lambda x: x.abs() < 500)
     d = pd.DataFrame(index=df.index)
@@ -76,7 +81,9 @@ def build(sym_file: str, usd_cum: pd.Series) -> pd.DataFrame:
 
 
 def partial_ic(x, y, z):
-    rxy = stats.spearmanr(x, y)[0]; rxz = stats.spearmanr(x, z)[0]; ryz = stats.spearmanr(y, z)[0]
+    rxy = stats.spearmanr(x, y)[0]
+    rxz = stats.spearmanr(x, z)[0]
+    ryz = stats.spearmanr(y, z)[0]
     den = np.sqrt(max(1 - rxz**2, 1e-9) * max(1 - ryz**2, 1e-9))
     return (rxy - rxz * ryz) / den, rxz
 
@@ -87,7 +94,8 @@ def main() -> None:
     # USD basket cumulative (for co-skew)
     rets = {}
     for s in POOL:
-        m = pd.read_parquet(files[s]); m["bucket"] = pd.to_datetime(m["bucket"])
+        m = pd.read_parquet(files[s])
+        m["bucket"] = pd.to_datetime(m["bucket"])
         m = m.set_index("bucket").sort_index()
         rr = np.log(m["mid"]).diff() * 1e4
         rets[s] = (rr - rr.mean()) / rr.std()
@@ -104,7 +112,9 @@ def main() -> None:
                 dd = data[s][[f, "base", f"y{h}"]].replace([np.inf, -np.inf], np.nan).dropna()
                 if len(dd) < 800 or dd[f].nunique() < 5:
                     continue
-                pic, rxz = partial_ic(dd[f], dd[f"y{h}"], dd["base"]); full.append(pic); corrs.append(rxz)
+                pic, rxz = partial_ic(dd[f], dd[f"y{h}"], dd["base"])
+                full.append(pic)
+                corrs.append(rxz)
                 half = len(dd) // 2
                 h1s.append(partial_ic(dd[f].iloc[:half], dd[f"y{h}"].iloc[:half], dd["base"].iloc[:half])[0])
                 h2s.append(partial_ic(dd[f].iloc[half:], dd[f"y{h}"].iloc[half:], dd["base"].iloc[half:])[0])
@@ -113,7 +123,8 @@ def main() -> None:
                     nov.append(partial_ic(no[f], no[f"y{h}"], no["base"])[0])
             if len(full) < 5:
                 continue
-            full = np.array(full); ic = full.mean()
+            full = np.array(full)
+            ic = full.mean()
             t = ic / (full.std(ddof=1) / np.sqrt(len(full)))
             p = 2 * stats.t.sf(abs(t), df=len(full) - 1)
             sgn = int((np.sign(full) == np.sign(ic)).sum())
