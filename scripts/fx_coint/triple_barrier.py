@@ -23,10 +23,35 @@ def vertical_idx(ts_ns: np.ndarray, ev: np.ndarray, vert_ns: int) -> np.ndarray:
     return v
 
 
+def triple_barrier_core(logp: np.ndarray, ev: np.ndarray, vert: np.ndarray, width: np.ndarray):
+    """First-touch labeling given an explicit per-event vertical index `vert`.
+    width[k] = horizontal half-width (log-return units) for event ev[k] (>0).
+    Returns: t1_idx, ret_bps (first-touch), hold_bars, touched (1=up,-1=dn,0=vert)."""
+    t1 = np.empty(len(ev), dtype=np.int64)
+    ret = np.empty(len(ev))
+    touched = np.zeros(len(ev), dtype=np.int8)
+    for k in range(len(ev)):
+        i = ev[k]
+        ve = vert[k]
+        path = logp[i + 1:ve + 1] - logp[i]
+        w = width[k]
+        up = np.argmax(path >= w) if np.any(path >= w) else -1
+        dn = np.argmax(path <= -w) if np.any(path <= -w) else -1
+        if up == -1 and dn == -1:
+            j, tc = ve, 0
+        elif dn == -1 or (up != -1 and up <= dn):
+            j, tc = i + 1 + up, 1
+        else:
+            j, tc = i + 1 + dn, -1
+        t1[k] = j
+        ret[k] = (logp[j] - logp[i]) * 1e4
+        touched[k] = tc
+    return t1, ret, t1 - ev, touched
+
+
 def triple_barrier(logp: np.ndarray, ts_ns: np.ndarray, ev: np.ndarray,
                    vert_ns: int, width: np.ndarray):
-    """width[k] = horizontal half-width in log-return units for event ev[k] (>0).
-    Returns: t1_idx, ret_bps (first-touch), hold_bars, touched (1=up,-1=dn,0=vert)."""
+    """Wall-clock vertical (vert_ns) variant. See triple_barrier_core."""
     vert = vertical_idx(ts_ns, ev, vert_ns)
     t1 = np.empty(len(ev), dtype=np.int64)
     ret = np.empty(len(ev))
