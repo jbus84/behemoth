@@ -96,9 +96,26 @@ def test_label_noise_clear_barriers_low_flip():
     assert out["flip_rate"] < 0.1
 
 
+def test_label_noise_borderline_barriers_high_flip():
+    from scripts.fx_coint.target_wellposedness import label_noise
+    # down move (-0.6%) then a big up move (+1.5%): a narrow barrier touches DOWN
+    # first (-1), but widening past the dip lets the UP move touch first (+1) -> flip.
+    logp = np.log(np.array([100.0, 99.4, 101.5] + [101.5] * 20))
+    ev = np.array([0])
+    vert = np.array([20])
+    w = np.log(100.0 / 99.4)  # ~0.6% half-width, sitting right on the dip
+    width = np.array([w])
+    out = label_noise(logp, ev, vert, width, perturb=w * 0.5)
+    assert 0.0 <= out["flip_rate"] <= 1.0
+    assert out["flip_rate"] > 0.0  # the single event flips dn -> up
+    # widened scenario touches up, so the flip is attributed to frac_unstable_up
+    assert out["frac_unstable_up"] > 0.0
+    assert out["frac_unstable_up"] + out["frac_unstable_dn"] <= out["flip_rate"] + 1e-9
+
+
 def test_label_noise_returns_valid_dict():
     from scripts.fx_coint.target_wellposedness import label_noise
-    # verify return structure and bounds; flip_rate is nondeterministic (depends on data)
+    # verify return structure and bounds
     logp = np.log(np.array([100.0, 100.10, 99.92, 100.11, 99.90, 100.2] + [100.2] * 20))
     ev = np.array([0])
     vert = np.array([20])

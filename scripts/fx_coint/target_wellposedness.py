@@ -135,6 +135,14 @@ def label_noise(logp: np.ndarray, ev: np.ndarray, vert: np.ndarray,
 
     A high flip rate means the label is an artifact of exact barrier placement
     (tick-exact-vs-OHLC illusion / adverse-selection sensitivity).
+
+    Returns:
+        flip_rate: fraction of all events whose first-touch sign changes.
+        frac_unstable_up / frac_unstable_dn: fraction of all events (not of the
+            flipped subset) that both flip AND touch up / down under the wide
+            barrier. Events that flip into a vertical/timeout touch (t_wide == 0)
+            are counted in flip_rate but in neither up nor down, so
+            frac_unstable_up + frac_unstable_dn <= flip_rate.
     """
     _, _, _, t_wide = triple_barrier_core(logp, ev, vert, width + perturb)
     narrow_w = np.maximum(width - perturb, 1e-9)
