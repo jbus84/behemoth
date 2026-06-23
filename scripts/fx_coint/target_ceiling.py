@@ -37,8 +37,10 @@ def purged_embargo_splits(n: int, t1: np.ndarray, n_splits: int,
         te_start, te_end = bounds[i], bounds[i + 1]
         test = np.arange(te_start, te_end)
         cand = np.arange(0, te_start)
-        # purge train labels that overlap the test block start (+ embargo)
-        keep = t1[cand] < (te_start)
+        # purge train labels whose end t1 reaches into the test block; the embargo
+        # extends the protected zone `embargo` bars before the test start so labels
+        # ending just before the test set can't leak through overlapping windows.
+        keep = t1[cand] < (te_start - embargo)
         train = cand[keep]
         if train.size and test.size:
             splits.append((train, test))
