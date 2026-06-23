@@ -29,6 +29,12 @@ DATA = "/Users/danielfisher/repositories/behemoth/data/tick_bars"
 POOL = ["EURUSD", "GBPUSD"]
 DATASETS = {"15m_time": "15m_flow", "1000tick": "1000tick"}
 HORIZONS_NS = {"1h": 3600_000_000_000, "6h": 6 * 3600_000_000_000}
+# CLI scoping: full series (~200k bars) makes the permutation null intractable.
+# Use the most-recent contiguous window (preserves the time/block structure the
+# null and purged splits rely on — random row subsampling would not) and a lighter
+# null. These are CLI knobs only; the core estimators are unchanged.
+MAX_BARS = 30000
+CLI_N_DRAWS = 30
 
 
 @dataclass
@@ -55,7 +61,7 @@ def wellposedness_verdict(wp: dict, min_overlap: float = 0.1,
 
 def score_target(name, kind, labels, signal, day_index, split_idx, X, y_ceiling,
                  t1, *, barrier_args=None, run_ceiling_on_illposed=False,
-                 rng=None) -> ReportCard:
+                 n_draws=50, rng=None) -> ReportCard:
     wp = {}
     wp.update(effective_n(labels))
     wp.update(temporal_concentration(signal, day_index))
@@ -68,7 +74,7 @@ def score_target(name, kind, labels, signal, day_index, split_idx, X, y_ceiling,
     verdict = wellposedness_verdict(wp)
     if verdict == "ill-posed" and not run_ceiling_on_illposed:
         return ReportCard(name, kind, wp, verdict, None, "skipped")
-    cb = ceiling_bracket(X, y_ceiling, t1, kind, rng=rng)
+    cb = ceiling_bracket(X, y_ceiling, t1, kind, n_draws=n_draws, rng=rng)
     cv = "signal" if (np.isfinite(cb["lower_p"]) and cb["lower_p"] < 0.05) \
         else "null-indistinguishable"
     return ReportCard(name, kind, wp, verdict, cb, cv)
@@ -110,12 +116,14 @@ def main():
             except FileNotFoundError:
                 print(f"skip {sym} {suffix}: not found")
                 continue
+            if len(ts) > MAX_BARS:                 # most-recent contiguous window
+                ts, logp = ts[-MAX_BARS:], logp[-MAX_BARS:]
             labels, signal, day_index, t1, X = build_continuous_target(ts, logp, h_ns)
             card = score_target(
                 f"{sym}/{ds_label}/{h_label}", "continuous",
                 labels=labels, signal=signal, day_index=day_index,
                 split_idx=len(ts) // 2, X=X, y_ceiling=labels, t1=t1,
-                rng=np.random.default_rng(0))
+                n_draws=CLI_N_DRAWS, rng=np.random.default_rng(0))
             rows.append(card)
     rows.sort(key=lambda c: (c.ceiling or {}).get("lower_z", -1e9), reverse=True)
     print(f"\n{'target':28s} {'wp':>10s} {'ovlp':>6s} {'conc':>6s} "
