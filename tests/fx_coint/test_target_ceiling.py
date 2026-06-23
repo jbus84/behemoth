@@ -1,6 +1,11 @@
 import numpy as np
 
-from scripts.fx_coint.target_ceiling import lag_embedding, purged_embargo_splits
+from scripts.fx_coint.target_ceiling import (
+    knn_mi,
+    lag_embedding,
+    model_lower_bound,
+    purged_embargo_splits,
+)
 
 
 def test_lag_embedding_shape_and_nan_warmup():
@@ -45,3 +50,43 @@ def test_purged_embargo_splits_embargo_is_not_a_noop():
     assert len(none) == len(wide) == 3
     for (tr0, _), (tr1, _) in zip(none, wide, strict=True):
         assert tr1.size < tr0.size   # embargo actually purges more
+
+
+def test_model_lower_bound_recovers_learnable_signal():
+    rng = np.random.default_rng(0)
+    n = 3000
+    r = rng.standard_normal(n)
+    X = lag_embedding(r, lags=(1, 2))
+    # target depends on lag-1 return -> learnable from own history
+    # y[t] = 0.5 * r[t-1] + 0.3 * r[t-2] + noise
+    y = np.zeros(n)
+    for t in range(2, n):
+        y[t] = 0.5 * r[t-1] + 0.3 * r[t-2] + 0.2 * rng.standard_normal()
+    y[:2] = np.nan
+    t1 = np.arange(n) + 1
+    ic = model_lower_bound(X, y, t1, kind="continuous")
+    assert ic > 0.1
+
+
+def test_model_lower_bound_pure_noise_near_zero():
+    rng = np.random.default_rng(1)
+    n = 3000
+    X = lag_embedding(rng.standard_normal(n), lags=(1, 2))
+    y = rng.standard_normal(n)               # independent of X
+    t1 = np.arange(n) + 1
+    ic = model_lower_bound(X, y, t1, kind="continuous")
+    assert abs(ic) < 0.1
+
+
+def test_knn_mi_detects_dependence():
+    rng = np.random.default_rng(2)
+    n = 2000
+    r = rng.standard_normal(n)
+    X = lag_embedding(r, lags=(1,))
+    # y_dep[t] = r[t-1] (strong dependence on lag-1)
+    y_dep = np.concatenate([[np.nan], r[:-1]])
+    y_indep = rng.standard_normal(n)
+    mi_dep = knn_mi(X, y_dep, kind="continuous")
+    mi_indep = knn_mi(X, y_indep, kind="continuous")
+    assert mi_dep > mi_indep
+    assert mi_dep > 0.05

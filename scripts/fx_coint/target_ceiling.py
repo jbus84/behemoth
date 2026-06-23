@@ -10,6 +10,10 @@ Self-test: `uv run python scripts/fx_coint/target_ceiling.py`
 from __future__ import annotations
 
 import numpy as np
+from scipy import stats
+from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
+from sklearn.metrics import balanced_accuracy_score
 
 
 def lag_embedding(returns: np.ndarray, lags: tuple[int, ...]) -> np.ndarray:
@@ -45,6 +49,61 @@ def purged_embargo_splits(n: int, t1: np.ndarray, n_splits: int,
         if train.size and test.size:
             splits.append((train, test))
     return splits
+
+
+def _drop_nan(X: np.ndarray, y: np.ndarray):
+    ok = np.isfinite(X).all(axis=1) & np.isfinite(np.asarray(y, dtype=float))
+    return X[ok], np.asarray(y)[ok], ok
+
+
+def model_lower_bound(X: np.ndarray, y: np.ndarray, t1: np.ndarray, kind: str,
+                      n_splits: int = 4, embargo: int = 10) -> float:
+    """Out-of-fold skill estimate: Spearman IC (continuous) or balanced accuracy (barrier).
+
+    Returns the average predictive skill of a gradient-boosted model trained on
+    own-history lags (X) to predict y, evaluated under purged+embargoed forward-chaining
+    cross-validation. NaN rows are dropped per-fold.
+    """
+    n = len(y)
+    scores = []
+    for tr, te in purged_embargo_splits(n, t1, n_splits, embargo):
+        Xtr, ytr, _ = _drop_nan(X[tr], y[tr])
+        Xte, yte, _ = _drop_nan(X[te], y[te])
+        if len(Xtr) < 50 or len(Xte) < 20:
+            continue
+        if kind == "barrier":
+            if np.unique(ytr).size < 2:
+                continue
+            m = GradientBoostingClassifier(n_estimators=100, max_depth=3,
+                                           random_state=0)
+            m.fit(Xtr, ytr.astype(int))
+            scores.append(balanced_accuracy_score(yte.astype(int), m.predict(Xte)))
+        else:
+            m = GradientBoostingRegressor(n_estimators=100, max_depth=3,
+                                          random_state=0)
+            m.fit(Xtr, ytr)
+            pred = m.predict(Xte)
+            if np.std(pred) == 0:
+                scores.append(0.0)
+            else:
+                scores.append(stats.spearmanr(pred, yte)[0])
+    return float(np.nanmean(scores)) if scores else float("nan")
+
+
+def knn_mi(X: np.ndarray, y: np.ndarray, kind: str) -> float:
+    """Mean sklearn mutual information across feature columns, in nats.
+
+    For continuous targets, uses mutual_info_regression. For barrier targets,
+    uses mutual_info_classif. NaN rows are dropped.
+    """
+    Xc, yc, _ = _drop_nan(X, y)
+    if len(Xc) < 50:
+        return float("nan")
+    if kind == "barrier":
+        mi = mutual_info_classif(Xc, yc.astype(int), random_state=0)
+    else:
+        mi = mutual_info_regression(Xc, yc, random_state=0)
+    return float(np.mean(mi))
 
 
 if __name__ == "__main__":
