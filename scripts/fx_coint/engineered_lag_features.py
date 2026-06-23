@@ -87,6 +87,9 @@ def build(sym):
     f["macd"] = (r.ewm(span=5).mean() - r.ewm(span=20).mean()).to_numpy()
     # vol regime
     f["volratio"] = (r.abs().rolling(5).mean() / (r.abs().rolling(50).mean() + eps)).to_numpy()
+    # tick-native microstructure (orthogonal continuation cluster)
+    f["intra_bar_mom"] = df["intra_bar_momentum"].to_numpy()[o]
+    f["hl_pos_frac"] = df["hl_pos_frac"].to_numpy()[o]
 
     vol = (s.diff().fillna(0.0)).ewm(span=100).std().to_numpy()
     return logp, f, vol, bph
