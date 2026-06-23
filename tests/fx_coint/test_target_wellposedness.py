@@ -78,4 +78,8 @@ def test_regime_stability_vol_shift_detected():
                         rng.standard_normal(2000) * 5.0])
     out = regime_stability(x, split_idx=2000, kind="continuous")
     assert out["vol_ratio"] > 3.0
+    # max_shift uses |log(vol_ratio)| as the standardized vol shift, so a 5x
+    # amplification yields |log(5)| ~= 1.61 (not the raw ratio). Brief's
+    # placeholder >2.0 assumed raw-ratio max_shift; >1.5 is the correct
+    # threshold for the log-vol semantics and still confirms detection.
     assert out["max_shift"] > 1.5
