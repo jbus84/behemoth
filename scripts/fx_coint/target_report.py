@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from target_ceiling import ceiling_bracket  # noqa: E402
+from target_ceiling import ceiling_bracket, lag_embedding  # noqa: E402
 from target_wellposedness import (  # noqa: E402
     class_balance,
     effective_n,
@@ -23,6 +23,12 @@ from target_wellposedness import (  # noqa: E402
     regime_stability,
     temporal_concentration,
 )
+from triple_barrier import vertical_idx  # noqa: E402
+
+DATA = "/Users/danielfisher/repositories/behemoth/data/tick_bars"
+POOL = ["EURUSD", "GBPUSD"]
+DATASETS = {"15m_time": "15m_flow", "1000tick": "1000tick"}
+HORIZONS_NS = {"1h": 3600_000_000_000, "6h": 6 * 3600_000_000_000}
 
 
 @dataclass
@@ -68,5 +74,61 @@ def score_target(name, kind, labels, signal, day_index, split_idx, X, y_ceiling,
     return ReportCard(name, kind, wp, verdict, cb, cv)
 
 
+def build_continuous_target(ts, logp, horizon_ns):
+    n = len(ts)
+    idx = np.arange(n)
+    t1 = vertical_idx(ts, idx, horizon_ns)
+    labels = (logp[t1] - logp) * 1e4                       # forward return bps
+    signal = labels
+    day_index = (ts // (86_400 * 1_000_000_000)).astype("int64")
+    r = np.diff(logp, prepend=logp[0])
+    X = lag_embedding(r, lags=(1, 5, 20, 60))
+    return labels, signal, day_index, t1, X
+
+
+def _load(sym, suffix):
+    import pandas as pd
+    df = pd.read_parquet(f"{DATA}/{sym}_{suffix}.parquet")
+    if "mid" in df.columns:
+        mid = df["mid"].to_numpy()
+        t = pd.to_datetime(df["bucket"])
+    else:
+        mid = ((df["close_bid"] + df["close_ask"]) / 2).to_numpy()
+        t = pd.to_datetime(df["timestamp"])
+    t = pd.DatetimeIndex(t).tz_localize(None).astype("datetime64[ns]")
+    o = np.argsort(t.view("int64"))
+    return t.view("int64").astype("int64")[o], np.log(mid[o])
+
+
+def main():
+    rows = []
+    for ds_label, suffix in DATASETS.items():
+        for h_label, h_ns in HORIZONS_NS.items():
+            sym = POOL[0]
+            try:
+                ts, logp = _load(sym, suffix)
+            except FileNotFoundError:
+                print(f"skip {sym} {suffix}: not found")
+                continue
+            labels, signal, day_index, t1, X = build_continuous_target(ts, logp, h_ns)
+            card = score_target(
+                f"{sym}/{ds_label}/{h_label}", "continuous",
+                labels=labels, signal=signal, day_index=day_index,
+                split_idx=len(ts) // 2, X=X, y_ceiling=labels, t1=t1,
+                rng=np.random.default_rng(0))
+            rows.append(card)
+    rows.sort(key=lambda c: (c.ceiling or {}).get("lower_z", -1e9), reverse=True)
+    print(f"\n{'target':28s} {'wp':>10s} {'ovlp':>6s} {'conc':>6s} "
+          f"{'lowerIC':>8s} {'p':>6s} {'z':>6s} {'MI':>6s}  ceiling")
+    for c in rows:
+        cb = c.ceiling or {}
+        print(f"{c.name:28s} {c.wellposed_verdict:>10s} "
+              f"{c.wellposed.get('overlap_ratio', float('nan')):6.2f} "
+              f"{c.wellposed.get('top1pct_share', float('nan')):6.2f} "
+              f"{cb.get('lower', float('nan')):8.3f} {cb.get('lower_p', float('nan')):6.2f} "
+              f"{cb.get('lower_z', float('nan')):6.2f} {cb.get('mi', float('nan')):6.3f}  "
+              f"{c.ceiling_verdict}")
+
+
 if __name__ == "__main__":
-    pass
+    main()

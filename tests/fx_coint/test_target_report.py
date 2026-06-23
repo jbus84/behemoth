@@ -84,3 +84,18 @@ def test_score_target_wellposed_runs_ceiling_and_finds_signal():
     assert card.wellposed_verdict == "well-posed"
     assert card.ceiling is not None
     assert card.ceiling_verdict == "signal"
+
+
+def test_build_continuous_target_shapes_align():
+    from scripts.fx_coint.target_report import build_continuous_target
+    n = 500
+    ts = (np.arange(n) * 60_000_000_000).astype("int64")   # 1-min bars
+    logp = np.cumsum(np.random.default_rng(0).standard_normal(n) * 1e-4)
+    labels, signal, day_index, t1, X = build_continuous_target(
+        ts, logp, horizon_ns=3600_000_000_000)             # 1h horizon
+    assert labels.shape == (n,)
+    assert signal.shape == (n,)
+    assert day_index.shape == (n,)
+    assert t1.shape == (n,)
+    assert X.shape[0] == n
+    assert (t1 >= np.arange(n)).all()                      # vertical never backward
