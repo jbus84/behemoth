@@ -106,6 +106,96 @@ def knn_mi(X: np.ndarray, y: np.ndarray, kind: str) -> float:
     return float(np.mean(mi))
 
 
+def block_permutation_null(stat_fn, y: np.ndarray, block_len: int,
+                           n_draws: int, rng: np.random.Generator) -> np.ndarray:
+    """Compute null distribution of a statistic under block-shuffled permutations.
+
+    Shuffles contiguous blocks of y to preserve short-range autocorrelation,
+    then evaluates stat_fn on each permuted copy.
+
+    Args:
+        stat_fn: Callable that takes a 1-D array and returns a float.
+        y: 1-D array to permute.
+        block_len: Length of contiguous blocks to shuffle together.
+        n_draws: Number of permutations to draw.
+        rng: numpy.random.Generator instance.
+
+    Returns:
+        Array of shape (n_draws,) containing the statistic computed on each
+        permuted copy of y.
+    """
+    y = np.asarray(y)
+    n = y.size
+    n_blocks = int(np.ceil(n / block_len))
+    out = np.empty(n_draws)
+    for d in range(n_draws):
+        order = rng.permutation(n_blocks)
+        perm = np.concatenate([y[b * block_len:(b + 1) * block_len] for b in order])
+        out[d] = stat_fn(perm[:n])
+    return out
+
+
+def _emp_p_z(obs: float, null: np.ndarray) -> tuple[float, float]:
+    """Compute empirical p-value and z-score relative to a null distribution.
+
+    Args:
+        obs: Observed statistic.
+        null: Array of null values.
+
+    Returns:
+        (p_value, z_score) where p_value = fraction of null >= obs, and
+        z_score = (obs - null.mean()) / null.std(). Both are NaN if null
+        is empty or obs is non-finite.
+    """
+    null = null[np.isfinite(null)]
+    if null.size == 0 or not np.isfinite(obs):
+        return float("nan"), float("nan")
+    p = float((np.sum(null >= obs) + 1) / (null.size + 1))
+    sd = null.std()
+    z = float((obs - null.mean()) / sd) if sd > 0 else float("nan")
+    return p, z
+
+
+def ceiling_bracket(X, y, t1, kind, block_len=50, n_draws=50, embargo=10,
+                    rng=None) -> dict:
+    """Estimate the intrinsic predictability ceiling using a bracket.
+
+    Computes both lower bound (flexible model skill) and MI upper estimate,
+    each compared against a block-permutation null to report empirical p and z.
+
+    Args:
+        X: Feature matrix (own-history lags).
+        y: Target array.
+        t1: Label-ending times (for purged+embargoed CV).
+        kind: "continuous" or "barrier".
+        block_len: Block length for permutation null.
+        n_draws: Number of null draws.
+        embargo: Embargo bars for purged CV.
+        rng: numpy.random.Generator (defaults to default_rng(0)).
+
+    Returns:
+        Dictionary with keys:
+          - "lower": model_lower_bound skill (IC or balanced accuracy)
+          - "mi": knn_mi estimate
+          - "lower_p": empirical p-value for lower
+          - "lower_z": z-score for lower
+          - "mi_p": empirical p-value for mi
+          - "mi_z": z-score for mi
+    """
+    rng = rng or np.random.default_rng(0)
+    lower = model_lower_bound(X, y, t1, kind, embargo=embargo)
+    mi = knn_mi(X, y, kind)
+    lower_null = block_permutation_null(
+        lambda yp: model_lower_bound(X, yp, t1, kind, embargo=embargo),
+        y, block_len, n_draws, rng)
+    mi_null = block_permutation_null(
+        lambda yp: knn_mi(X, yp, kind), y, block_len, n_draws, rng)
+    lp, lz = _emp_p_z(lower, lower_null)
+    mp, mz = _emp_p_z(mi, mi_null)
+    return {"lower": lower, "mi": mi,
+            "lower_p": lp, "lower_z": lz, "mi_p": mp, "mi_z": mz}
+
+
 if __name__ == "__main__":
     # Self-test
     print("Testing lag_embedding...")

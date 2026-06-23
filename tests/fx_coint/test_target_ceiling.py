@@ -1,6 +1,8 @@
 import numpy as np
 
 from scripts.fx_coint.target_ceiling import (
+    block_permutation_null,
+    ceiling_bracket,
     knn_mi,
     lag_embedding,
     model_lower_bound,
@@ -90,3 +92,47 @@ def test_knn_mi_detects_dependence():
     mi_indep = knn_mi(X, y_indep, kind="continuous")
     assert mi_dep > mi_indep
     assert mi_dep > 0.05
+
+
+# ============================================================================
+# Task 6: block_permutation_null and ceiling_bracket
+# ============================================================================
+
+
+def test_block_permutation_null_preserves_length_and_values():
+    rng = np.random.default_rng(0)
+    y = np.arange(200, dtype=float)
+    null = block_permutation_null(lambda z: z.mean(), y, block_len=20,
+                                  n_draws=10, rng=rng)
+    assert null.shape == (10,)
+    # mean of a permutation of the same values is unchanged
+    assert np.allclose(null, y.mean())
+
+
+def test_ceiling_bracket_signal_beats_null():
+    rng = np.random.default_rng(1)
+    n = 3000
+    r = rng.standard_normal(n)
+    X = lag_embedding(r, lags=(1, 2))
+    # Build y with strong dependence on lag-1 and lag-2 returns
+    y = np.zeros(n)
+    for t in range(2, n):
+        y[t] = 0.5 * r[t-1] + 0.3 * r[t-2] + 0.2 * rng.standard_normal()
+    y[:2] = np.nan
+    t1 = np.arange(n) + 1
+    out = ceiling_bracket(X, y, t1, kind="continuous", block_len=50,
+                          n_draws=30, rng=np.random.default_rng(2))
+    assert out["lower"] > 0.1
+    assert out["lower_p"] < 0.1              # clears the null
+    assert out["lower_z"] > 2.0
+
+
+def test_ceiling_bracket_noise_indistinguishable_from_null():
+    rng = np.random.default_rng(3)
+    n = 3000
+    X = lag_embedding(rng.standard_normal(n), lags=(1, 2))
+    y = rng.standard_normal(n)
+    t1 = np.arange(n) + 1
+    out = ceiling_bracket(X, y, t1, kind="continuous", block_len=50,
+                          n_draws=30, rng=np.random.default_rng(4))
+    assert out["lower_p"] > 0.1              # cannot reject null
