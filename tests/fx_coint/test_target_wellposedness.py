@@ -1,7 +1,9 @@
 import numpy as np
 
 from scripts.fx_coint.target_wellposedness import (
+    class_balance,
     effective_n,
+    regime_stability,
     temporal_concentration,
 )
 
@@ -40,3 +42,40 @@ def test_temporal_concentration_uniform_vs_spiked():
     assert g_uniform < 0.05                 # near-equal -> gini ~ 0
     assert g_spiked["gini"] > 0.9
     assert g_spiked["top1pct_share"] > 0.9  # ~all mass in 1 of 100 days
+
+
+def test_class_balance_barrier_balanced_high_entropy():
+    labels = np.array([1, -1, 0] * 100)
+    out = class_balance(labels, kind="barrier")
+    assert np.isclose(out["frac_up"], 1 / 3, atol=0.02)
+    assert out["entropy"] > 0.95            # near-uniform 3 classes
+
+
+def test_class_balance_barrier_degenerate_low_entropy():
+    labels = np.array([1] * 297 + [-1, -1, 0])
+    out = class_balance(labels, kind="barrier")
+    assert out["frac_up"] > 0.95
+    assert out["entropy"] < 0.2
+
+
+def test_class_balance_continuous_reports_tail_share():
+    x = np.concatenate([np.full(95, 0.01), np.full(5, 100.0)])
+    out = class_balance(x, kind="continuous")
+    assert out["tail_share"] > 0.9
+    assert np.isnan(out["entropy"])
+
+
+def test_regime_stability_stable_series_small_shift():
+    rng = np.random.default_rng(2)
+    x = rng.standard_normal(4000)
+    out = regime_stability(x, split_idx=2000, kind="continuous")
+    assert out["max_shift"] < 0.5
+
+
+def test_regime_stability_vol_shift_detected():
+    rng = np.random.default_rng(3)
+    x = np.concatenate([rng.standard_normal(2000),
+                        rng.standard_normal(2000) * 5.0])
+    out = regime_stability(x, split_idx=2000, kind="continuous")
+    assert out["vol_ratio"] > 3.0
+    assert out["max_shift"] > 1.5

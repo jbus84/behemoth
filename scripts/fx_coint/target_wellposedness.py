@@ -9,6 +9,7 @@ Self-test: `uv run python scripts/fx_coint/target_wellposedness.py`
 from __future__ import annotations
 
 import numpy as np
+from scipy import stats
 
 
 def _autocorr(x: np.ndarray, max_lag: int) -> np.ndarray:
@@ -69,6 +70,56 @@ def temporal_concentration(signal: np.ndarray, day_index: np.ndarray) -> dict:
     k = max(1, int(np.ceil(0.01 * per_day.size)))
     top = np.sort(per_day)[::-1][:k].sum()
     return {"gini": _gini(per_day), "top1pct_share": float(top / total)}
+
+
+def class_balance(labels: np.ndarray, kind: str) -> dict:
+    """Label class distribution and entropy for barrier or continuous targets.
+
+    For kind="barrier": returns frac_up, frac_dn, frac_vert (fractions of +1, -1, 0)
+    and entropy (base-3 normalized, in [0,1]).
+
+    For kind="continuous": returns skew, tail_share (fraction of total |x| in top 5%)
+    and entropy=np.nan.
+    """
+    x = np.asarray(labels)
+    x = x[np.isfinite(x.astype(float))]
+    if kind == "barrier":
+        n = x.size
+        up = float(np.mean(x == 1)) if n else 0.0
+        dn = float(np.mean(x == -1)) if n else 0.0
+        vt = float(np.mean(x == 0)) if n else 0.0
+        p = np.array([up, dn, vt])
+        nz = p[p > 0]
+        ent = float(-np.sum(nz * np.log(nz)) / np.log(3)) if nz.size else 0.0
+        return {"frac_up": up, "frac_dn": dn, "frac_vert": vt, "entropy": ent}
+    a = np.abs(x.astype(float))
+    total = a.sum()
+    k = max(1, int(np.ceil(0.05 * a.size)))
+    tail = np.sort(a)[::-1][:k].sum()
+    return {"skew": float(stats.skew(x.astype(float))),
+            "tail_share": float(tail / total) if total else 0.0,
+            "entropy": float("nan")}
+
+
+def regime_stability(labels: np.ndarray, split_idx: int, kind: str) -> dict:
+    """Detect regime shifts between train ([:split_idx]) and OOS ([split_idx:]).
+
+    Returns: vol_ratio, skew_diff, acf1_diff, max_shift.
+    max_shift is the maximum of the standardized absolute differences.
+    """
+    x = np.asarray(labels, dtype=float)
+    tr, oos = x[:split_idx], x[split_idx:]
+    tr = tr[np.isfinite(tr)]
+    oos = oos[np.isfinite(oos)]
+    s_tr = tr.std() if tr.size else 0.0
+    s_oos = oos.std() if oos.size else 0.0
+    vol_ratio = float(max(s_oos, 1e-12) / max(s_tr, 1e-12))
+    skew_diff = abs(float(stats.skew(oos)) - float(stats.skew(tr))) if min(tr.size, oos.size) > 2 else 0.0
+    acf1_diff = abs(_autocorr(oos, 1)[1] - _autocorr(tr, 1)[1]) if min(tr.size, oos.size) > 2 else 0.0
+    # standardized shifts: log vol ratio, raw skew diff, raw acf diff
+    shifts = [abs(np.log(vol_ratio)) if vol_ratio > 0 else 0.0, skew_diff, acf1_diff]
+    return {"vol_ratio": vol_ratio, "skew_diff": float(skew_diff),
+            "acf1_diff": float(acf1_diff), "max_shift": float(max(shifts))}
 
 
 def _self_test() -> None:
