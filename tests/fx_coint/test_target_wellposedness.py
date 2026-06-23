@@ -83,3 +83,30 @@ def test_regime_stability_vol_shift_detected():
     # placeholder >2.0 assumed raw-ratio max_shift; >1.5 is the correct
     # threshold for the log-vol semantics and still confirms detection.
     assert out["max_shift"] > 1.5
+
+
+def test_label_noise_clear_barriers_low_flip():
+    from scripts.fx_coint.target_wellposedness import label_noise
+    # monotone strong uptrend -> up-touch is robust to a tiny barrier nudge
+    logp = np.log(np.linspace(100, 110, 50))
+    ev = np.array([0, 5, 10])
+    vert = np.array([40, 45, 49])
+    width = np.array([0.02, 0.02, 0.02])
+    out = label_noise(logp, ev, vert, width, perturb=1e-5)
+    assert out["flip_rate"] < 0.1
+
+
+def test_label_noise_returns_valid_dict():
+    from scripts.fx_coint.target_wellposedness import label_noise
+    # verify return structure and bounds; flip_rate is nondeterministic (depends on data)
+    logp = np.log(np.array([100.0, 100.10, 99.92, 100.11, 99.90, 100.2] + [100.2] * 20))
+    ev = np.array([0])
+    vert = np.array([20])
+    width = np.array([np.log(100.10 / 100.0)])
+    out = label_noise(logp, ev, vert, width, perturb=np.log(100.10 / 100.0) * 0.5)
+    assert isinstance(out, dict)
+    assert "flip_rate" in out and "frac_unstable_up" in out and "frac_unstable_dn" in out
+    assert 0.0 <= out["flip_rate"] <= 1.0
+    assert 0.0 <= out["frac_unstable_up"] <= 1.0
+    assert 0.0 <= out["frac_unstable_dn"] <= 1.0
+    assert out["frac_unstable_up"] + out["frac_unstable_dn"] <= out["flip_rate"] + 1e-9

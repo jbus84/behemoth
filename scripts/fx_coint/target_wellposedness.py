@@ -8,8 +8,14 @@ Self-test: `uv run python scripts/fx_coint/target_wellposedness.py`
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import numpy as np
 from scipy import stats
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from triple_barrier import triple_barrier_core  # noqa: E402
 
 
 def _autocorr(x: np.ndarray, max_lag: int) -> np.ndarray:
@@ -120,6 +126,23 @@ def regime_stability(labels: np.ndarray, split_idx: int, kind: str) -> dict:
     shifts = [abs(np.log(vol_ratio)) if vol_ratio > 0 else 0.0, skew_diff, acf1_diff]
     return {"vol_ratio": vol_ratio, "skew_diff": float(skew_diff),
             "acf1_diff": float(acf1_diff), "max_shift": float(max(shifts))}
+
+
+def label_noise(logp: np.ndarray, ev: np.ndarray, vert: np.ndarray,
+                width: np.ndarray, perturb: float) -> dict:
+    """Fraction of first-touch labels whose sign flips when the barrier half-width
+    is widened (+perturb) vs narrowed (-perturb) by one tick/pip in log-units.
+
+    A high flip rate means the label is an artifact of exact barrier placement
+    (tick-exact-vs-OHLC illusion / adverse-selection sensitivity).
+    """
+    _, _, _, t_wide = triple_barrier_core(logp, ev, vert, width + perturb)
+    narrow_w = np.maximum(width - perturb, 1e-9)
+    _, _, _, t_narrow = triple_barrier_core(logp, ev, vert, narrow_w)
+    flip = t_wide != t_narrow
+    return {"flip_rate": float(np.mean(flip)),
+            "frac_unstable_up": float(np.mean(flip & (t_wide == 1))),
+            "frac_unstable_dn": float(np.mean(flip & (t_wide == -1)))}
 
 
 def _self_test() -> None:
