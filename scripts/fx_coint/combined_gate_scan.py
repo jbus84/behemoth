@@ -29,7 +29,7 @@ from feature_ic_definitive import build_all  # noqa: E402
 from triple_barrier import triple_barrier_core  # noqa: E402
 
 POOL = ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF"]
-N_GRID = [30, 50]
+N_GRID = [1, 5, 10, 20, 30, 50]
 N_EVENTS = 40000
 TRAIN_FRAC = 0.70
 BASE = "ffd_0.1"
