@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import spearmanr
 
 from scripts.fx_coint.model_search import build_design, make_models
 
@@ -14,11 +15,10 @@ def test_build_design_adds_interaction_columns():
 
 def test_models_fit_predict_learnable_signal():
     rng = np.random.default_rng(0)
-    n = 1500
+    n = 10000
     X = rng.standard_normal((n, 3))
     y = X[:, 0] * 1.2 + 0.3 * rng.standard_normal(n)
     for name, m in make_models().items():
         m.fit(X, y)
         pred = m.predict(X)
-        from scipy.stats import spearmanr
         assert spearmanr(pred, y)[0] > 0.4, name

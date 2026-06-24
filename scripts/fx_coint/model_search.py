@@ -45,8 +45,8 @@ def build_design(f, ev, feature_names, interactions):
 def _histgbm(seed=0):
     """Regularized HistGradientBoostingRegressor for signed returns."""
     return HistGradientBoostingRegressor(
-        max_depth=4, max_iter=200, learning_rate=0.05, l2_regularization=1.0,
-        min_samples_leaf=50, early_stopping=False,
+        max_depth=3, max_iter=300, learning_rate=0.03, l2_regularization=5.0,
+        min_samples_leaf=800, early_stopping=True, validation_fraction=0.2,
         random_state=seed)
 
 
