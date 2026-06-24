@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+from scipy.stats import rankdata
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -61,16 +62,42 @@ def _fade_pnl(logp, vol, ev, n_tb):
 
 
 def _rank(a):
-    from scipy.stats import rankdata
     out = np.full(len(a), np.nan)
     ok = np.isfinite(a)
     out[ok] = rankdata(a[ok]) / ok.sum()
     return out
 
 
-def marginal_lift(cache, evset, n_tb, feature, role, cost=1.0, n_folds=5) -> dict:
+def train_relative_topdecile(
+    sel_abs: np.ndarray,
+    feat_abs: np.ndarray,
+    tr_mask: np.ndarray,
+    q: float = 0.90,
+) -> np.ndarray:
+    """Return boolean mask (all rows) of top-decile combined score, calibrated on
+    train rows only.  Test rows receive train-relative percentiles via searchsorted
+    so no future data leaks into the selection threshold."""
+    tr_sel = np.sort(sel_abs[tr_mask & np.isfinite(sel_abs)])
+    tr_feat = np.sort(feat_abs[tr_mask & np.isfinite(feat_abs)])
+    n_tr_sel = len(tr_sel)
+    n_tr_feat = len(tr_feat)
+    pct_sel = np.searchsorted(tr_sel, sel_abs, side="right") / n_tr_sel if n_tr_sel else np.zeros(len(sel_abs))
+    pct_feat = np.searchsorted(tr_feat, feat_abs, side="right") / n_tr_feat if n_tr_feat else np.zeros(len(feat_abs))
+    comb = (pct_sel + pct_feat) / 2.0
+    # threshold from train rows only
+    tr_comb = comb[tr_mask]
+    thr = np.nanquantile(tr_comb, q) if len(tr_comb) else 1.0
+    return comb >= thr
+
+
+def marginal_lift(
+    cache, evset, n_tb, feature, role, cost=1.0, n_folds=5, orient: float = 1.0
+) -> dict:
     """Walk-forward non-overlap net-bps lift of `feature` (in `role`) over the
-    fixed base (fade ffd_zvol20 x top-decile |ffd_zvol20|)."""
+    fixed base (fade ffd_zvol20 x top-decile |ffd_zvol20|).
+
+    orient: multiply feature before taking sign in direction role (pass -1 for
+    anti-correlated features to align with the fade direction)."""
     sym_d = {}
     for s in POOL:
         logp, f, vol, bph = cache[s]
@@ -84,6 +111,7 @@ def marginal_lift(cache, evset, n_tb, feature, role, cost=1.0, n_folds=5) -> dic
 
     def fold_net(select_fn):
         nets = []
+        total_trades = 0
         for k in range(1, n_folds):
             lo, hi = edges[k], edges[k + 1]
             fold = []
@@ -99,9 +127,10 @@ def marginal_lift(cache, evset, n_tb, feature, role, cost=1.0, n_folds=5) -> dic
                 p = d["pnl"][sel][order][ko] - cost
                 if len(p):
                     fold.append(p)
+                    total_trades += len(p)
             if fold:
                 nets.append(np.mean(np.concatenate(fold)))
-        return np.array(nets)
+        return np.array(nets), total_trades
 
     def base_select(d, tr, te):
         thr = np.nanquantile(np.abs(d["sel"][tr]), 0.90)
@@ -110,18 +139,16 @@ def marginal_lift(cache, evset, n_tb, feature, role, cost=1.0, n_folds=5) -> dic
     def cand_select(d, tr, te):
         base = base_select(d, tr, te)
         if role == "magnitude":
-            thr = np.nanquantile(
-                (_rank(np.abs(d["sel"])) + _rank(np.abs(d["feat"]))) / 2, 0.90)
-            comb = (_rank(np.abs(d["sel"])) + _rank(np.abs(d["feat"]))) / 2
-            return te & (comb >= thr) & np.isfinite(d["pnl"])
+            return te & train_relative_topdecile(np.abs(d["sel"]), np.abs(d["feat"]), tr) & np.isfinite(d["pnl"])
         if role == "direction":
+            feat = orient * d["feat"]
             fade_dir = -np.sign(d["sel"])
-            return base & (np.sign(d["feat"]) == fade_dir)
+            return base & (np.sign(feat) == fade_dir)
         # conditioner: restrict to best-train-net-bps tercile of feature
         q1, q2 = np.nanquantile(d["feat"][tr], [1 / 3, 2 / 3])
         terc_masks = [d["feat"] <= q1, (d["feat"] > q1) & (d["feat"] <= q2), d["feat"] > q2]
         # pick tercile by train net-bps
-        best, best_net = 0, -1e9
+        best, best_net = None, -1e9
         btr = base_select(d, tr, tr)
         for ti, m in enumerate(terc_masks):
             mm = btr & m
@@ -129,15 +156,17 @@ def marginal_lift(cache, evset, n_tb, feature, role, cost=1.0, n_folds=5) -> dic
                 net = np.nanmean(d["pnl"][mm]) - cost
                 if net > best_net:
                     best, best_net = ti, net
+        if best is None:
+            return np.zeros(len(te), dtype=bool)
         return base & terc_masks[best]
 
-    base_net = fold_net(base_select)
-    cand_net = fold_net(cand_select)
+    base_net, base_trades = fold_net(base_select)
+    cand_net, cand_trades = fold_net(cand_select)
     return dict(base_net=float(np.mean(base_net)) if len(base_net) else float("nan"),
                 cand_net=float(np.mean(cand_net)) if len(cand_net) else float("nan"),
                 lift=float(np.mean(cand_net) - np.mean(base_net)) if len(cand_net) and len(base_net) else float("nan"),
                 folds_pos=int((cand_net > 0).sum()),
-                n_trades=int(len(cand_net)))
+                n_trades=int(cand_trades))
 
 
 def _select(iso, sig, age, adf, thr):
