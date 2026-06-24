@@ -76,6 +76,38 @@ def time_decay(avg_u: np.ndarray, last_w: float = 1.0) -> np.ndarray:
     return dec
 
 
+def concurrency_spans(n: int, start: np.ndarray, end_idx: np.ndarray) -> np.ndarray:
+    """co[t] = #labels whose [start_i, end_i] covers bar t (explicit starts).
+
+    Like concurrency() but with explicit per-label start bars instead of assuming
+    one label per bar. Used for sampled event sets where labels may have non-
+    consecutive starts.
+    """
+    delta = np.zeros(n + 1)
+    np.add.at(delta, np.asarray(start), 1.0)
+    np.add.at(delta, np.asarray(end_idx) + 1, -1.0)
+    co = np.cumsum(delta[:n])
+    return np.maximum(co, 1.0)
+
+
+def event_weights(bar_log_ret: np.ndarray, entry: np.ndarray, t1: np.ndarray) -> np.ndarray:
+    """Return-attribution sample weights for a sampled event set on the bar timeline.
+
+    Computes concurrency_spans for the event set (entry, t1), then delegates to
+    return_attribution_weights for weight computation.
+
+    Args:
+        bar_log_ret: log returns per bar [t=0..n-1]
+        entry: per-event entry bar indices
+        t1: per-event end bar indices (inclusive)
+
+    Returns:
+        normalized sample weights [0..m-1]
+    """
+    co = concurrency_spans(len(bar_log_ret), entry, t1)
+    return return_attribution_weights(bar_log_ret, np.asarray(entry), np.asarray(t1), co)
+
+
 def seq_bootstrap(start: np.ndarray, end_idx: np.ndarray, n_draws: int | None = None,
                   rng: np.random.Generator | None = None) -> np.ndarray:
     """Sequential bootstrap (AFML): each draw's prob ∝ avg uniqueness given the
