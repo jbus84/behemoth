@@ -90,6 +90,47 @@ def train_relative_topdecile(
     return comb >= thr
 
 
+def model_oos_pnl(sym_data, fit_predict, cost=1.0, n_folds=5) -> dict:
+    """Walk-forward OOS net-bps of a model-mu strategy: sign(mu) side, top-decile
+    |mu| selection, non-overlap. `sym_data[s]` carries pre-built X,y,entry,t1,ret,sw;
+    `fit_predict(train_dict, test_dict) -> mu_test` fits on train (modelling lives in
+    the caller) and returns mu for the test rows."""
+    syms = list(sym_data)
+    all_entry = np.concatenate([sym_data[s]["entry"] for s in syms])
+    edges = np.quantile(all_entry, np.linspace(0, 1, n_folds + 1))
+    fold_net, n_trades, sym_pos = [], 0, np.zeros(len(syms))
+    for k in range(1, n_folds):
+        lo, hi = edges[k], edges[k + 1]
+        fold = []
+        for si, s in enumerate(syms):
+            d = sym_data[s]
+            tr = d["entry"] < lo
+            te = (d["entry"] >= lo) & (d["entry"] < hi)
+            if tr.sum() < 200 or te.sum() < 20:
+                continue
+            mu = np.asarray(fit_predict({kk: vv[tr] for kk, vv in d.items()},
+                                        {kk: vv[te] for kk, vv in d.items()}), dtype=float)
+            ret_te, ent_te, t1_te = d["ret"][te], d["entry"][te], d["t1"][te]
+            ok = np.isfinite(mu) & np.isfinite(ret_te)
+            thr = np.nanquantile(np.abs(mu[ok]), 0.90) if ok.sum() else np.inf
+            sel = ok & (np.abs(mu) >= thr)
+            order = np.argsort(ent_te[sel])
+            keep = greedy_nonoverlap(ent_te[sel][order], t1_te[sel][order])
+            pnl = np.sign(mu[sel][order][keep]) * ret_te[sel][order][keep] - cost
+            if len(pnl):
+                fold.append(pnl)
+                n_trades += len(pnl)
+                if np.mean(pnl) > 0:
+                    sym_pos[si] += 1
+        if fold:
+            fold_net.append(np.mean(np.concatenate(fold)))
+    fold_net = np.array(fold_net)
+    return dict(net=float(np.mean(fold_net)) if len(fold_net) else float("nan"),
+                folds_pos=int((fold_net > 0).sum()),
+                sym_pos=int((sym_pos >= (n_folds - 1) / 2).sum()),
+                n_trades=n_trades)
+
+
 def marginal_lift(
     cache, evset, n_tb, feature, role, cost=1.0, n_folds=5, orient: float = 1.0
 ) -> dict:

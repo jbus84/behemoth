@@ -57,3 +57,22 @@ def test_train_relative_topdecile_no_leakage():
         f"Train fraction changed with extreme test values: {frac_normal} vs {frac_extreme} "
         "(look-ahead leakage detected)"
     )
+
+
+def test_model_oos_pnl_runs_and_scores_oracle():
+    from scripts.fx_coint.pnl_walkforward import model_oos_pnl
+
+    rng = np.random.default_rng(0)
+
+    def fit_predict(tr, te):
+        # oracle-ish: predict realized return direction with noise (fit unused)
+        return te["ret"] + rng.standard_normal(len(te["ret"]))
+
+    n = 3000
+    entry = np.arange(n) * 2
+    ret = rng.standard_normal(n)
+    sym_data = {"S": dict(X=rng.standard_normal((n, 2)), y=ret, entry=entry,
+                          t1=entry + 1, ret=ret, sw=np.abs(rng.standard_normal(n)))}
+    out = model_oos_pnl(sym_data, fit_predict, cost=0.0, n_folds=4)
+    assert set(out) == {"net", "folds_pos", "sym_pos", "n_trades"}
+    assert out["n_trades"] > 0
