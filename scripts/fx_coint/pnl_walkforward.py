@@ -37,7 +37,7 @@ ISOLATIONS = ["top_mag", "gated+top_mag"]
 OUT = Path("reports/pnl_walkforward")
 
 
-def _greedy_nonoverlap(entry, t1):
+def greedy_nonoverlap(entry: np.ndarray, t1: np.ndarray) -> np.ndarray:
     """Keep trades whose entry is at/after the previous kept trade's exit (t1).
     entry/t1 are time-sorted index arrays; returns a boolean keep-mask."""
     keep = np.zeros(len(entry), dtype=bool)
@@ -47,6 +47,97 @@ def _greedy_nonoverlap(entry, t1):
             keep[i] = True
             last_exit = t1[i]
     return keep
+
+
+SELECTOR = "ffd_zvol20"
+
+
+def _fade_pnl(logp, vol, ev, n_tb):
+    entry = ev + 1
+    t1, ret, _, _ = triple_barrier_core(
+        logp, entry, np.minimum(entry + n_tb, len(logp) - 1),
+        1.0 * vol[entry] * np.sqrt(n_tb))
+    return entry, t1, ret
+
+
+def _rank(a):
+    from scipy.stats import rankdata
+    out = np.full(len(a), np.nan)
+    ok = np.isfinite(a)
+    out[ok] = rankdata(a[ok]) / ok.sum()
+    return out
+
+
+def marginal_lift(cache, evset, n_tb, feature, role, cost=1.0, n_folds=5) -> dict:
+    """Walk-forward non-overlap net-bps lift of `feature` (in `role`) over the
+    fixed base (fade ffd_zvol20 x top-decile |ffd_zvol20|)."""
+    sym_d = {}
+    for s in POOL:
+        logp, f, vol, bph = cache[s]
+        ev = evset[s]
+        entry, t1, ret = _fade_pnl(logp, vol, ev, n_tb)
+        pnl = -np.sign(f[SELECTOR][ev]) * ret
+        sym_d[s] = dict(entry=entry, t1=t1, pnl=pnl,
+                        sel=f[SELECTOR][ev], feat=f[feature][ev])
+    all_entry = np.concatenate([sym_d[s]["entry"] for s in POOL])
+    edges = np.quantile(all_entry, np.linspace(0, 1, n_folds + 1))
+
+    def fold_net(select_fn):
+        nets = []
+        for k in range(1, n_folds):
+            lo, hi = edges[k], edges[k + 1]
+            fold = []
+            for s in POOL:
+                d = sym_d[s]
+                tr = d["entry"] < lo
+                te = (d["entry"] >= lo) & (d["entry"] < hi)
+                if tr.sum() < 200 or te.sum() < 20:
+                    continue
+                sel = select_fn(d, tr, te)
+                order = np.argsort(d["entry"][sel])
+                ko = greedy_nonoverlap(d["entry"][sel][order], d["t1"][sel][order])
+                p = d["pnl"][sel][order][ko] - cost
+                if len(p):
+                    fold.append(p)
+            if fold:
+                nets.append(np.mean(np.concatenate(fold)))
+        return np.array(nets)
+
+    def base_select(d, tr, te):
+        thr = np.nanquantile(np.abs(d["sel"][tr]), 0.90)
+        return te & (np.abs(d["sel"]) >= thr) & np.isfinite(d["pnl"])
+
+    def cand_select(d, tr, te):
+        base = base_select(d, tr, te)
+        if role == "magnitude":
+            thr = np.nanquantile(
+                (_rank(np.abs(d["sel"])) + _rank(np.abs(d["feat"]))) / 2, 0.90)
+            comb = (_rank(np.abs(d["sel"])) + _rank(np.abs(d["feat"]))) / 2
+            return te & (comb >= thr) & np.isfinite(d["pnl"])
+        if role == "direction":
+            fade_dir = -np.sign(d["sel"])
+            return base & (np.sign(d["feat"]) == fade_dir)
+        # conditioner: restrict to best-train-net-bps tercile of feature
+        q1, q2 = np.nanquantile(d["feat"][tr], [1 / 3, 2 / 3])
+        terc_masks = [d["feat"] <= q1, (d["feat"] > q1) & (d["feat"] <= q2), d["feat"] > q2]
+        # pick tercile by train net-bps
+        best, best_net = 0, -1e9
+        btr = base_select(d, tr, tr)
+        for ti, m in enumerate(terc_masks):
+            mm = btr & m
+            if mm.sum() > 20:
+                net = np.nanmean(d["pnl"][mm]) - cost
+                if net > best_net:
+                    best, best_net = ti, net
+        return base & terc_masks[best]
+
+    base_net = fold_net(base_select)
+    cand_net = fold_net(cand_select)
+    return dict(base_net=float(np.mean(base_net)) if len(base_net) else float("nan"),
+                cand_net=float(np.mean(cand_net)) if len(cand_net) else float("nan"),
+                lift=float(np.mean(cand_net) - np.mean(base_net)) if len(cand_net) and len(base_net) else float("nan"),
+                folds_pos=int((cand_net > 0).sum()),
+                n_trades=int(len(cand_net)))
 
 
 def _select(iso, sig, age, adf, thr):
@@ -113,7 +204,7 @@ def main():
                     sel = _select(iso, d["sig"], d["age"], d["adf"], thr) & te & np.isfinite(d["pnl"])
                     order = np.argsort(d["entry"][sel])
                     e_sel, t_sel, p_sel = d["entry"][sel][order], d["t1"][sel][order], d["pnl"][sel][order]
-                    ko = _greedy_nonoverlap(e_sel, t_sel)
+                    ko = greedy_nonoverlap(e_sel, t_sel)
                     p = p_sel[ko] - COST
                     if len(p):
                         fold_pnls.append(p)
