@@ -158,10 +158,46 @@ def screen(n_grid: tuple[int, ...] = (30, 50)) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def survivors(screen_df: pd.DataFrame, top_k: int = 5) -> dict:
+    """Pick top-k features per role from the N=50 screen rows.
+
+    Direction role requires sign_dir >= 4 (majority of 5 symbols agree).
+    Returns {"direction": [...], "magnitude": [...], "conditioner": [...]}.
+    """
+    d = screen_df[screen_df.N == 50].copy()
+    out: dict[str, list[str]] = {}
+    dir_ok = d[d.sign_dir >= 4]
+    out["direction"] = (
+        dir_ok.reindex(dir_ok.dir_wic.abs().sort_values(ascending=False).index)
+        .head(top_k)
+        .feature.tolist()
+    )
+    out["magnitude"] = (
+        d.reindex(d.mag_ic.abs().sort_values(ascending=False).index)
+        .head(top_k)
+        .feature.tolist()
+    )
+    out["conditioner"] = (
+        d.reindex(d.cond_lift.sort_values(ascending=False).index)
+        .head(top_k)
+        .feature.tolist()
+    )
+    return out
+
+
 def main() -> None:
+    import matplotlib  # noqa: PLC0415
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt  # noqa: PLC0415, E402
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from pnl_walkforward import marginal_lift  # noqa: PLC0415, E402
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     res = screen()
     res.to_csv(OUT_DIR / "screen.csv", index=False)
+
     pd.set_option("display.width", 200, "display.float_format", lambda x: f"{x:8.4f}")
     for role, col in [
         ("DIRECTION (|ret|-weighted IC)", "dir_wic"),
@@ -175,6 +211,75 @@ def main() -> None:
             print(f"-- N={n_tb} --")
             print(d[["feature", col, "sign_dir"]].to_string(index=False))
     print(f"\nscreen -> {OUT_DIR / 'screen.csv'}")
+
+    surv = survivors(res)
+
+    rng = np.random.default_rng(0)
+    cache = {s: build_all(s) for s in POOL}
+    evset: dict[str, np.ndarray] = {}
+    for s in POOL:
+        logp, f, vol, bph = cache[s]
+        n = len(logp)
+        warm = int(96 * bph) + 60
+        idx = np.arange(warm, n - 53)
+        idx = idx[np.isfinite(vol[idx + 1]) & (vol[idx + 1] > 0)]
+        evset[s] = np.sort(rng.choice(idx, min(N_EVENTS, len(idx)), replace=False))
+
+    # Build lookup: feature -> dir_wic at N=50 (for orient resolution in direction role)
+    n50 = res[res.N == 50].set_index("feature")
+
+    crows = []
+    for role, feats in surv.items():
+        for fn in feats:
+            for n_tb in (50, 30):
+                if role == "direction":
+                    dir_wic_50 = float(n50.loc[fn, "dir_wic"]) if fn in n50.index else 1.0
+                    orient = float(np.sign(dir_wic_50)) if dir_wic_50 != 0.0 else 1.0
+                    m = marginal_lift(cache, evset, n_tb, fn, role, orient=orient)
+                else:
+                    m = marginal_lift(cache, evset, n_tb, fn, role)
+                crows.append(dict(role=role, feature=fn, N=n_tb, **m))
+
+    conf = pd.DataFrame(crows)
+    conf.to_csv(OUT_DIR / "confirm.csv", index=False)
+
+    c50 = conf[conf.N == 50]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(
+        [f"{r['role'][:3]}:{r['feature']}" for _, r in c50.iterrows()],
+        c50["lift"].to_numpy(),
+        color="steelblue",
+    )
+    ax.axhline(0, color="k", linewidth=1)
+    ax.set_ylabel("net-bps lift over base (N=50)")
+    ax.tick_params(axis="x", labelrotation=80, labelsize=7)
+    ax.set_title("Edge-feature confirm — marginal net-bps lift (walk-forward non-overlap)")
+    fig.tight_layout()
+    fig.savefig(OUT_DIR / "net_lift.png", dpi=110)
+    plt.close(fig)
+
+    lines = [
+        "# Edge-Based Feature Search — Report",
+        "",
+        "Two-track (direction, magnitude) + conditioning lens. Stage-1 screen "
+        "(|ret|-weighted dir IC / IC vs |ret| / tercile net-bps spread) -> Stage-2 "
+        "marginal net-bps lift over the fixed base (fade ffd_zvol20 x top-decile "
+        "|ffd_zvol20|), walk-forward non-overlap, cost 1.0bps.",
+        "",
+        "**No modelling.** All combinations are simple non-fit rules. Full "
+        "higher-order non-linear interaction discovery (HistGBM importance under a "
+        "P&L objective) is the deferred next phase.",
+        "",
+        "## Confirm — marginal net-bps lift (N=50)",
+        "",
+        "![net lift](net_lift.png)",
+        "",
+        c50.sort_values("lift", ascending=False)[
+            ["role", "feature", "lift", "cand_net", "base_net", "folds_pos"]
+        ].to_markdown(index=False),
+    ]
+    (OUT_DIR / "REPORT.md").write_text("\n".join(lines) + "\n")
+    print(f"report -> {OUT_DIR / 'REPORT.md'}")
 
 
 if __name__ == "__main__":

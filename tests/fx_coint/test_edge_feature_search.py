@@ -1,8 +1,11 @@
 import numpy as np
+import pandas as pd
 from scipy import stats
 
 from scripts.fx_coint.edge_feature_search import (
+    base_fade_pnl,
     magnitude_ic,
+    survivors,
     tercile_netbps_spread,
     weighted_directional_ic,
 )
@@ -67,9 +70,6 @@ def test_tercile_netbps_spread_constant_gate_no_crash():
     assert np.isnan(out["best_lift"])
 
 
-from scripts.fx_coint.edge_feature_search import base_fade_pnl  # noqa: E402
-
-
 def test_base_fade_pnl_matches_first_touch_return():
     # monotone uptrend: first-touch return from entry is positive
     logp = np.log(np.linspace(100, 110, 80))
@@ -78,3 +78,17 @@ def test_base_fade_pnl_matches_first_touch_return():
     ret = base_fade_pnl(logp, vol, ev, n_tb=30)
     assert ret.shape == (3,)
     assert np.all(ret > 0)             # uptrend -> positive forward move in bps
+
+
+def test_survivors_picks_top_per_role_and_requires_sign():
+    df = pd.DataFrame([
+        dict(feature="a", N=50, dir_wic=0.05, mag_ic=0.01, cond_lift=0.00, cond_tercile=2, sign_dir=5),
+        dict(feature="b", N=50, dir_wic=0.04, mag_ic=0.02, cond_lift=0.00, cond_tercile=2, sign_dir=2),
+        dict(feature="c", N=50, dir_wic=0.00, mag_ic=0.06, cond_lift=0.00, cond_tercile=2, sign_dir=5),
+        dict(feature="d", N=50, dir_wic=0.00, mag_ic=0.00, cond_lift=0.50, cond_tercile=2, sign_dir=5),
+    ])
+    out = survivors(df, top_k=2)
+    assert "a" in out["direction"]          # high dir_wic, sign 5/5
+    assert "b" not in out["direction"]      # sign 2/5 -> excluded from direction
+    assert "c" in out["magnitude"]
+    assert "d" in out["conditioner"]
