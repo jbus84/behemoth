@@ -10,6 +10,8 @@ Self-test: `uv run python scripts/fx_coint/purged_kfold.py`
 from __future__ import annotations
 
 import numpy as np
+from scipy import stats
+from sklearn.base import clone
 
 
 class PurgedKFold:
@@ -38,6 +40,64 @@ class PurgedKFold:
             train_mask = ~overlap & ~embargoed
             train_mask[te] = False
             yield idx[train_mask], te
+
+
+def ic_scorer(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Spearman Information Coefficient (rank correlation), NaN-safe.
+
+    Args:
+        y_true: Target values.
+        y_pred: Predicted values.
+
+    Returns:
+        Spearman rank correlation. Returns 0.0 if degenerate (< 10 finite pairs or < 3 unique predictions).
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    ok = np.isfinite(yt) & np.isfinite(yp)
+    if ok.sum() < 10 or np.unique(yp[ok]).size < 3:
+        return 0.0
+    r = stats.spearmanr(yt[ok], yp[ok])[0]
+    return float(r) if np.isfinite(r) else 0.0
+
+
+def purged_cv_score(estimator, X, y, entry, t1, sample_weight=None,
+                    n_splits=5, embargo_pct=0.01) -> np.ndarray:
+    """Purged K-Fold cross-validation score using IC scorer.
+
+    Clones and fits the estimator on each purged train fold (passing sample_weight if given),
+    scores using ic_scorer on the test fold, and returns per-fold score array.
+    NaN rows in X/y are dropped per fold.
+
+    Args:
+        estimator: sklearn estimator with fit() and predict() methods.
+        X: Feature matrix (n, p).
+        y: Target vector (n,).
+        entry: Entry bar indices (n,).
+        t1: Exit bar indices (n,).
+        sample_weight: Optional sample weights (n,).
+        n_splits: Number of folds (default 5).
+        embargo_pct: Embargo as fraction of max bar index (default 0.01).
+
+    Returns:
+        Array of per-fold IC scores. If no valid folds, returns [np.nan].
+    """
+    X = np.asarray(X, dtype=float)
+    y = np.asarray(y, dtype=float)
+    pk = PurgedKFold(n_splits=n_splits, embargo_pct=embargo_pct)
+    scores = []
+    for tr, te in pk.split(entry, t1):
+        okt = np.isfinite(X[tr]).all(1) & np.isfinite(y[tr])
+        oke = np.isfinite(X[te]).all(1) & np.isfinite(y[te])
+        if okt.sum() < 50 or oke.sum() < 20:
+            continue
+        est = clone(estimator)
+        if sample_weight is not None:
+            est.fit(X[tr][okt], y[tr][okt], sample_weight=np.asarray(sample_weight)[tr][okt])
+        else:
+            est.fit(X[tr][okt], y[tr][okt])
+        scores.append(ic_scorer(y[te][oke], est.predict(X[te][oke])))
+    return np.array(scores) if scores else np.array([np.nan])
 
 
 def _self_test() -> None:
