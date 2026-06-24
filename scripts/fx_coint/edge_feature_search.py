@@ -70,6 +70,11 @@ def tercile_netbps_spread(base_pnl: np.ndarray, gate: np.ndarray) -> dict:
                 "best_lift": float("nan"), "best_tercile": -1}
     unc = float(p.mean())
     q1, q2 = np.quantile(g, [1 / 3, 2 / 3])
+    # Guard: if gate has no variance, q1 and q2 will be equal, making terciles
+    # degenerate (all NaNs). Return the sentinel value.
+    if np.isclose(q1, q2):
+        return {"unc": unc, "t_means": [float("nan")] * 3,
+                "best_lift": float("nan"), "best_tercile": -1}
     masks = [g <= q1, (g > q1) & (g <= q2), g > q2]
     t_means = [float(p[m].mean()) if m.sum() > 10 else float("nan") for m in masks]
     lifts = [tm - unc for tm in t_means]

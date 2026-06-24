@@ -54,3 +54,14 @@ def test_tercile_netbps_spread_null_gate_small_lift():
     gate = rng.standard_normal(n)                      # independent of P&L
     out = tercile_netbps_spread(base_pnl, gate)
     assert out["best_lift"] < 0.15
+
+
+def test_tercile_netbps_spread_constant_gate_no_crash():
+    """Constant gate (no variance) should return sentinel, not crash."""
+    rng = np.random.default_rng(4)
+    n = 100
+    base_pnl = rng.standard_normal(n)
+    gate = np.ones(n)  # constant gate
+    out = tercile_netbps_spread(base_pnl, gate)
+    assert out["best_tercile"] == -1
+    assert np.isnan(out["best_lift"])
