@@ -58,5 +58,25 @@ def magnitude_ic(feat: np.ndarray, ret: np.ndarray) -> float:
     return float(stats.spearmanr(f, np.abs(r))[0])
 
 
+def tercile_netbps_spread(base_pnl: np.ndarray, gate: np.ndarray) -> dict:
+    """Net-bps spread of base P&L across terciles of `gate`. Judged in net-bps
+    (cost cancels in the spread), not IC — the project's central lesson."""
+    p = np.asarray(base_pnl, dtype=float)
+    g = np.asarray(gate, dtype=float)
+    ok = np.isfinite(p) & np.isfinite(g)
+    p, g = p[ok], g[ok]
+    if p.size < 30:
+        return {"unc": float("nan"), "t_means": [float("nan")] * 3,
+                "best_lift": float("nan"), "best_tercile": -1}
+    unc = float(p.mean())
+    q1, q2 = np.quantile(g, [1 / 3, 2 / 3])
+    masks = [g <= q1, (g > q1) & (g <= q2), g > q2]
+    t_means = [float(p[m].mean()) if m.sum() > 10 else float("nan") for m in masks]
+    lifts = [tm - unc for tm in t_means]
+    best = int(np.nanargmax(lifts))
+    return {"unc": unc, "t_means": t_means,
+            "best_lift": float(lifts[best]), "best_tercile": best}
+
+
 if __name__ == "__main__":
     pass

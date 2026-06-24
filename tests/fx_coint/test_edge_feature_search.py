@@ -1,7 +1,11 @@
 import numpy as np
 from scipy import stats
 
-from scripts.fx_coint.edge_feature_search import magnitude_ic, weighted_directional_ic
+from scripts.fx_coint.edge_feature_search import (
+    magnitude_ic,
+    tercile_netbps_spread,
+    weighted_directional_ic,
+)
 
 
 def test_weighted_directional_ic_emphasises_big_moves():
@@ -30,3 +34,23 @@ def test_magnitude_ic_detects_size_then_noise():
     assert magnitude_ic(feat, ret) > 0.5
     noise = rng.standard_normal(3000)
     assert abs(magnitude_ic(noise, ret)) < 0.1
+
+
+def test_tercile_netbps_spread_finds_conditioning():
+    rng = np.random.default_rng(2)
+    n = 6000
+    gate = rng.standard_normal(n)
+    base_pnl = 2.0 * gate + rng.standard_normal(n)     # high gate -> high P&L
+    out = tercile_netbps_spread(base_pnl, gate)
+    assert out["best_tercile"] == 2                    # top gate tercile is best
+    assert out["best_lift"] > 0.5
+    assert len(out["t_means"]) == 3
+
+
+def test_tercile_netbps_spread_null_gate_small_lift():
+    rng = np.random.default_rng(3)
+    n = 6000
+    base_pnl = rng.standard_normal(n)
+    gate = rng.standard_normal(n)                      # independent of P&L
+    out = tercile_netbps_spread(base_pnl, gate)
+    assert out["best_lift"] < 0.15
