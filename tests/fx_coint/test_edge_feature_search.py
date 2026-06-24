@@ -65,3 +65,16 @@ def test_tercile_netbps_spread_constant_gate_no_crash():
     out = tercile_netbps_spread(base_pnl, gate)
     assert out["best_tercile"] == -1
     assert np.isnan(out["best_lift"])
+
+
+from scripts.fx_coint.edge_feature_search import base_fade_pnl  # noqa: E402
+
+
+def test_base_fade_pnl_matches_first_touch_return():
+    # monotone uptrend: first-touch return from entry is positive
+    logp = np.log(np.linspace(100, 110, 80))
+    vol = np.full(80, 0.001)
+    ev = np.array([0, 10, 20])
+    ret = base_fade_pnl(logp, vol, ev, n_tb=30)
+    assert ret.shape == (3,)
+    assert np.all(ret > 0)             # uptrend -> positive forward move in bps
