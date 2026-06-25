@@ -72,3 +72,40 @@ signal-to-noise problem: there is no path structure to exploit at these horizons
 - Modeling effort should stop chasing architecture and instead pursue: (1) execution
   verification (tick-exact maker fills on the +0.6 bps fade), or (2) orthogonal breadth
   (index/rate futures) — not more model capacity over the same spot-FX features.
+
+## Follow-on diagnostics (feature combination + per-side meta-labeling)
+
+After the path-window NO-GO, three further questions were run as exploratory
+diagnostics (scratch scripts, not committed) and all returned negative / unstable:
+
+1. **Feature combination / orthogonality.** Of the robust IC features, the incumbent
+   fade (`ffd_zvol20`) is near-orthogonal to all others (max Spearman 0.08), and the
+   features cluster into ~4 channels: fade, `dev_age`, structural (`smt_exp`↔`cusum_csw`
+   0.70), momentum (`macd`↔`hl_pos_frac` −0.64). **But** `dev_age`/`smt_exp`/`cusum_csw`
+   are non-negative magnitude features (frac>0 = 0.99/1.0/1.0) — sign-less, so they
+   cannot add direction; in their correct magnitude/conditioner roles their marginal
+   net lift over the fade at N=30/50 is negative or flat (−0.21 to −0.74). The only
+   signed orthogonal feature, `macd`, "lifts" in both orientations → a non-overlap
+   selection artifact, not real directional info. **Combination creates no new edge.**
+
+2. **Per-side meta-labeling (separate buy/sell act-models).** Primary = fade direction;
+   two secondary models predict fade pnl per side from the orthogonal confidence
+   features; gate = act when predicted pnl > cost. At N=50 the meta-long model nets
+   ~+3.3 (per-sym cost) vs long-only +3.1 — within noise, and on ~1/3 the trades
+   (keeping 596 of 1547 long trades yields the *same* average ⇒ selection is
+   profitability-random, no precision added). "Agreement"/both-sides dilutes (worse
+   than long-only). **Meta-labeling does not earn its complexity.**
+
+3. **Side × horizon stability.** The fade is asymmetric but horizon-unstable. Net (flat
+   1.0 cost): long N=50 +2.75 but N=30 −0.28; short is the *stable* half (+0.92 N=50,
+   +0.70 N=30) but only fold-consistent (4/4) at N=50. Both sides are negative at N=10
+   and thin/fold-inconsistent at N=20. **The reversion edge clears cost only at the
+   long end and grows with horizon** — consistent with the validated daily/weekly
+   reversion; intraday shortening (N=1/10/20) just hits the cost wall.
+
+**Net:** every refinement of the fade (path-window, feature combination, per-side
+meta-models, shorter horizons) hits noise or the cost wall. The robust form remains the
+plain fade held to N=50; the direction where the edge actually grows is *longer*, not
+shorter. BoostLSS (Rust GAMLSS boosting, numpy/scipy only — installable here) was
+considered but is unmotivated: there is no independent directional signal to combine,
+and distributional/GAMLSS modeling already degraded the 2h tail edge in prior work.
