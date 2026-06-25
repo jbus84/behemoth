@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from feature_ic_definitive import build_all  # noqa: E402, F401
 from model_search import COST_BPS, _histgbm, build_design  # noqa: E402, F401
+from pnl_walkforward import fold_block_bootstrap_ci, model_oos_pnl  # noqa: E402
 from sample_weights import event_weights  # noqa: E402
 from sklearn.neural_network import MLPRegressor  # noqa: E402
 from sklearn.pipeline import Pipeline  # noqa: E402
@@ -130,3 +131,60 @@ def fit_predict_for(model):
                       sample_weight=train_dict.get("sw"))
         return model.predict(test_dict["X"])
     return _fn
+
+
+def _with_ci(out):
+    fold_net = out.get("fold_net", np.array([]))
+    if len(fold_net) >= 3:
+        lo, hi, p_neg = fold_block_bootstrap_ci(fold_net, n_boot=5000)
+    else:
+        lo = hi = p_neg = float("nan")
+    return {**out, "lo": float(lo), "hi": float(hi), "p_neg": float(p_neg)}
+
+
+def evaluate_cell(sym_data, model, cost_by_sym, n_folds=5):
+    """Run model_oos_pnl pooled (mean cost) and per-symbol (own cost), add bootstrap CI."""
+    fp = fit_predict_for(model)
+    mean_cost = float(np.mean([cost_by_sym[s] for s in sym_data]))
+    pooled = _with_ci(model_oos_pnl(sym_data, fp, cost=mean_cost, n_folds=n_folds))
+    per_symbol = {}
+    for s in sym_data:
+        out = model_oos_pnl({s: sym_data[s]}, fp, cost=cost_by_sym[s], n_folds=n_folds)
+        per_symbol[s] = _with_ci(out)
+    return {"pooled": pooled, "per_symbol": per_symbol}
+
+
+def _print_row(label, v):
+    ci = f"[{v['lo']:+.2f},{v['hi']:+.2f}]" if np.isfinite(v["lo"]) else "[   n/a]"
+    print(f"  {label:22s} {v['n_trades']:>8d} {v['net']:+9.3f} {ci:>18s} "
+          f"{v['p_neg']:>6.3f} {v['folds_pos']:>3d}/{len(v.get('fold_net', []))}")
+
+
+def main():
+    rng = np.random.default_rng(0)
+    cache = {s: build_all(s) for s in POOL}
+    for n_tb in N_GRID:
+        ev = sample_events(cache, n_tb=n_tb, W_max=max(W_GRID), rng=rng)
+        pw = build_sym_pointwise(cache, ev, n_tb)
+        print("=" * 96)
+        print(f"PATH-WINDOW vs POINT-IN-TIME — N={n_tb}, per-symbol cost, top-decile gating")
+        print("=" * 96)
+        for name, model in make_window_models(seed=0).items():
+            r = evaluate_cell(pw, model, COST_BPS, n_folds=5)
+            print(f"[point-in-time {name}] pooled:")
+            _print_row(f"pt:{name}:POOL", r["pooled"])
+            for s, v in r["per_symbol"].items():
+                _print_row(f"pt:{name}:{s}", v)
+        for W in W_GRID:
+            win = build_sym_window(cache, ev, n_tb, W)
+            for name, model in make_window_models(seed=0).items():
+                r = evaluate_cell(win, model, COST_BPS, n_folds=5)
+                print(f"[window W={W} {name}] pooled + per-symbol:")
+                _print_row(f"win{W}:{name}:POOL", r["pooled"])
+                for s, v in r["per_symbol"].items():
+                    _print_row(f"win{W}:{name}:{s}", v)
+        print()
+
+
+if __name__ == "__main__":
+    main()

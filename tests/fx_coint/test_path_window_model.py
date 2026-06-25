@@ -5,6 +5,9 @@ from scripts.fx_coint.path_window_model import (
     POOL,
     build_sym_window,
     build_window_matrix,
+    evaluate_cell,
+    fit_predict_for,
+    make_window_models,
     path_channels,
     sample_events,
 )
@@ -72,9 +75,25 @@ def test_build_sym_window_shapes_align():
     assert np.isfinite(d["X"]).all()
 
 
-def test_window_models_learn_linear_signal():
-    from scripts.fx_coint.path_window_model import fit_predict_for, make_window_models
+def test_evaluate_cell_structure_on_synthetic():
+    rng = np.random.default_rng(0)
+    sym_data = {}
+    for s in ["A", "B"]:
+        n = 1200
+        entry = np.sort(rng.choice(np.arange(100, 5000), n, replace=False))
+        X = rng.standard_normal((n, 8))
+        ret = X[:, 0] * 0.001 + rng.standard_normal(n) * 0.0005
+        sym_data[s] = dict(X=X, y=ret, entry=entry, t1=entry + 1,
+                           ret=ret, sw=np.ones(n))
+    model = make_window_models(seed=0)["histgbm"]
+    out = evaluate_cell(sym_data, model, cost_by_sym={"A": 0.0, "B": 0.0}, n_folds=4)
+    assert set(out) == {"pooled", "per_symbol"}
+    assert set(out["per_symbol"]) == {"A", "B"}
+    for v in [out["pooled"], *out["per_symbol"].values()]:
+        assert {"net", "lo", "hi", "p_neg", "folds_pos", "n_trades"} <= set(v)
 
+
+def test_window_models_learn_linear_signal():
     rng = np.random.default_rng(0)
     n, p = 4000, 16
     X = rng.standard_normal((n, p))
