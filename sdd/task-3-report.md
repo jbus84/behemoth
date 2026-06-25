@@ -1,33 +1,29 @@
-# Task 3 Report: Fit + IC Evaluation with Break-Even Bar
+# Task 3: `cell_stats` — Report
 
 ## Status
 ✅ COMPLETE
 
 ## Commit
-`00d459b6` — feat(fx_coint): ridge fit + IC eval with break-even bar
+`b0bb4f72` — feat(fx_coint): cell_stats significance + per-fold robustness
 
 ## Test Summary
-All 4 tests pass. New test `test_breakeven_ic_and_fit_keys` confirms:
-- `breakeven_ic(0.64, 16.0)` returns exactly 0.04
-- `fit_and_eval()` 70/30 temporal split with purge gap works
-- All output dict keys present: `n_test, ic, ic_star, clears, pred_bps, actual_bps, hours, sigma_med`
-- Array length consistency: `len(pred_bps) == len(actual_bps) == n_test`
-- `ic_star` correctly computed as `breakeven_ic(cost_bps, sigma_med)`
+All 3 tests in `tests/fx_coint/test_tail_wfo.py` pass:
+- `test_walk_forward_folds_expanding_and_oos` PASSED
+- `test_gate_trades_uses_train_threshold_long_and_short` PASSED
+- `test_cell_stats_known_arrays` PASSED (new)
 
 ## Implementation
-- **`breakeven_ic(cost_bps, sigma_h_bps)`**: Returns `cost_bps / sigma_h_bps` as specified
-- **`fit_and_eval(...)`**: 
-  - 70/30 temporal split at `split = int(n * 0.7)`, test starts at `split + purge`
-  - StandardScaler fit on train, applied to both train and test
-  - Ridge(alpha) fitted on scaled features predicting `target_z`
-  - `ic = spearmanr(pred_z, target_z_test).statistic` (scipy 1.11+)
-  - `pred_bps = pred_z * sigma_h_test`, `actual_bps = ret_next_bps_test`
-  - `sigma_med = median(sigma_h_test)`, `ic_star = breakeven_ic(cost_bps, sigma_med)`
-  - `clears = ic > ic_star`
-  - Returns dict with all required keys
+Added `cell_stats(net: np.ndarray, fold_id: np.ndarray) -> dict` to `scripts/fx_coint/tail_wfo.py`:
+- Returns dict with keys: `n`, `mean_net_bps`, `t_stat`, `p_value`, `pos_fold_pct`, `hit_rate`, `total_net_bps`
+- Computes two-sided one-sample t-test vs 0 using `scipy.stats.ttest_1samp` (already imported)
+- Sets `t_stat` and `p_value` to `nan` if `n < 3`
+- Computes `pos_fold_pct` as fraction of distinct folds with positive mean net (or `nan` if no folds)
+- Handles empty arrays gracefully
 
 ## Concerns
-None. Implementation matches brief exactly:
-- No existing functions modified (only `build_panel`, `build_freq_bars` remain)
-- Test written, fails, implemented, passes, committed per TDD workflow
-- All scipy/sklearn/numpy usage matches environment
+None. Implementation followed brief exactly:
+- Test written and failed as expected (function not defined)
+- Minimal implementation added and test passed
+- All existing tests continue to pass
+- Commit includes proper trailer
+- No modifications to existing functions
