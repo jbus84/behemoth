@@ -17,8 +17,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from feature_ic_definitive import build_all  # noqa: E402, F401
-from model_search import COST_BPS, _histgbm, build_design  # noqa: E402, F401
+from feature_ic_definitive import build_all  # noqa: E402
+from model_search import COST_BPS, _histgbm, build_design  # noqa: E402
 from pnl_walkforward import fold_block_bootstrap_ci, model_oos_pnl  # noqa: E402
 from sample_weights import event_weights  # noqa: E402
 from sklearn.neural_network import MLPRegressor  # noqa: E402

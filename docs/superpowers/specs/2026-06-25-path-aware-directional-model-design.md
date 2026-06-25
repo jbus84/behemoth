@@ -51,9 +51,11 @@ For each event (entry bar index `e`), build a window of the **W preceding 1000-t
 bars** `[e-W+1 .. e]`. Each bar contributes a fixed channel set:
 
 - per-bar log-return
-- bar range (high − low, in log terms)
 - per-bar realized vol
-- signed intra-bar momentum
+- signed intra-bar momentum (`intra_bar_mom`)
+- within-bar high/low position fraction (`hl_pos_frac`) — used as the range/structure
+  channel in place of raw bar range, since it is directly available per bar from
+  `build_all` without OHLC reconstruction
 
 Flatten to a length `W × C` vector (C = 4). Sweep **W ∈ {16, 32, 64}**.
 

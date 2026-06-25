@@ -23,6 +23,12 @@ incumbent (+0.608 bps net at N=50). Do not build the torch sequence model.
   classes on the existing 30-feature point-in-time design matrix.
 - net bps / fold-level block-bootstrap CI / pNeg / folds+ reported per cell.
 
+**Caveat (conservative for the verdict):** the MLP arm is fit *unweighted*, while
+HistGBM (both window and point-in-time) and the raw-fade incumbent use sample weights.
+This handicaps only the MLP rows and can therefore only *understate* the path's value.
+The NO-GO is carried by the weighted HistGBM arm alone (it degrades monotonically as W
+grows), so the unweighted MLP does not affect the conclusion.
+
 ## Headline (pooled net bps)
 
 | N  | pt mlp | pt histgbm | win16 mlp | win32 mlp | win64 mlp | win16 gbm | win32 gbm | win64 gbm |
