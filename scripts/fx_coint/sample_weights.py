@@ -60,17 +60,17 @@ def return_attribution_weights(log_ret: np.ndarray, start: np.ndarray, end_idx: 
 def time_decay(avg_u: np.ndarray, last_w: float = 1.0) -> np.ndarray:
     """AFML getTimeDecay on cumulative uniqueness (chronological order assumed).
     last_w in [0,1]: oldest weight = last_w, newest = 1, linear in cum-uniqueness.
-    last_w < 0: oldest fraction gets 0 weight."""
+    last_w in (-1,0): oldest fraction gets 0 weight.
+    """
+    if not (-1 < last_w <= 1):
+        raise ValueError("last_w must be in (-1, 1]")
     cum = np.cumsum(avg_u)
     cum = cum / cum[-1] if cum[-1] > 0 else cum
     if last_w >= 0:
-        slope = (1.0 - last_w) / 1.0
-        const = 1.0 - slope * 1.0
-        dec = const + slope * cum  # = last_w at cum=0 ... 1 at cum=1
         dec = last_w + (1 - last_w) * cum
     else:
-        slope = 1.0 / ((last_w + 1) * 1.0)
-        const = 1.0 - slope * 1.0
+        slope = 1.0 / (last_w + 1)
+        const = 1.0 - slope
         dec = const + slope * cum
         dec[dec < 0] = 0.0
     return dec

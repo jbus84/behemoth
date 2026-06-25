@@ -20,7 +20,10 @@ from pathlib import Path
 import matplotlib
 from scipy.stats import rankdata
 
-matplotlib.use("Agg")
+try:  # noqa: SIM105
+    matplotlib.use("Agg")
+except RuntimeError:
+    pass
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
@@ -49,8 +52,6 @@ def greedy_nonoverlap(entry: np.ndarray, t1: np.ndarray) -> np.ndarray:
             last_exit = t1[i]
     return keep
 
-
-SELECTOR = "ffd_zvol20"
 
 
 def _fade_pnl(logp, vol, ev, n_tb):
@@ -144,9 +145,9 @@ def marginal_lift(
         logp, f, vol, bph = cache[s]
         ev = evset[s]
         entry, t1, ret = _fade_pnl(logp, vol, ev, n_tb)
-        pnl = -np.sign(f[SELECTOR][ev]) * ret
+        pnl = -np.sign(f[SIGNAL][ev]) * ret
         sym_d[s] = dict(entry=entry, t1=t1, pnl=pnl,
-                        sel=f[SELECTOR][ev], feat=f[feature][ev])
+                        sel=f[SIGNAL][ev], feat=f[feature][ev])
     all_entry = np.concatenate([sym_d[s]["entry"] for s in POOL])
     edges = np.quantile(all_entry, np.linspace(0, 1, n_folds + 1))
 
