@@ -2,8 +2,14 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import polars as pl
+import pytest
 
-from scripts.fx_cluster.killtest import add_block_index, assemble_points
+# umap-learn/hdbscan are isolated-env-only deps (cluster-regimes was a NO-GO);
+# skip the module when they are absent (e.g. CI).
+pytest.importorskip("umap")
+pytest.importorskip("hdbscan")
+
+from scripts.fx_cluster.killtest import add_block_index, assemble_points  # noqa: E402
 
 
 def _bars(seed):

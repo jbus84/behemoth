@@ -1,7 +1,13 @@
 import numpy as np
+import pytest
 
-from scripts.fx_cluster.cluster import Clusterer
-from scripts.fx_cluster.embed import Embedder
+# umap-learn/hdbscan are isolated-env-only deps (cluster-regimes was a NO-GO);
+# skip the module when they are absent (e.g. CI).
+pytest.importorskip("umap")
+pytest.importorskip("hdbscan")
+
+from scripts.fx_cluster.cluster import Clusterer  # noqa: E402
+from scripts.fx_cluster.embed import Embedder  # noqa: E402
 
 
 def _three_blobs(seed=0):

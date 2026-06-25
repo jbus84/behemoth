@@ -23,7 +23,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
-from aeon.classification.convolution_based import MultiRocketHydraClassifier
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
@@ -301,7 +300,9 @@ def rolling_wfo(
             f"regimes={np.bincount(regime_test)}"
         )
 
-        # Train MultiRocketHydra
+        # Train MultiRocketHydra (aeon is an isolated-env-only dependency; imported lazily)
+        from aeon.classification.convolution_based import MultiRocketHydraClassifier
+
         clf = MultiRocketHydraClassifier(random_state=42)
         clf.fit(X_train, y_train)
         preds = clf.predict(X_test)

@@ -29,9 +29,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
-from aeon.classification.convolution_based import MultiRocketHydraClassifier
-from aeon.classification.interval_based import QUANTClassifier
-from aeon.classification.shapelet_based import RDSTClassifier
 
 warnings.filterwarnings("ignore")
 
@@ -152,6 +149,12 @@ def summarize(trades: pd.DataFrame, cost_bps: float, label: str) -> dict:
 
 # ── model fitting (single + bagging) ────────────────────────────────────────
 def make_model(name: str, seed: int):
+    # aeon is an isolated-env-only dependency; imported lazily so the module's
+    # other helpers remain importable without it.
+    from aeon.classification.convolution_based import MultiRocketHydraClassifier
+    from aeon.classification.interval_based import QUANTClassifier
+    from aeon.classification.shapelet_based import RDSTClassifier
+
     if name == "MRHydra":
         return MultiRocketHydraClassifier(n_jobs=1, random_state=seed)
     if name == "QUANT":
