@@ -44,7 +44,7 @@ def _label_bar(
         touch_bar_offset = bars until first touch (or horizon if no touch)
     """
     n = len(mid)
-    entry_mid = mid[i]
+    mid[i]
     entry_bid = bid[i]
     entry_ask = ask[i]
 

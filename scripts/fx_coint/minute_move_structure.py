@@ -40,9 +40,11 @@ def load_minute(sym: str):
     d = pl.read_parquet(f"data/tick_bars/{sym}_1m_flow.parquet").sort("bucket")
     mid = d["mid"].to_numpy().astype(np.float64)
     t = d["bucket"].to_numpy().astype("datetime64[m]").astype(np.int64)  # minutes
-    r = np.empty(len(mid)); r[0] = np.nan
+    r = np.empty(len(mid))
+    r[0] = np.nan
     r[1:] = (np.log(mid[1:]) - np.log(mid[:-1])) * 1e4  # bps
-    contig = np.empty(len(mid), dtype=bool); contig[0] = False
+    contig = np.empty(len(mid), dtype=bool)
+    contig[0] = False
     contig[1:] = (t[1:] - t[:-1]) == 1  # true 1-min step (no weekend gap)
     r[~contig] = np.nan
     ofi = d["flow_ofi"].to_numpy().astype(np.float64)
@@ -86,7 +88,8 @@ def main():
     # cost / scale reference
     print("1-min |return| (bps): pair  mean  median")
     for p in PAIRS:
-        r = data[p][0]; ar = np.abs(r[np.isfinite(r)])
+        r = data[p][0]
+        ar = np.abs(r[np.isfinite(r)])
         print(f"   {p}  {ar.mean():.3f}  {np.median(ar):.3f}")
 
     # 1. Variance ratio
@@ -103,7 +106,8 @@ def main():
         ics = []
         for p in PAIRS:
             r = data[p][0]
-            fwd = np.full(len(r), np.nan); fwd[: len(r) - k] = r[k:]
+            fwd = np.full(len(r), np.nan)
+            fwd[: len(r) - k] = r[k:]
             ics.append(_ic(r, fwd))
         sgn = np.sign(np.nanmean(ics))
         agree = np.mean([np.sign(x) == sgn for x in ics if np.isfinite(x)])
@@ -116,11 +120,9 @@ def main():
         for label, k in [("contemp", 0), ("pred1", 1), ("pred3", 3), ("pred5", 5)]:
             ics = []
             for p in PAIRS:
-                r = data[p][0]; f = data[p][idx]
-                if k == 0:
-                    tgt = r
-                else:
-                    tgt = fwd_cum(r, k)
+                r = data[p][0]
+                f = data[p][idx]
+                tgt = r if k == 0 else fwd_cum(r, k)
                 ics.append(_ic(f, tgt))
             sgn = np.sign(np.nanmean(ics))
             agree = np.mean([np.sign(x) == sgn for x in ics if np.isfinite(x)])
@@ -160,7 +162,8 @@ def main():
         if k == 0:
             v = (sgn_f * allr)[bigf]
         else:
-            cum = fwd_cum(allr, k); v = (sgn_f * cum)[bigf & np.isfinite(cum)]
+            cum = fwd_cum(allr, k)
+            v = (sgn_f * cum)[bigf & np.isfinite(cum)]
         print(f"    {k:>3}  {np.nanmean(v):>20.3f}")
 
     # 6. Move-completion fraction

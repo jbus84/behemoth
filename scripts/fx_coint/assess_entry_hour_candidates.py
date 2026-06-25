@@ -9,6 +9,7 @@ Applies:
 Usage:
     uv run python scripts/fx_coint/assess_entry_hour_candidates.py
 """
+# ruff: noqa: E402
 from __future__ import annotations
 
 import sys
@@ -27,10 +28,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 import scripts.fx_coint.reg_signal_hunt as rsh
 from scripts.fx_coint.reg_signal_hunt import (
-    COST_BPS,
     FEATURE_COLS,
-    FREQ_MINUTES,
-    PAIRS,
     build_panel,
 )
 
@@ -140,14 +138,13 @@ def bh_fdr(pvals: pd.Series, alpha: float = 0.05) -> pd.Series:
     valid = sorted_p <= thresholds
     if not valid.any():
         return pd.Series(False, index=pvals.index)
-    max_i = valid[::-1].idxmax()  # last True when reversed = largest valid index
+    valid[::-1].idxmax()  # last True when reversed = largest valid index
     # Actually easier:
     sorted_p = pvals.sort_values()
     ranks = np.arange(1, len(sorted_p) + 1)
     threshold = (ranks / len(sorted_p)) * alpha
     # Vectorized
     rejections = pd.Series(False, index=pvals.index)
-    sorted_idx = sorted_p.index
     # Find critical value
     below = sorted_p.values <= threshold
     if not below.any():

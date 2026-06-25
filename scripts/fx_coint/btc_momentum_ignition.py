@@ -14,7 +14,6 @@ Usage:  uv run python scripts/fx_coint/btc_momentum_ignition.py
 # ruff: noqa: E402
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -41,9 +40,10 @@ def main():
     print(f"    signal = |sum last {L}h returns| (momentum strength); follow direction.\n")
     for sym in SYMBOLS:
         c = load_close(sym)
-        r = np.empty(len(c)); r[0] = np.nan
+        r = np.empty(len(c))
+        r[0] = np.nan
         r[1:] = np.diff(np.log(c)) * 1e4
-        n = len(r)
+        len(r)
         # causal momentum signal at t: sum of returns over [t-L+1, t]
         mom = pd.Series(r).rolling(L).sum().to_numpy()
         sgn = np.sign(mom)

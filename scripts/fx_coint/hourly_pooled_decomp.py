@@ -17,6 +17,7 @@ majority vote) to test whether bagging stabilises a weak signal.
 Usage:
     uv run python scripts/fx_coint/hourly_pooled_decomp.py --year 2024 --bags 5
 """
+# ruff: noqa: E402
 
 from __future__ import annotations
 
@@ -96,10 +97,7 @@ def collect_trades(
         if exit_idx is None:
             exit_idx = max_j - 1
 
-        if pred == 1:
-            gross = bids[exit_idx] - entry_ask
-        else:
-            gross = entry_bid - asks[exit_idx]
+        gross = bids[exit_idx] - entry_ask if pred == 1 else entry_bid - asks[exit_idx]
         gross_bps = gross / entry_mid * 10_000.0
         rows.append((bucket[i + 1], gross_bps, gross_bps - cost_bps))
     return pd.DataFrame(rows, columns=["entry", "gross_bps", "net_bps"])

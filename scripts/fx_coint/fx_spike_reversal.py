@@ -27,15 +27,20 @@ L, H = 6, 3  # 6h momentum, 3h fade hold
 
 
 def trades(df, pct):
-    mid = df["mid"].to_numpy(); bid = df["bid"].to_numpy(); ask = df["ask"].to_numpy()
+    mid = df["mid"].to_numpy()
+    bid = df["bid"].to_numpy()
+    ask = df["ask"].to_numpy()
     t = df["bucket"].to_numpy().astype("datetime64[h]").astype(np.int64)
-    r = np.empty(len(mid)); r[0] = np.nan
+    r = np.empty(len(mid))
+    r[0] = np.nan
     r[1:] = (np.log(mid[1:]) - np.log(mid[:-1])) * 1e4
-    contig = np.empty(len(mid), bool); contig[0] = False
+    contig = np.empty(len(mid), bool)
+    contig[0] = False
     contig[1:] = (t[1:] - t[:-1]) == 1
     r[~contig] = np.nan
     mom = pd.Series(r).rolling(L).sum().to_numpy()
-    sgn = np.sign(mom); strength = np.abs(mom)
+    sgn = np.sign(mom)
+    strength = np.abs(mom)
     n = len(mid)
     valid = np.isfinite(strength) & (sgn != 0)
     idx = np.where(valid)[0]
@@ -48,7 +53,8 @@ def trades(df, pct):
     picked, last = [], -10**9
     for i in idx:
         if i - last >= H:
-            picked.append(i); last = i
+            picked.append(i)
+            last = i
     picked = np.array(picked)
     if len(picked) < 20:
         return np.array([])

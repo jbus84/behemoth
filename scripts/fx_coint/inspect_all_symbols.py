@@ -1,12 +1,14 @@
 """Inspect BASE predictions per symbol."""
+# ruff: noqa: E402
 import sys
 from pathlib import Path
+
 import polars as pl
-import pandas as pd
 
 _REPO = Path('/Users/danielfisher/repositories/behemoth/.claude/worktrees/feat-pf-15m')
 sys.path.insert(0, str(_REPO))
 import importlib.util
+
 spec = importlib.util.spec_from_file_location("diag", str(_REPO / "scripts/fx_coint/interaction_ridge_diagnostic.py"))
 diag = importlib.util.module_from_spec(spec)
 sys.modules["diag"] = diag

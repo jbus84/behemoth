@@ -80,7 +80,9 @@ def main():
             gross = -np.sign(prev) * nxt                 # fade prior period (bps)
             cost = np.nanmedian(bspr)                    # round-trip ~ one spread
             net = gross - cost
-            ics.append(ic); grosses.append(gross.mean()); costs.append(cost)
+            ics.append(ic)
+            grosses.append(gross.mean())
+            costs.append(cost)
             pair_net_means.append(net.mean())
             pooled_net.append(net)
         if not pooled_net:

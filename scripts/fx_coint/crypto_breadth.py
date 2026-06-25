@@ -67,10 +67,12 @@ def nonoverlap(idx, gap):
 
 
 def signal_trades(close, pct, hold, fade):
-    r = np.empty(len(close)); r[0] = np.nan
+    r = np.empty(len(close))
+    r[0] = np.nan
     r[1:] = np.diff(np.log(close)) * 1e4
     mom = pd.Series(r).rolling(L).sum().to_numpy()
-    sgn = np.sign(mom); strength = np.abs(mom)
+    sgn = np.sign(mom)
+    strength = np.abs(mom)
     fwd = pd.Series(r).rolling(hold).sum().shift(-(hold + 1)).to_numpy()
     pos = (-sgn if fade else sgn)
     pnl = pos * fwd

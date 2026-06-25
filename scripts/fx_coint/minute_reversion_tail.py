@@ -37,9 +37,11 @@ def load(sym):
     bid = d["bid"].to_numpy().astype(np.float64)
     ask = d["ask"].to_numpy().astype(np.float64)
     t = d["bucket"].to_numpy().astype("datetime64[m]").astype(np.int64)
-    r = np.empty(len(mid)); r[0] = np.nan
+    r = np.empty(len(mid))
+    r[0] = np.nan
     r[1:] = (np.log(mid[1:]) - np.log(mid[:-1])) * 1e4
-    contig = np.empty(len(mid), dtype=bool); contig[0] = False
+    contig = np.empty(len(mid), dtype=bool)
+    contig[0] = False
     contig[1:] = (t[1:] - t[:-1]) == 1
     r[~contig] = np.nan
     return mid, bid, ask, r, t

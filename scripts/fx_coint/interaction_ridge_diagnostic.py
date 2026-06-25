@@ -12,6 +12,7 @@ All trained pooled on full data. Selection = global top-5% across all hours.
 Usage:
     uv run python scripts/fx_coint/interaction_ridge_diagnostic.py
 """
+# ruff: noqa: E402
 from __future__ import annotations
 
 import sys
@@ -29,7 +30,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 import scripts.fx_coint.reg_signal_hunt as rsh
-from scripts.fx_coint.reg_signal_hunt import FREQ_MINUTES, PAIRS, build_panel
+from scripts.fx_coint.reg_signal_hunt import FREQ_MINUTES
 
 rsh.FREQ_MINUTES.update({"15m": 15, "30m": 30})
 

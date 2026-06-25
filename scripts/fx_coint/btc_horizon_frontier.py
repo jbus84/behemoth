@@ -13,7 +13,6 @@ Usage:  uv run python scripts/fx_coint/btc_horizon_frontier.py
 from __future__ import annotations
 
 import json
-import sys
 import time
 import urllib.request
 from pathlib import Path

@@ -11,6 +11,7 @@ Usage:
         --train-months 6 \
         --test-months 1
 """
+# ruff: noqa: E402
 
 from __future__ import annotations
 
@@ -29,7 +30,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from scripts.fx_coint.hourly_triple_barrier import DEFAULT_COST_BPS, label_hourly
-
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────
 PAIRS = list(DEFAULT_COST_BPS.keys())

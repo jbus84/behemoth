@@ -45,7 +45,6 @@ from scripts.fx_coint.phase0_scalp_common import (  # noqa: E402
     build_enriched_1m_bars,
     evaluate_family,
     load_raw_ticks,
-    save_enriched_bars,
 )
 
 # ---------------------------------------------------------------------------
@@ -106,7 +105,7 @@ def compute_15m_features(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
     """Causal 15m features (all .shift(1))."""
     df = df.copy()
     close = df["mid"].astype(float)
-    pip = 0.01 if str(symbol).upper().endswith("JPY") else 0.0001
+    0.01 if str(symbol).upper().endswith("JPY") else 0.0001
 
     # 15m bar return in fractional terms
     df["ret_15m"] = close.pct_change().replace(0, np.nan)
@@ -347,16 +346,14 @@ def main() -> None:
         )
 
     # Aggregate across years (concatenate test-split entries)
-    pooled_pf_nets = []
-    pooled_base_nets = []
-    for r in all_results:
+    for _r in all_results:
         # Reconstruct individual trade net returns from evaluate_family is not stored;
         # For a lightweight aggregate we rely on per-year means weighted by n_entries.
         pass
 
     # Simple pooled-mean metric across years
     total_base_n = sum(r["base_test_split"]["n_entries"] for r in all_results)
-    total_pf_n = sum(r["pf_test_split"]["n_entries"] for r in all_results)
+    sum(r["pf_test_split"]["n_entries"] for r in all_results)
     if total_base_n > 0:
         pooled_base = np.average(
             [r["base_test_split"]["net_mean_bps"] for r in all_results],

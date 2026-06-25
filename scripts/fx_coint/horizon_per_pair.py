@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import polars as pl
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
@@ -53,7 +52,8 @@ def main():
     for label, h in HORIZONS.items():
         cells = []
         for p in PAIRS:
-            c = cell(*data[p], h)
+            mid, spr, tmin = data[p]
+            c = cell(mid, spr, tmin, h)
             if c is None:
                 cells.append(f"{'--':>14}")
             else:

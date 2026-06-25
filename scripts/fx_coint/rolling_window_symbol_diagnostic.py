@@ -11,6 +11,7 @@ Lookback windows tested: 6mo, 12mo, 18mo, 24mo.
 Usage:
     uv run python scripts/fx_coint/rolling_window_symbol_diagnostic.py
 """
+# ruff: noqa: E402
 from __future__ import annotations
 
 import sys
@@ -28,6 +29,7 @@ _REPO = Path("/Users/danielfisher/repositories/behemoth")
 sys.path.insert(0, str(_WORKTREE))
 
 import importlib.util
+
 spec = importlib.util.spec_from_file_location(
     "ird", str(_WORKTREE / "scripts/fx_coint/interaction_ridge_diagnostic.py")
 )

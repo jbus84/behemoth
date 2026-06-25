@@ -93,7 +93,7 @@ def build_features(df: pd.DataFrame, d_star: float | None = None) -> pd.DataFram
         d[f"ffd_{dd}"] = ((fd - fd.mean()) / fd.std()).shift(1)
     if d_star is not None:
         fd = frac_diff_ffd(logp, d_star)
-        d[f"ffd_dstar"] = ((fd - fd.mean()) / fd.std()).shift(1)
+        d["ffd_dstar"] = ((fd - fd.mean()) / fd.std()).shift(1)
 
     # --- px_dev (level z) --- wall-clock rolling ---
     for wh in (24, 48, 96, 240):
@@ -253,7 +253,7 @@ def main() -> None:
         full = pooled_ic(tick_data, "ffd_0.1", target)
         # non-overlapping: step by ~h hours
         nov_ics = []
-        for sym, df in tick_data.items():
+        for _sym, df in tick_data.items():
             dd = df[["ffd_0.1", target]].dropna()
             if len(dd) < 50:
                 continue

@@ -9,6 +9,7 @@ Same per-pair, rolling-window, hour-grid evaluation as classification diagnostic
 Usage:
     uv run python scripts/fx_coint/xgboost_direction_diagnostic.py
 """
+# ruff: noqa: E402
 from __future__ import annotations
 
 import sys
@@ -24,6 +25,7 @@ from sklearn.preprocessing import StandardScaler
 _WORKTREE = Path("/Users/danielfisher/repositories/behemoth/.claude/worktrees/feat-pf-15m")
 sys.path.insert(0, str(_WORKTREE))
 import importlib.util
+
 spec = importlib.util.spec_from_file_location(
     "ird", str(_WORKTREE / "scripts/fx_coint/interaction_ridge_diagnostic.py")
 )

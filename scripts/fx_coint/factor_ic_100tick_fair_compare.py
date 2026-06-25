@@ -18,7 +18,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import stats
-from statsmodels.tsa.stattools import adfuller
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
@@ -87,7 +86,7 @@ def build_features(df: pd.DataFrame, d_star: float | None = None) -> pd.DataFram
         d[f"ffd_{dd}"] = ((fd - fd.mean()) / fd.std()).shift(1)
     if d_star is not None:
         fd = frac_diff_ffd(logp, d_star)
-        d[f"ffd_dstar"] = ((fd - fd.mean()) / fd.std()).shift(1)
+        d["ffd_dstar"] = ((fd - fd.mean()) / fd.std()).shift(1)
 
     for wh in (24, 48, 96, 240):
         wh_td = pd.Timedelta(hours=wh)
@@ -206,7 +205,7 @@ def main() -> None:
     for label, data in [("100tick", tick_data), ("1h_time", time_data)]:
         res = pooled_ic(data, "ffd_0.1", "y_48h")
         nov_ics = []
-        for sym, df in data.items():
+        for _sym, df in data.items():
             dd = df[["ffd_0.1", "y_48h"]].dropna()
             if len(dd) < 50:
                 continue

@@ -11,6 +11,7 @@ All models scored on identical OOS observations so the grid comparison is fair.
 Usage:
     uv run python scripts/fx_coint/per_hour_ridge_diagnostic.py
 """
+# ruff: noqa: E402
 from __future__ import annotations
 
 import sys
@@ -29,11 +30,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 import scripts.fx_coint.reg_signal_hunt as rsh
 from scripts.fx_coint.reg_signal_hunt import (
-    COST_BPS,
-    FEATURE_COLS,
     FREQ_MINUTES,
-    PAIRS,
-    build_panel,
 )
 
 rsh.FREQ_MINUTES.update({"15m": 15, "30m": 30})
@@ -377,7 +374,6 @@ def main():
     print(f"\n{'='*80}")
     print("HEAD-TO-HEAD: same (freq, hour) cell compared across architectures")
     print(f"{'='*80}")
-    comp_rows = []
     for freq in HORIZONS:
         for hr in range(7, 22):
             pivot = {}
