@@ -1,8 +1,17 @@
 # tests/fx_coint/test_horizon_retest.py
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from scripts.fx_coint.horizon_retest import build_horizon_panel
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_requires_tick_bars = pytest.mark.skipif(
+    not (_REPO_ROOT / "data/tick_bars/EURUSD_1m_flow.parquet").exists(),
+    reason="requires data/tick_bars/*_1m_flow.parquet (gitignored; absent in CI)",
+)
 
 
 def _bars(n=400, start="2022-01-03 07:00"):
@@ -43,6 +52,7 @@ def test_non_contiguous_window_dropped():
 from scripts.fx_coint.horizon_retest import horizon_net_track  # noqa: E402
 
 
+@_requires_tick_bars
 def test_horizon_net_track_shapes_and_more_entries_at_h1():
     t1 = horizon_net_track("EURUSD", H=1)
     t4 = horizon_net_track("EURUSD", H=4)
@@ -83,6 +93,7 @@ def test_dual_inference_agree_flag_false_on_noise():
 from scripts.fx_coint.horizon_retest import pooled_horizon  # noqa: E402
 
 
+@_requires_tick_bars
 def test_pooled_horizon_runs_and_reports_both_tracks():
     r = pooled_horizon(2)
     assert r["raw_n"] > 300

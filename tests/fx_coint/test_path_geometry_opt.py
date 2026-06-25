@@ -1,5 +1,8 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from scripts.fx_coint.path_geometry_opt import (
     BASELINE_CELL,
@@ -11,6 +14,12 @@ from scripts.fx_coint.path_geometry_opt import (
     paired_day_clustered_p,
     positive_years,
     year_block_bootstrap_ci,
+)
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_requires_tick_bars = pytest.mark.skipif(
+    not (_REPO_ROOT / "data/tick_bars/EURUSD_1m_flow.parquet").exists(),
+    reason="requires data/tick_bars/*_1m_flow.parquet (gitignored; absent in CI)",
 )
 
 
@@ -40,6 +49,7 @@ def test_optimize_picks_protective_stop_when_it_helps_on_train():
     assert r["net_oos"].mean() >= r["baseline_oos"].mean()  # geometry >= baseline on train-selected cell
 
 
+@_requires_tick_bars
 def test_fold_trades_structure_and_causality():
     folds = fold_trades("EURUSD", freq="2h", q=0.95, n_folds=5, n_bars=1)
     assert len(folds) >= 3
@@ -78,6 +88,7 @@ def test_paired_day_clustered_zero_when_identical():
 from scripts.fx_coint.path_geometry_opt import prescreen  # noqa: E402
 
 
+@_requires_tick_bars
 def test_prescreen_returns_bool_per_tf_and_2h_true():
     res = prescreen(timeframes=("2h",), pairs=["EURUSD", "GBPUSD", "USDJPY"], seed=0)
     assert set(res.keys()) == {"2h"}

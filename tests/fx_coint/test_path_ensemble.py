@@ -1,5 +1,15 @@
 # tests/fx_coint/test_path_ensemble.py
+from pathlib import Path
+
+import pytest
+
 from scripts.fx_coint.path_ensemble import build_ensemble, tail_long_entries
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+pytestmark = pytest.mark.skipif(
+    not (_REPO_ROOT / "data/tick_bars/EURUSD_1m_flow.parquet").exists(),
+    reason="requires data/tick_bars/*_1m_flow.parquet (gitignored; absent in CI)",
+)
 
 
 def test_tail_long_entries_nonempty_and_long():
