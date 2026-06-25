@@ -57,3 +57,38 @@ def test_train_relative_topdecile_no_leakage():
         f"Train fraction changed with extreme test values: {frac_normal} vs {frac_extreme} "
         "(look-ahead leakage detected)"
     )
+
+
+def test_fold_block_bootstrap_ci_known():
+    from scripts.fx_coint.pnl_walkforward import fold_block_bootstrap_ci
+
+    # 3 positive, 1 negative fold means — net positive, CI should exclude 0
+    fold_net = np.array([1.0, 2.0, 3.0, -0.5])
+    lo, hi, p_neg = fold_block_bootstrap_ci(fold_net, n_boot=5000, rng=np.random.default_rng(0))
+    assert lo > 0, f"CI lo={lo:.3f} should exclude 0 for mostly-positive folds"
+    assert p_neg < 0.5, f"p_neg={p_neg:.3f} should be < 0.5 for mostly-positive folds"
+
+    # all negative — CI should be entirely negative, p_neg ≈ 1.0
+    fold_neg = np.array([-1.0, -2.0, -3.0, -0.5])
+    lo2, hi2, p_neg2 = fold_block_bootstrap_ci(fold_neg, n_boot=5000, rng=np.random.default_rng(0))
+    assert hi2 < 0, f"CI hi={hi2:.3f} should be < 0 for all-negative folds"
+    assert p_neg2 > 0.95, f"p_neg={p_neg2:.3f} should be ~1.0 for all-negative folds"
+
+
+def test_model_oos_pnl_runs_and_scores_oracle():
+    from scripts.fx_coint.pnl_walkforward import model_oos_pnl
+
+    rng = np.random.default_rng(0)
+
+    def fit_predict(tr, te):
+        # oracle-ish: predict realized return direction with noise (fit unused)
+        return te["ret"] + rng.standard_normal(len(te["ret"]))
+
+    n = 3000
+    entry = np.arange(n) * 2
+    ret = rng.standard_normal(n)
+    sym_data = {"S": dict(X=rng.standard_normal((n, 2)), y=ret, entry=entry,
+                          t1=entry + 1, ret=ret, sw=np.abs(rng.standard_normal(n)))}
+    out = model_oos_pnl(sym_data, fit_predict, cost=0.0, n_folds=4)
+    assert set(out) == {"net", "fold_net", "folds_pos", "sym_pos", "n_trades"}
+    assert out["n_trades"] > 0

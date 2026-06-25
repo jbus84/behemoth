@@ -20,7 +20,10 @@ from pathlib import Path
 import matplotlib
 from scipy.stats import rankdata
 
-matplotlib.use("Agg")
+try:  # noqa: SIM105
+    matplotlib.use("Agg")
+except RuntimeError:
+    pass
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
@@ -50,8 +53,6 @@ def greedy_nonoverlap(entry: np.ndarray, t1: np.ndarray) -> np.ndarray:
     return keep
 
 
-SELECTOR = "ffd_zvol20"
-
 
 def _fade_pnl(logp, vol, ev, n_tb):
     entry = ev + 1
@@ -66,6 +67,27 @@ def _rank(a):
     ok = np.isfinite(a)
     out[ok] = rankdata(a[ok]) / ok.sum()
     return out
+
+
+def fold_block_bootstrap_ci(fold_net: np.ndarray, n_boot: int = 5000,
+                               rng: np.random.Generator | None = None) -> tuple[float, float, float]:
+    """Bootstrap resample fold-level mean net bps with replacement.
+
+    Returns (lo, hi, p_neg) where [lo, hi] is the 95% CI and p_neg is the
+    one-sided probability that the bootstrapped mean is <= 0.
+    """
+    rng = rng or np.random.default_rng(0)
+    a = np.asarray(fold_net, dtype=float)
+    n = len(a)
+    if n == 0:
+        return float("nan"), float("nan"), float("nan")
+    means = np.empty(n_boot)
+    for b in range(n_boot):
+        pick = rng.integers(0, n, n)
+        means[b] = a[pick].mean()
+    lo, hi = np.percentile(means, [2.5, 97.5])
+    p_neg = float((means <= 0).mean())
+    return float(lo), float(hi), p_neg
 
 
 def train_relative_topdecile(
@@ -90,6 +112,48 @@ def train_relative_topdecile(
     return comb >= thr
 
 
+def model_oos_pnl(sym_data, fit_predict, cost=1.0, n_folds=5) -> dict:
+    """Walk-forward OOS net-bps of a model-mu strategy: sign(mu) side, top-decile
+    |mu| selection, non-overlap. `sym_data[s]` carries pre-built X,y,entry,t1,ret,sw;
+    `fit_predict(train_dict, test_dict) -> mu_test` fits on train (modelling lives in
+    the caller) and returns mu for the test rows."""
+    syms = list(sym_data)
+    all_entry = np.concatenate([sym_data[s]["entry"] for s in syms])
+    edges = np.quantile(all_entry, np.linspace(0, 1, n_folds + 1))
+    fold_net, n_trades, sym_pos = [], 0, np.zeros(len(syms))
+    for k in range(1, n_folds):
+        lo, hi = edges[k], edges[k + 1]
+        fold = []
+        for si, s in enumerate(syms):
+            d = sym_data[s]
+            tr = d["entry"] < lo
+            te = (d["entry"] >= lo) & (d["entry"] < hi)
+            if tr.sum() < 200 or te.sum() < 20:
+                continue
+            mu = np.asarray(fit_predict({kk: vv[tr] for kk, vv in d.items()},
+                                        {kk: vv[te] for kk, vv in d.items()}), dtype=float)
+            ret_te, ent_te, t1_te = d["ret"][te], d["entry"][te], d["t1"][te]
+            ok = np.isfinite(mu) & np.isfinite(ret_te)
+            thr = np.nanquantile(np.abs(mu[ok]), 0.90) if ok.sum() else np.inf
+            sel = ok & (np.abs(mu) >= thr)
+            order = np.argsort(ent_te[sel])
+            keep = greedy_nonoverlap(ent_te[sel][order], t1_te[sel][order])
+            pnl = np.sign(mu[sel][order][keep]) * ret_te[sel][order][keep] - cost
+            if len(pnl):
+                fold.append(pnl)
+                n_trades += len(pnl)
+                if np.mean(pnl) > 0:
+                    sym_pos[si] += 1
+        if fold:
+            fold_net.append(np.mean(np.concatenate(fold)))
+    fold_net = np.array(fold_net)
+    return dict(net=float(np.mean(fold_net)) if len(fold_net) else float("nan"),
+                fold_net=fold_net,
+                folds_pos=int((fold_net > 0).sum()),
+                sym_pos=int((sym_pos >= (n_folds - 1) / 2).sum()),
+                n_trades=n_trades)
+
+
 def marginal_lift(
     cache, evset, n_tb, feature, role, cost=1.0, n_folds=5, orient: float = 1.0
 ) -> dict:
@@ -103,9 +167,9 @@ def marginal_lift(
         logp, f, vol, bph = cache[s]
         ev = evset[s]
         entry, t1, ret = _fade_pnl(logp, vol, ev, n_tb)
-        pnl = -np.sign(f[SELECTOR][ev]) * ret
+        pnl = -np.sign(f[SIGNAL][ev]) * ret
         sym_d[s] = dict(entry=entry, t1=t1, pnl=pnl,
-                        sel=f[SELECTOR][ev], feat=f[feature][ev])
+                        sel=f[SIGNAL][ev], feat=f[feature][ev])
     all_entry = np.concatenate([sym_d[s]["entry"] for s in POOL])
     edges = np.quantile(all_entry, np.linspace(0, 1, n_folds + 1))
 
@@ -197,7 +261,7 @@ def main():
         print(f"WALK-FORWARD NON-OVERLAP NET-P&L — fade {SIGNAL}, N={n_tb}, cost={COST}bps round-trip")
         print(f"  {N_FOLDS} expanding folds | independent trades only | pooled 5 majors")
         print("=" * 92)
-        print(f"  {'isolation':16s} {'indep_trades':>12s} {'net bps':>9s} {'folds+':>7s} {'sym+':>6s}")
+        print(f"  {'isolation':16s} {'indep_trades':>12s} {'net bps':>9s} {'bootCI':>18s} {'pNeg':>6s} {'folds+':>7s} {'sym+':>6s}")
         for iso in ISOLATIONS:
             # gather per-symbol selected, non-overlapping trades with timestamps
             sym_trades = {}
@@ -247,7 +311,13 @@ def main():
             folds_pos = int((fold_net > 0).sum())
             # a symbol counts as + if positive in a majority of folds it appeared
             sym_plus = int((sym_pos >= (N_FOLDS - 1) / 2).sum())
-            print(f"  {iso:16s} {n_indep:>12d} {np.mean(fold_net):+9.3f} "
+            if len(fold_net) >= 3:
+                lo, hi, p_neg = fold_block_bootstrap_ci(fold_net, n_boot=5000)
+                ci_str = f"[{lo:+.2f},{hi:+.2f}]"
+            else:
+                ci_str = "[  n/a]"
+                p_neg = float("nan")
+            print(f"  {iso:16s} {n_indep:>12d} {np.mean(fold_net):+9.3f} {ci_str:>18s} {p_neg:>6.3f} "
                   f"{folds_pos:>4d}/{len(fold_net)} {sym_plus:>4d}/5")
         print()
 
