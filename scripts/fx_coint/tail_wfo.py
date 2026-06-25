@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
+import scipy.special as sp
 from scipy.stats import spearmanr, ttest_1samp
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
@@ -938,6 +939,16 @@ def main() -> None:
         print(f"  {label:>6}: n_days={e['n_days']} dailyMean={e['daily_mean']:+.3f} "
               f"t={e['t_stat']:+.2f} p={e['p_value']:.3f}")
 
+    # Target distribution analysis: did the target itself change shape?
+    print("\n=== TARGET DISTRIBUTION ===")
+    tdist = target_distribution_report(TIGHT_MAJORS, freq="2h", q=0.95, n_folds=5)
+    if tdist:
+        df_t = pd.DataFrame(tdist)
+        df_t.sort_values("qtr", inplace=True)
+        print(df_t.to_string(index=False))
+    else:
+        print("No data for target distribution.")
+
     # Granular temporal slices — is the decay smooth, a cliff, or episodic?
     for bins, label in (("Y", "YEARLY"), ("Q", "QUARTERLY")):
         slices = temporal_slice_report(TIGHT_MAJORS, "2h", q=0.95, bins=bins)
@@ -1126,6 +1137,678 @@ def main() -> None:
         dc = day_clustered_tstat(net, bk)
         print(f"{label:>25} {len(net):>5} {net.mean():>+8.3f} "
               f"{dc['t_stat']:>+6.2f} {dc['p_value']:>7.3f} {(net>0).mean()*100:>4.0f}%")
+
+    # GAMLSS PROOF — distributional regression cannot rescue a dead tail
+    print("\nGAMLSS PROOF — Quantile Regression transfer + oracle test")
+    print(f"{'tau':>5} {'nPre':>6} {'nPost':>6} {'predPre':>9} {'predPost':>9} "
+          f"{'selPreMean':>10} {'selPreP95':>9} {'selPostMean':>11} {'selPostP95':>10} "
+          f"{'covPre':>7} {'covPost':>7}")
+    for row in gamlss_quantile_proof(TIGHT_MAJORS, freq="2h"):
+        print(f"{row['tau']:>5.2f} {row['n_pre']:>6} {row['n_post']:>6} "
+              f"{row['pred_pre_mean']:>+9.3f} {row['pred_post_mean']:>+9.3f} "
+              f"{row['sel_pre_mean']:>+10.3f} {row['sel_pre_p95']:>+9.3f} "
+              f"{row['sel_post_mean']:>+11.3f} {row['sel_post_p95']:>+10.3f} "
+              f"{row['coverage_pre']*100:>6.1f}% {row['coverage_post']*100:>6.1f}%")
+
+    print("\nGAMLSS ORACLE — Ridge vs QR(0.95) head-to-head on SAME folds, top-5% gate:")
+    print("  [Normal t = standard; Boot CI = percentile bootstrap 5k samples; "
+          "Student-T = MLE on daily means, LR test for mu=0]")
+    oracle = gamlss_oracle_wfo(TIGHT_MAJORS, freq="2h", q=0.95, n_folds=5)
+    if oracle:
+        for label, key in [("FULL SAMPLE", "full"), ("POST-2023Q1 ONLY", "post")]:
+            r = oracle[f"ridge_{key}"]
+            q = oracle[f"qr_{key}"]
+            print(f"  {label}:")
+            print(f"    Ridge: n={r['n']} meanNet={r['mean']:+.3f} "
+                  f"normalT={r['day_t']:+.2f} normalP={r['day_p']:.3f} "
+                  f"bootCI=[{r['boot_lo']:+.3f}, {r['boot_hi']:+.3f}] "
+                  f"tDF={r['t_df']:.1f} tLoc={r['t_loc']:+.3f} tScale={r['t_scale']:.3f} "
+                  f"tP={r['t_pvalue']:.3f} hit={r['hit']*100:.0f}%")
+            print(f"    QR-95: n={q['n']} meanNet={q['mean']:+.3f} "
+                  f"normalT={q['day_t']:+.2f} normalP={q['day_p']:.3f} "
+                  f"bootCI=[{q['boot_lo']:+.3f}, {q['boot_hi']:+.3f}] "
+                  f"tDF={q['t_df']:.1f} tLoc={q['t_loc']:+.3f} tScale={q['t_scale']:.3f} "
+                  f"tP={q['t_pvalue']:.3f} hit={q['hit']*100:.0f}%")
+    else:
+        print("  Oracle produced no trades.")
+
+    # Deep dive: buffer sweep + per-pair + calibration
+    print("\nGAMLSS DEEP DIVE — buffer sweep, per-pair, calibration:")
+    gamlss_deep_dive(TIGHT_MAJORS, freq="2h", q=0.95, n_folds=5)
+
+    # Ultra-high-frequency experiment: 5m bars, top-1% + top-0.1%
+    print("\n5-MINUTE TAIL EXPERIMENT — 5m bars, q-sweep:")
+    print(f"{'pair':>7} {'freq':>4} {'q':>5} {'n':>5} {'meanNet':>8} {'t':>6} "
+          f"{'posFold':>7} {'hit':>5} {'totNet':>8}")
+    for qq in (0.99, 0.999):
+        for r in run_5m_top1_experiment(TIGHT_MAJORS, q=qq, n_folds=5):
+            print(f"{r['symbol']:>7} {r['freq']:>4} {r['q']:>5.3f} {r['n']:>5} "
+                  f"{r['mean_net_bps']:>+8.3f} {r['t_stat']:>+6.2f} {r['pos_fold_pct']:>7.2f} "
+                  f"{r['hit_rate']*100:>4.0f}% {r['total_net_bps']:>+8.1f}")
+
+    # Longer-horizon experiment: 6h and daily (full-session, 0-24h) — q-sweep
+    print("\nLONGER-HORIZON EXPERIMENT — 6h + 1d, q-sweep (broader gates for more trades):")
+    print(f"{'pair':>7} {'freq':>4} {'q':>5} {'n':>5} {'meanNet':>8} {'t':>6} "
+          f"{'posFold':>7} {'hit':>5} {'totNet':>8}")
+    for freq in ("6h", "1d"):
+        sess = (0, 24)
+        for qq in (0.80, 0.85, 0.90, 0.95, 0.99):
+            for sym in TIGHT_MAJORS:
+                src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+                if not src.exists():
+                    continue
+                panel = build_panel(
+                    build_freq_bars(pl.read_parquet(src), freq, session=sess),
+                    vol_lookback=24 if freq == "6h" else 5,
+                )
+                if len(panel) < 200:
+                    continue
+                cost = COST_BPS[sym]
+                folds = walk_forward(panel, n_folds=5)
+                tr = gate_trades(folds, q=qq, cost_bps=cost, side="long")
+                s = cell_stats(tr["net"], tr["fold_id"])
+                print(f"{sym:>7} {freq:>4} {qq:>5.2f} {s['n']:>5} "
+                      f"{s['mean_net_bps']:>+8.3f} {s['t_stat']:>+6.2f} {s['pos_fold_pct']:>7.2f} "
+                      f"{s['hit_rate']*100:>4.0f}% {s['total_net_bps']:>+8.1f}")
+
+    # Pooled daily EURUSD + GBPUSD (excluding USDJPY) at q=0.80, 0.85, 0.90
+    print("\nPOOLED DAILY — EURUSD + GBPUSD (ex-USDJPY), q-sweep, day-clustered:")
+    print(f"{'q':>5} {'n':>6} {'meanNet':>8} {'dayT':>6} {'dayP':>7} {'hit':>5} {'days':>5}")
+    for qq in (0.80, 0.85, 0.90):
+        nets, buckets = [], []
+        for sym in ("EURUSD", "GBPUSD"):
+            src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+            if not src.exists():
+                continue
+            panel = build_panel(
+                build_freq_bars(pl.read_parquet(src), "1d", session=(0, 24)),
+                vol_lookback=5,
+            )
+            if len(panel) < 200:
+                continue
+            folds = walk_forward(panel, n_folds=5)
+            tr = gate_trades(folds, q=qq, cost_bps=COST_BPS[sym], side="long")
+            if tr["n"] > 0:
+                nets.append(tr["net"])
+                buckets.append(tr["bucket"])
+        if not nets:
+            continue
+        net_all = np.concatenate(nets)
+        bk_all = np.concatenate(buckets)
+        dc = day_clustered_tstat(net_all, bk_all)
+        print(f"{qq:>5.2f} {len(net_all):>6} {net_all.mean():>+8.3f} "
+              f"{dc['t_stat']:>+6.2f} {dc['p_value']:>7.3f} "
+              f"{(net_all > 0).mean() * 100:>4.0f}% {dc['n_days']:>5}")
+
+    # Daily ERA split-half (EURUSD + GBPUSD pooled, 1d long q=0.85)
+    print("\nDAILY ERA SPLIT-HALF — EURUSD + GBPUSD pooled 1d long q0.85, day-clustered:")
+    print(f"{'half':>8} {'n':>6} {'meanNet':>8} {'dayT':>6} {'dayP':>7} {'hit':>5} {'days':>5}")
+    SPLIT_DATE = np.datetime64("2023-04-03")
+    daily_nets, daily_buckets = [], []
+    for sym in ("EURUSD", "GBPUSD"):
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(
+            build_freq_bars(pl.read_parquet(src), "1d", session=(0, 24)),
+            vol_lookback=5,
+        )
+        if len(panel) < 200:
+            continue
+        folds = walk_forward(panel, n_folds=5)
+        tr = gate_trades(folds, q=0.85, cost_bps=COST_BPS[sym], side="long")
+        if tr["n"] > 0:
+            daily_nets.append(tr["net"])
+            daily_buckets.append(tr["bucket"])
+    if daily_nets:
+        net_all = np.concatenate(daily_nets)
+        bk_all = np.concatenate(daily_buckets)
+        # split
+        first_mask = bk_all < SPLIT_DATE
+        second_mask = bk_all >= SPLIT_DATE
+        for label, mask in [("first", first_mask), ("second", second_mask), ("full", np.ones_like(first_mask, dtype=bool))]:
+            if mask.sum() < 2:
+                continue
+            dc = day_clustered_tstat(net_all[mask], bk_all[mask])
+            print(f"{label:>8} {mask.sum():>6} {net_all[mask].mean():>+8.3f} "
+                  f"{dc['t_stat']:>+6.2f} {dc['p_value']:>7.3f} "
+                  f"{(net_all[mask] > 0).mean() * 100:>4.0f}% {dc['n_days']:>5}")
+
+    # PATH ANALYSIS — cumulative P&L, drawdown, worst streaks
+    print("\nPATH ANALYSIS — daily pooled EURUSD+GBPUSD q0.85 (sorted by trade date):")
+    # Already have net_all and bk_all from above; sort chronologically
+    order = np.argsort(bk_all)
+    cum = np.cumsum(net_all[order])
+    running_max = np.maximum.accumulate(cum)
+    drawdown = cum - running_max
+    max_dd_idx = np.argmin(drawdown)
+    max_dd = drawdown[max_dd_idx]
+    # longest underwater streak
+    underwater = drawdown < 0
+    streaks = []
+    current_start = None
+    for i, u in enumerate(underwater):
+        if u and current_start is None:
+            current_start = i
+        elif not u and current_start is not None:
+            streaks.append((current_start, i - current_start))
+            current_start = None
+    if current_start is not None:
+        streaks.append((current_start, len(underwater) - current_start))
+    longest_streak = max(streaks, key=lambda x: x[1]) if streaks else (0, 0)
+    # best / worst 3-month rolling window (approx: ~65 trades ≈ 3 months)
+    if len(cum) >= 65:
+        rolling_3m = cum[65:] - cum[:-65]
+        best_3m = rolling_3m.max()
+        worst_3m = rolling_3m.min()
+    else:
+        best_3m = cum[-1] if len(cum) else 0.0
+        worst_3m = best_3m
+    # print key stats
+    print(f"  trades: {len(cum):>4}  final_cum: {cum[-1]:>+8.2f}  "
+          f"maxDD: {max_dd:>+8.2f}  longest_underwater: {longest_streak[1]:>4} trades")
+    print(f"  best 3m: {best_3m:>+8.2f}  worst 3m: {worst_3m:>+8.2f}")
+    # print cumulative curve (sampled every ~20 trades for brevity)
+    step = max(1, len(cum) // 20)
+    print("  CUMULATIVE P&L (sampled):")
+    print(f"    {'trade#':>8} {'cumNet':>8} {'drawdown':>10}")
+    for i in range(0, len(cum), step):
+        print(f"    {i:>8} {cum[i]:>+8.2f} {drawdown[i]:>+10.2f}")
+
+    # GAP RISK — unconditional daily return distribution (all days, not just signal)
+    print("\nGAP RISK — unconditional daily next-close return distribution:")
+    print(f"{'pair':>7} {'n':>6} {'mean':>8} {'std':>7} {'min':>8} {'1pct':>8} {'99pct':>8} {'max':>8}")
+    raw_nets = []
+    for sym in ("EURUSD", "GBPUSD"):
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(
+            build_freq_bars(pl.read_parquet(src), "1d", session=(0, 24)),
+            vol_lookback=5,
+        )
+        r = panel["ret_next_bps"].to_numpy() - COST_BPS[sym]
+        raw_nets.append(r)
+        print(f"{sym:>7} {len(r):>6} {r.mean():>+8.3f} {r.std():>7.3f} "
+              f"{r.min():>+8.2f} {np.percentile(r, 1):>+8.2f} "
+              f"{np.percentile(r, 99):>+8.2f} {r.max():>+8.2f}")
+    if len(raw_nets) == 2:
+        r_all = np.concatenate(raw_nets)
+        print(f"{'pooled':>7} {len(r_all):>6} {r_all.mean():>+8.3f} {r_all.std():>7.3f} "
+              f"{r_all.min():>+8.2f} {np.percentile(r_all, 1):>+8.2f} "
+              f"{np.percentile(r_all, 99):>+8.2f} {r_all.max():>+8.2f}")
+        # How many signal days coincided with worst 1% of all days?
+        cutoff_1pct = np.percentile(r_all, 1)
+        worst_signal_days = (net_all <= cutoff_1pct).sum()
+        print(f"\n  Signal trades in worst 1% of all days: {worst_signal_days}/{len(net_all)} "
+              f"({worst_signal_days/len(net_all)*100:.1f}%)")
+        print(f"  Signal 1pctile net: {np.percentile(net_all, 1):+.2f} bps  "
+              f"vs unconditional 1pctile: {cutoff_1pct:+.2f} bps")
+        print(f"  Signal max loss: {net_all.min():+.2f} bps  "
+              f"vs unconditional min: {r_all.min():+.2f} bps")
+
+
+def target_distribution_report(
+    pairs: list[str],
+    freq: str = "2h",
+    q: float = 0.95,
+    n_folds: int = 5,
+) -> list[dict]:
+    """Analyze the distribution of the target (ret_next_bps) across WFO test sets.
+
+    Answers: Is the mean positive? What is the skew? How heavy are the tails?
+    Did the distribution SHAPE change (regime shift) or did the model's ability
+    to discriminate change?
+
+    Also reports the joint distribution: P(target in top-10% | pred in top-10%).
+    If this conditional probability exceeds random chance (10%), the model is
+    genuinely discriminating the right tail."""
+    all_frames = []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+        if len(panel) < 200:
+            continue
+        folds = walk_forward(panel, n_folds=n_folds)
+        preds, acts, buckets = [], [], []
+        for f in folds:
+            preds.append(f["test_pred"])
+            acts.append(f["test_actual_bps"])
+            buckets.append(f["test_bucket"])
+        all_frames.append(pd.DataFrame({
+            "pred": np.concatenate(preds),
+            "act": np.concatenate(acts),
+            "bucket": pd.to_datetime(np.concatenate(buckets)),
+        }))
+    if not all_frames:
+        return []
+    df = pd.concat(all_frames, ignore_index=True)
+    df["qtr"] = df["bucket"].dt.to_period("Q")
+
+    rows: list[dict] = []
+    for qtr, grp in df.groupby("qtr"):
+        if len(grp) < 20:
+            continue
+        act = grp["act"]
+        pred = grp["pred"]
+        # Target distribution moments
+        mean = float(act.mean())
+        std = float(act.std())
+        sk = float(act.skew())
+        kurt = float(act.kurtosis())
+        pct_pos = float((act > 0).mean())
+        pct_gt_cost = float((act > 0.7).mean())  # approx cost
+        pct_lt_neg_cost = float((act < -0.7).mean())
+        # Joint tail: how often does top-10% pred hit top-10% target?
+        pred_thr = np.quantile(pred, q)
+        act_thr = np.quantile(act, q)
+        pred_top = pred >= pred_thr
+        act_top = act >= act_thr
+        joint = float((pred_top & act_top).mean())
+        cond = float(act_top[pred_top].mean()) if pred_top.sum() > 0 else float("nan")
+        rows.append({
+            "qtr": str(qtr),
+            "n": len(grp),
+            "mean": mean,
+            "std": std,
+            "skew": sk,
+            "kurt": kurt,
+            "pct_pos": pct_pos,
+            "pct_gt_cost": pct_gt_cost,
+            "pct_lt_neg_cost": pct_lt_neg_cost,
+            "joint_tail": joint,
+            "cond_hit": cond,
+            "random_chance": 1.0 - q,
+        })
+    return rows
+
+
+def gamlss_quantile_proof(
+    pairs: list[str],
+    freq: str = "2h",
+    taus: tuple[float, ...] = (0.50, 0.75, 0.90, 0.95),
+) -> list[dict]:
+    """Empirical proof that GAMLSS-style distributional regression does NOT rescue
+    the dead tail edge.
+
+    We fit linear quantile regression (the building block of GAMLSS) for each tau
+    on the pre-2023Q2 "good" era, then evaluate on the post-2023Q1 "bad" era.
+
+    Two killer facts we will demonstrate:
+    1.  **Transfer decay**: A QR(0.95) trained on the good era predicts a 95th
+        percentile that is way too optimistic for the bad era (miscalibration).
+    2.  **Oracle impossibility**: Even when we fit QR(0.95) *directly inside*
+        each WFO fold of the bad era, the trades selected by that predicted
+        95th percentile still lose money net of cost.
+
+    If the oracle (perfect knowledge of the bad-era conditional distribution)
+    cannot produce a profitable tail, no GAMLSS model can."""
+    import statsmodels.api as sm  # noqa: F811
+    from statsmodels.regression.quantile_regression import QuantReg  # noqa: F811
+
+    all_frames = []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+        if len(panel) < 200:
+            continue
+        all_frames.append(panel)
+    if not all_frames:
+        return []
+    df = pd.concat(all_frames, ignore_index=True)
+    df["bucket"] = pd.to_datetime(df["bucket"])
+    df["era"] = np.where(df["bucket"] < "2023-04-01", "pre", "post")
+
+    cols = FEATURE_COLS
+    X_pre = df.loc[df["era"] == "pre", cols].to_numpy()
+    y_pre = df.loc[df["era"] == "pre", "ret_next_bps"].to_numpy()
+    X_post = df.loc[df["era"] == "post", cols].to_numpy()
+    y_post = df.loc[df["era"] == "post", "ret_next_bps"].to_numpy()
+    X_pre_c = sm.add_constant(X_pre, has_constant="add")
+    X_post_c = sm.add_constant(X_post, has_constant="add")
+
+    rows: list[dict] = []
+    for tau in taus:
+        # 1. Transfer: train on pre, predict on post
+        qr = QuantReg(y_pre, X_pre_c).fit(q=tau, max_iter=2000, p_tol=1e-6)
+        pred_pre = qr.predict(X_pre_c)
+        pred_post = qr.predict(X_post_c)
+
+        # Select top 5% by predicted conditional quantile
+        thr_pre = np.quantile(pred_pre, 0.95)
+        sel_pre = pred_pre >= thr_pre
+        actual_pre = y_pre[sel_pre]
+
+        thr_post = np.quantile(pred_post, 0.95)
+        sel_post = pred_post >= thr_post
+        actual_post = y_post[sel_post]
+
+        rows.append({
+            "tau": tau,
+            "n_pre": len(y_pre),
+            "n_post": len(y_post),
+            "pred_pre_mean": float(pred_pre.mean()),
+            "pred_post_mean": float(pred_post.mean()),
+            "sel_pre_n": int(sel_pre.sum()),
+            "sel_pre_mean": float(actual_pre.mean()),
+            "sel_pre_hit": float((actual_pre > 0).mean()),
+            "sel_pre_p95": float(np.quantile(actual_pre, 0.95)) if len(actual_pre) else float("nan"),
+            "sel_post_n": int(sel_post.sum()),
+            "sel_post_mean": float(actual_post.mean()),
+            "sel_post_hit": float((actual_post > 0).mean()),
+            "sel_post_p95": float(np.quantile(actual_post, 0.95)) if len(actual_post) else float("nan"),
+            "coverage_pre": float((actual_pre <= pred_pre[sel_pre]).mean()),
+            "coverage_post": float((actual_post <= pred_post[sel_post]).mean()),
+        })
+    return rows
+
+
+def gamlss_oracle_wfo(
+    pairs: list[str],
+    freq: str = "2h",
+    q: float = 0.95,
+    n_folds: int = 5,
+) -> dict | None:
+    """Head-to-head: Ridge (mean) vs QuantReg(0.95) on the SAME expanding-window folds.
+    Both models fit in-sample; gate the top-(1-q) test observations by their prediction.
+    If the QR tail-selection is not materially better than Ridge mean-selection,
+    distributional regression adds no value."""
+    import statsmodels.api as sm  # noqa: F811
+    from statsmodels.regression.quantile_regression import QuantReg  # noqa: F811
+
+    qr_nets, qr_buckets = [], []
+    ridge_nets, ridge_buckets = [], []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+        if len(panel) < 200:
+            continue
+        cost = COST_BPS[sym]
+        n = len(panel)
+        start = int(n * 0.5)
+        edges = np.linspace(start, n, n_folds + 1).astype(int)
+        X = panel[FEATURE_COLS].to_numpy()
+        y = panel["ret_next_bps"].to_numpy()
+        bucket = panel["bucket"].to_numpy()
+
+        for k in range(n_folds):
+            split = edges[k]
+            test_lo, test_hi = edges[k] + 1, edges[k + 1]
+            if test_hi - test_lo < 1 or split < 10:
+                continue
+            # Ridge on target_z (baseline)
+            scaler = StandardScaler().fit(X[:split])
+            ridge = Ridge(alpha=1.0).fit(
+                scaler.transform(X[:split]),
+                panel["target_z"].to_numpy()[:split],
+            )
+            ridge_pred_tr = ridge.predict(scaler.transform(X[:split]))
+            ridge_pred_te = ridge.predict(scaler.transform(X[test_lo:test_hi]))
+            ridge_thr = np.quantile(ridge_pred_tr, q)
+            ridge_sel = ridge_pred_te >= ridge_thr
+            if ridge_sel.any():
+                ridge_nets.append(y[test_lo:test_hi][ridge_sel] - cost)
+                ridge_buckets.append(bucket[test_lo:test_hi][ridge_sel])
+
+            # QuantReg on raw bps (oracle)
+            X_tr_c = sm.add_constant(X[:split], has_constant="add")
+            X_te_c = sm.add_constant(X[test_lo:test_hi], has_constant="add")
+            try:
+                qr = QuantReg(y[:split], X_tr_c).fit(q=q, max_iter=2000, p_tol=1e-6)
+            except Exception:
+                continue
+            qr_pred_tr = qr.predict(X_tr_c)
+            qr_pred_te = qr.predict(X_te_c)
+            qr_thr = np.quantile(qr_pred_tr, q)
+            qr_sel = qr_pred_te >= qr_thr
+            if qr_sel.any():
+                qr_nets.append(y[test_lo:test_hi][qr_sel] - cost)
+                qr_buckets.append(bucket[test_lo:test_hi][qr_sel])
+
+    def _sub_stats(nets: list[np.ndarray], bks: list[np.ndarray], after: str | None = None) -> dict:
+        if not nets:
+            return {"n": 0, "mean": float("nan"), "hit": float("nan"),
+                    "day_t": float("nan"), "day_p": float("nan"),
+                    "boot_lo": float("nan"), "boot_hi": float("nan"),
+                    "t_df": float("nan"), "t_loc": float("nan"), "t_scale": float("nan"),
+                    "t_pvalue": float("nan"), "t_ll_ratio": float("nan")}
+        net_all = np.concatenate(nets)
+        bk_all = pd.to_datetime(np.concatenate(bks))
+        if after:
+            mask = np.asarray(bk_all >= pd.Timestamp(after), bool)
+            net_all = net_all[mask]
+            bk_all = bk_all[mask]
+        if len(net_all) == 0:
+            return {"n": 0, "mean": float("nan"), "hit": float("nan"),
+                    "day_t": float("nan"), "day_p": float("nan"),
+                    "boot_lo": float("nan"), "boot_hi": float("nan"),
+                    "t_df": float("nan"), "t_loc": float("nan"), "t_scale": float("nan"),
+                    "t_pvalue": float("nan"), "t_ll_ratio": float("nan")}
+        dc = day_clustered_tstat(net_all, bk_all.to_numpy())
+        daily = pd.Series(net_all).groupby(bk_all.date).mean().to_numpy()
+
+        # Percentile bootstrap (B=5000) on daily means — robust to heavy tails
+        rng = np.random.default_rng(42)
+        boot_means = np.array([
+            rng.choice(daily, size=len(daily), replace=True).mean()
+            for _ in range(5000)
+        ])
+        boot_lo, boot_hi = float(np.percentile(boot_means, 2.5)), float(np.percentile(boot_means, 97.5))
+
+        # Student-T MLE on daily means — directly models heavy tails
+        from scipy.optimize import minimize  # noqa: F811
+
+        def _student_t_nll(params: np.ndarray, data: np.ndarray) -> float:
+            loc, log_scale, log_df = params
+            scale = np.exp(log_scale)
+            df = np.exp(log_df) + 2.0  # enforce df > 2 for finite variance
+            z = (data - loc) / scale
+            # stable log-likelihood for Student-T
+            ll = (
+                -np.log(scale)
+                + sp.gammaln((df + 1) / 2)
+                - sp.gammaln(df / 2)
+                - 0.5 * np.log(df * np.pi)
+                - ((df + 1) / 2) * np.log1p(z ** 2 / df)
+            )
+            return float(-np.sum(ll))
+
+        def _fit_student_t(data: np.ndarray) -> dict:
+            # Initial guesses
+            loc0 = float(np.median(data))
+            scale0 = float(np.clip(np.std(data, ddof=1), 1e-6, None))
+            df0 = 5.0
+            res = minimize(
+                _student_t_nll,
+                np.array([loc0, np.log(scale0), np.log(df0 - 2.0)]),
+                args=(data,),
+                method="L-BFGS-B",
+                options={"maxiter": 1000},
+            )
+            loc, log_scale, log_df = res.x
+            scale = float(np.exp(log_scale))
+            df = float(np.exp(log_df) + 2.0)
+
+            # Profile log-likelihood at mu=0 for LR test
+            nll0 = minimize(
+                lambda p: _student_t_nll(np.array([0.0, p[0], p[1]]), data),
+                np.array([np.log(scale0), np.log(df0 - 2.0)]),
+                method="L-BFGS-B",
+                options={"maxiter": 1000},
+            ).fun
+            nll1 = res.fun
+            lr_stat = float(2 * (nll0 - nll1))
+            # p-value from chi-square with 1 df (testing loc=0)
+            from scipy.stats import chi2  # noqa: F811
+            p_val = float(chi2.sf(lr_stat, 1))
+
+            return {
+                "df": df,
+                "loc": loc,
+                "scale": scale,
+                "p_value": p_val,
+                "lr_stat": lr_stat,
+            }
+
+        t_fit = _fit_student_t(daily)
+
+        return {
+            "n": len(net_all),
+            "mean": float(net_all.mean()),
+            "hit": float((net_all > 0).mean()),
+            "day_t": dc["t_stat"],
+            "day_p": dc["p_value"],
+            "boot_lo": boot_lo,
+            "boot_hi": boot_hi,
+            "t_df": t_fit["df"],
+            "t_loc": t_fit["loc"],
+            "t_scale": t_fit["scale"],
+            "t_pvalue": t_fit["p_value"],
+            "t_ll_ratio": t_fit["lr_stat"],
+        }
+
+    return {
+        "ridge_full": _sub_stats(ridge_nets, ridge_buckets),
+        "ridge_post": _sub_stats(ridge_nets, ridge_buckets, after="2023-04-01"),
+        "qr_full": _sub_stats(qr_nets, qr_buckets),
+        "qr_post": _sub_stats(qr_nets, qr_buckets, after="2023-04-01"),
+    }
+
+
+def gamlss_deep_dive(
+    pairs: list[str],
+    freq: str = "2h",
+    q: float = 0.95,
+    n_folds: int = 5,
+) -> None:
+    """Deep dive into QR(0.95) predictions vs realized returns.
+
+    Tests three things that matter for practical deployment:
+    1. Buffer sweep: does requiring pred > cost + X improve mean?
+    2. Calibration: do higher QR predictions map to higher realized returns?
+    3. Per-pair breakdown: which pairs carry the QR premium?
+    """
+    import statsmodels.api as sm  # noqa: F811
+    from statsmodels.regression.quantile_regression import QuantReg  # noqa: F811
+
+    per_pair_rows: list[dict] = []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), freq))
+        if len(panel) < 200:
+            continue
+        cost = COST_BPS[sym]
+        n = len(panel)
+        start = int(n * 0.5)
+        edges = np.linspace(start, n, n_folds + 1).astype(int)
+        X = panel[FEATURE_COLS].to_numpy()
+        y = panel["ret_next_bps"].to_numpy()
+        bucket = panel["bucket"].to_numpy()
+
+        all_preds, all_actuals, all_buckets, all_is_post = [], [], [], []
+        for k in range(n_folds):
+            split = edges[k]
+            test_lo, test_hi = edges[k] + 1, edges[k + 1]
+            if test_hi - test_lo < 1 or split < 10:
+                continue
+            X_tr_c = sm.add_constant(X[:split], has_constant="add")
+            X_te_c = sm.add_constant(X[test_lo:test_hi], has_constant="add")
+            try:
+                qr = QuantReg(y[:split], X_tr_c).fit(q=q, max_iter=2000, p_tol=1e-6)
+            except Exception:
+                continue
+            pred = qr.predict(X_te_c)
+            thr = np.quantile(qr.predict(X_tr_c), q)
+            sel = pred >= thr
+            if sel.any():
+                all_preds.append(pred[sel])
+                all_actuals.append(y[test_lo:test_hi][sel])
+                all_buckets.append(bucket[test_lo:test_hi][sel])
+                all_is_post.append(
+                    pd.to_datetime(bucket[test_lo:test_hi][sel]) >= pd.Timestamp("2023-04-01")
+                )
+        if not all_preds:
+            continue
+        preds = np.concatenate(all_preds)
+        actuals = np.concatenate(all_actuals)
+        _buckets = pd.to_datetime(np.concatenate(all_buckets))  # noqa: F841
+        is_post = np.concatenate(all_is_post)
+
+        # Buffer sweep on post-era only
+        print(f"\n  {sym} QR-95 buffer sweep (post-2023Q1 only):")
+        print(f"    {'buffer':>8} {'n':>5} {'meanNet':>8} {'hit':>5} {'std':>7}")
+        for buf in (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0):
+            sel = (preds >= cost + buf) & is_post
+            if sel.sum() == 0:
+                continue
+            net = actuals[sel] - cost
+            print(f"    {buf:>8.1f} {sel.sum():>5} {net.mean():>+8.3f} "
+                  f"{(net > 0).mean() * 100:>4.0f}% {net.std():>7.3f}")
+
+        # Calibration: pred rank vs actual rank in post-era
+        post_preds = preds[is_post]
+        post_actuals = actuals[is_post]
+        if len(post_preds) > 5:
+            cal = float(spearmanr(post_preds, post_actuals).correlation)
+            print(f"    Post-era pred-actual Spearman: {cal:+.3f}")
+
+        # Record summary for pooled table
+        net_all = actuals - cost
+        net_post = actuals[is_post] - cost
+        per_pair_rows.append({
+            "symbol": sym,
+            "n_total": len(net_all),
+            "mean_total": float(net_all.mean()),
+            "hit_total": float((net_all > 0).mean()),
+            "n_post": len(net_post),
+            "mean_post": float(net_post.mean()),
+            "hit_post": float((net_post > 0).mean()),
+        })
+
+    # Pooled per-pair table
+    if per_pair_rows:
+        print("\n  QR-95 PER-PAIR SUMMARY:")
+        print(f"    {'pair':>7} {'nTotal':>7} {'meanTot':>8} {'hitTot':>5} "
+              f"{'nPost':>6} {'meanPost':>9} {'hitPost':>6}")
+        for r in per_pair_rows:
+            print(f"    {r['symbol']:>7} {r['n_total']:>7} {r['mean_total']:>+8.3f} "
+                  f"{r['hit_total'] * 100:>4.0f}% {r['n_post']:>6} {r['mean_post']:>+9.3f} "
+                  f"{r['hit_post'] * 100:>5.0f}%")
+
+
+def run_5m_top1_experiment(
+    pairs: list[str],
+    q: float = 0.99,
+    n_folds: int = 5,
+) -> list[dict]:
+    """Ultra-high-frequency experiment: 5-minute bars, top-1% gate.
+
+    Motivation: more bars = more observations, tighter conditional distributions,
+    and the extreme tail (top-1%) may isolate a cleaner sub-population than 2h top-5%.
+    vol_lookback is scaled proportionally (288 bars ≈ 24h of 5m data).
+    """
+    rows: list[dict] = []
+    for sym in pairs:
+        src = _REPO_ROOT / f"data/tick_bars/{sym}_1m_flow.parquet"
+        if not src.exists():
+            continue
+        panel = build_panel(build_freq_bars(pl.read_parquet(src), "5m"), vol_lookback=288)
+        if len(panel) < 2000:
+            continue
+        cost = COST_BPS[sym]
+        folds = walk_forward(panel, n_folds=n_folds)
+        tr = gate_trades(folds, q=q, cost_bps=cost, side="long")
+        s = cell_stats(tr["net"], tr["fold_id"])
+        rows.append({"symbol": sym, "freq": "5m", "q": q, **s})
+    return rows
 
 
 def _gate_both(
