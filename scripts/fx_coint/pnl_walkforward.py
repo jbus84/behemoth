@@ -69,6 +69,27 @@ def _rank(a):
     return out
 
 
+def fold_block_bootstrap_ci(fold_net: np.ndarray, n_boot: int = 5000,
+                               rng: np.random.Generator | None = None) -> tuple[float, float, float]:
+    """Bootstrap resample fold-level mean net bps with replacement.
+
+    Returns (lo, hi, p_neg) where [lo, hi] is the 95% CI and p_neg is the
+    one-sided probability that the bootstrapped mean is <= 0.
+    """
+    rng = rng or np.random.default_rng(0)
+    a = np.asarray(fold_net, dtype=float)
+    n = len(a)
+    if n == 0:
+        return float("nan"), float("nan"), float("nan")
+    means = np.empty(n_boot)
+    for b in range(n_boot):
+        pick = rng.integers(0, n, n)
+        means[b] = a[pick].mean()
+    lo, hi = np.percentile(means, [2.5, 97.5])
+    p_neg = float((means <= 0).mean())
+    return float(lo), float(hi), p_neg
+
+
 def train_relative_topdecile(
     sel_abs: np.ndarray,
     feat_abs: np.ndarray,
@@ -239,7 +260,7 @@ def main():
         print(f"WALK-FORWARD NON-OVERLAP NET-P&L — fade {SIGNAL}, N={n_tb}, cost={COST}bps round-trip")
         print(f"  {N_FOLDS} expanding folds | independent trades only | pooled 5 majors")
         print("=" * 92)
-        print(f"  {'isolation':16s} {'indep_trades':>12s} {'net bps':>9s} {'folds+':>7s} {'sym+':>6s}")
+        print(f"  {'isolation':16s} {'indep_trades':>12s} {'net bps':>9s} {'bootCI':>18s} {'pNeg':>6s} {'folds+':>7s} {'sym+':>6s}")
         for iso in ISOLATIONS:
             # gather per-symbol selected, non-overlapping trades with timestamps
             sym_trades = {}
@@ -289,7 +310,13 @@ def main():
             folds_pos = int((fold_net > 0).sum())
             # a symbol counts as + if positive in a majority of folds it appeared
             sym_plus = int((sym_pos >= (N_FOLDS - 1) / 2).sum())
-            print(f"  {iso:16s} {n_indep:>12d} {np.mean(fold_net):+9.3f} "
+            if len(fold_net) >= 3:
+                lo, hi, p_neg = fold_block_bootstrap_ci(fold_net, n_boot=5000)
+                ci_str = f"[{lo:+.2f},{hi:+.2f}]"
+            else:
+                ci_str = "[  n/a]"
+                p_neg = float("nan")
+            print(f"  {iso:16s} {n_indep:>12d} {np.mean(fold_net):+9.3f} {ci_str:>18s} {p_neg:>6.3f} "
                   f"{folds_pos:>4d}/{len(fold_net)} {sym_plus:>4d}/5")
         print()
 
