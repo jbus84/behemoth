@@ -90,5 +90,5 @@ def test_model_oos_pnl_runs_and_scores_oracle():
     sym_data = {"S": dict(X=rng.standard_normal((n, 2)), y=ret, entry=entry,
                           t1=entry + 1, ret=ret, sw=np.abs(rng.standard_normal(n)))}
     out = model_oos_pnl(sym_data, fit_predict, cost=0.0, n_folds=4)
-    assert set(out) == {"net", "folds_pos", "sym_pos", "n_trades"}
+    assert set(out) == {"net", "fold_net", "folds_pos", "sym_pos", "n_trades"}
     assert out["n_trades"] > 0

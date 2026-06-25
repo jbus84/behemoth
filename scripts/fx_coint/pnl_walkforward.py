@@ -148,6 +148,7 @@ def model_oos_pnl(sym_data, fit_predict, cost=1.0, n_folds=5) -> dict:
             fold_net.append(np.mean(np.concatenate(fold)))
     fold_net = np.array(fold_net)
     return dict(net=float(np.mean(fold_net)) if len(fold_net) else float("nan"),
+                fold_net=fold_net,
                 folds_pos=int((fold_net > 0).sum()),
                 sym_pos=int((sym_pos >= (n_folds - 1) / 2).sum()),
                 n_trades=n_trades)
