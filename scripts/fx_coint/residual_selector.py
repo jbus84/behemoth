@@ -315,7 +315,6 @@ def _monthly_stats(values: np.ndarray, months: pd.Series) -> dict[str, float]:
 
 
 def _evaluate_selection(
-    y_true: np.ndarray,
     capture: np.ndarray,
     net: np.ndarray,
     months: pd.Series,
@@ -456,7 +455,7 @@ def main() -> None:
         # --- Baseline: always fade in band ---
         baseline_results.append(
             _evaluate_selection(
-                y_oos, cap_oos, net_oos, months_oos,
+                cap_oos, net_oos, months_oos,
                 np.ones(len(y_oos), dtype=bool), "baseline",
             )
         )
@@ -489,7 +488,7 @@ def main() -> None:
         sel_lr = probs_lr >= best_thr
         lr_results.append(
             _evaluate_selection(
-                y_oos, cap_oos, net_oos, months_oos, sel_lr, "logistic",
+                cap_oos, net_oos, months_oos, sel_lr, "logistic",
             )
         )
 
@@ -540,7 +539,7 @@ def main() -> None:
             sel_cb = probs_cb >= best_thr_cb
             cb_results.append(
                 _evaluate_selection(
-                    y_oos, cap_oos, net_oos, months_oos, sel_cb, "catboost",
+                    cap_oos, net_oos, months_oos, sel_cb, "catboost",
                 )
             )
         else:
