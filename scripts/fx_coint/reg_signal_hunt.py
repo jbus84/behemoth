@@ -25,7 +25,7 @@ PAIRS = ["EURUSD", "GBPUSD", "AUDUSD", "USDJPY", "USDCHF", "USDCAD"]
 COST_BPS = {"EURUSD": 0.64, "GBPUSD": 0.63, "USDJPY": 0.80,
             "USDCAD": 0.97, "USDCHF": 1.05, "AUDUSD": 1.06}
 FREQS = ["1h", "2h", "3h", "4h"]
-FREQ_MINUTES = {"1h": 60, "2h": 120, "3h": 180, "4h": 240}
+FREQ_MINUTES = {"5m": 5, "1h": 60, "2h": 120, "3h": 180, "4h": 240, "6h": 360, "1d": 1440}
 FEATURE_COLS = ["r_1", "mom_short", "mom_long", "rvol_24", "hour"]
 
 
@@ -68,7 +68,8 @@ def build_panel(bars: pd.DataFrame, vol_lookback: int = 24) -> pd.DataFrame:
     r[0] = np.nan
     r[1:] = (np.log(mid[1:]) - np.log(mid[:-1])) * 1e4
     # break returns across non-contiguous bars
-    r[~b["contig"].to_numpy()] = np.nan
+    contig_mask = np.asarray(b["contig"].fillna(False).to_numpy(), dtype=bool)
+    r[~contig_mask] = np.nan
     rs = pd.Series(r)
 
     feats = pd.DataFrame({"bucket": b["bucket"]})

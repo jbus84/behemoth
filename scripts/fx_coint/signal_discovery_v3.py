@@ -270,12 +270,16 @@ def test_vol_regime_switching(bars: pd.DataFrame) -> None:
     bars["vol_jump"] = bars["abs_ret"] > (bars["vol_ma20"] * 2.0)
     bars["vol_jump"] = bars["vol_jump"] & (bars["vol_ma20"] > 0)  # avoid divide-by-zero
 
+    print(f"\nVol jump minutes: {bars['vol_jump'].sum():,}")
+
     # Create forward returns BEFORE filtering
     for h in [1, 3, 5, 10]:
         bars[f"fwd_{h}"] = np.log(bars["close"].shift(-h) / bars["close"])
 
     up_jump = bars[bars["vol_jump"] & (bars["ret"] > 0)].copy()
     dn_jump = bars[bars["vol_jump"] & (bars["ret"] < 0)].copy()
+    print(f"  Up jumps: {len(up_jump):,}")
+    print(f"  Dn jumps: {len(dn_jump):,}")
 
     print(f"\nVol jump minutes: {bars['vol_jump'].sum():,}")
     print(f"  Up jumps: {len(up_jump):,}")
