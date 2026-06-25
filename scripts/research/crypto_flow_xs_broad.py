@@ -11,10 +11,7 @@ Usage:
 from __future__ import annotations
 
 import concurrent.futures as cf
-import hashlib
 import io
-import json
-import os
 import urllib.request
 import zipfile
 from itertools import product
@@ -22,7 +19,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr
 
 # ── universe ──────────────────────────────────────────────────────────
 SYMS = [
@@ -205,7 +201,7 @@ def backtest(
     adv = fee_model.get("adv_bps", 0.5) / 1e4
     p_fill_base = fee_model.get("p_fill_base", 0.85)
     p_fill = max(0.05, p_fill_base * (1 - queue_pos))
-    cost_per_turn = p_fill * (spread - rebate + adv) + (1 - p_fill) * (spread + taker_fee)
+    p_fill * (spread - rebate + adv) + (1 - p_fill) * (spread + taker_fee)
     n_periods = h / 8.0
 
     gross, turn, fund_pnl, dates_out = [], [], [], []
@@ -446,7 +442,7 @@ def run_gauntlet(net: np.ndarray, dates: pd.DatetimeIndex,
     if temp["status"] == "ok":
         print(f"Temporal: P(edge>0)={temp['p_positive']:.3f}  worst_window={temp['worst_window_p_positive']:.3f}  frac_pos={temp['frac_windows_positive']:.1%}")
     else:
-        print(f"Temporal: insufficient data")
+        print("Temporal: insufficient data")
 
     dsr = dsr_prob(net, dates, trial_nets, trial_dates)
     print(f"DSR = {dsr:.3f}")
@@ -551,7 +547,7 @@ def main() -> None:
             trial_dates.append(r_["dates"])
 
     # holdout
-    print(f"\nHOLDOUT 2025 (read once) for best config:")
+    print("\nHOLDOUT 2025 (read once) for best config:")
     holdout_results = {}
     for fm in fee_models:
         r = backtest(perp, w, h, k, ho, fm, signal="flow6")
@@ -572,7 +568,7 @@ def main() -> None:
         # compute net series for gauntlet
         spread = m['cost'] / (r["turn"].mean() * 1e4) * 1e4  # rough reconstruction
         # actually use the fee model directly
-        fm_g = holdout_results[fm_name][1]  # not used
+        holdout_results[fm_name][1]  # not used
         # compute cost per turn from fee model
         fm_ = next(f for f in fee_models if f["name"] == fm_name)
         s = fm_.get("spread_bps", 2.0) / 1e4
@@ -591,17 +587,17 @@ def main() -> None:
     out_path = Path("docs/analysis") / f"{pd.Timestamp.now(tz='UTC').strftime('%Y-%m-%d')}_crypto_flow_broad_findings.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        f"# Crypto cross-sectional flow — Stage-3 broadened universe + gauntlet\n",
+        "# Crypto cross-sectional flow — Stage-3 broadened universe + gauntlet\n",
         f"Date: {pd.Timestamp.now(tz='UTC').strftime('%Y-%m-%d %H:%M UTC')}\n",
-        f"## Method\n",
+        "## Method\n",
         f"- Data: Binance USD-M perp 1h klines ({len(keep_syms)} symbols, 2020–2025).\n",
-        f"- Funding: real 8h funding rates, as-of joined per symbol.\n",
+        "- Funding: real 8h funding rates, as-of joined per symbol.\n",
         f"- Signal: causal {w}-bar rolling OFI.\n",
         f"- Book: concentrated top-{k}/bottom-{k} dollar-neutral, rebalanced every {h} bars.\n",
-        f"- Gauntlet: Bayesian P(edge>0), temporal-robustness, block-bootstrap CI, DSR.\n",
-        f"\n## Best config (train+val 2020-2024)\n",
+        "- Gauntlet: Bayesian P(edge>0), temporal-robustness, block-bootstrap CI, DSR.\n",
+        "\n## Best config (train+val 2020-2024)\n",
         f"- `{name}`\n",
-        f"\n## Holdout 2025\n",
+        "\n## Holdout 2025\n",
     ]
     for fm in fee_models:
         if fm["name"] not in holdout_results:

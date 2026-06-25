@@ -4,10 +4,11 @@ Heuristic sector mapping + Herfindahl concentration index.
 """
 from __future__ import annotations
 
+from collections import Counter
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from collections import Counter
 
 from scripts.research.crypto_flow_xs_broad import backtest
 
@@ -112,11 +113,11 @@ def main() -> None:
     print(f"\nMean sector-HHI per rebalance: {np.mean(hhi_list):.3f}  (1.0 = single sector, 0.1 = perfectly dispersed)")
     print(f"Max sector-HHI: {np.max(hhi_list):.3f}  Min: {np.min(hhi_list):.3f}")
 
-    print(f"\nMost frequent longs (top-5):")
+    print("\nMost frequent longs (top-5):")
     for sym, count in top_counts.most_common(10):
         print(f"  {sym:12s}: {count:5d} times")
 
-    print(f"\nMost frequent shorts (bottom-5):")
+    print("\nMost frequent shorts (bottom-5):")
     for sym, count in bot_counts.most_common(10):
         print(f"  {sym:12s}: {count:5d} times")
 
@@ -136,7 +137,7 @@ def main() -> None:
     lines.append("|--------|------|-------|\n")
     for sector, count in sector_counts.most_common():
         lines.append(f"| {sector} | {count} | {count/total_legs:.1%} |\n")
-    lines.append(f"\n## Concentration metrics\n\n")
+    lines.append("\n## Concentration metrics\n\n")
     lines.append(f"- Mean sector-HHI per rebalance: **{np.mean(hhi_list):.3f}**\n")
     lines.append(f"- Max sector-HHI: {np.max(hhi_list):.3f}\n")
     lines.append(f"- Rebalances with HHI > 0.5: {extreme} / {len(hhi_list)} ({extreme/len(hhi_list):.1%})\n")

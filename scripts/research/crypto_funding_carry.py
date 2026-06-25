@@ -12,7 +12,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 from itertools import product
 from pathlib import Path
 
@@ -81,7 +80,7 @@ def backtest(
     adv = fee_model.get("adv_bps", 0.5) / 1e4
     p_fill_base = fee_model.get("p_fill_base", 0.85)
     p_fill = max(0.05, p_fill_base * (1 - queue_pos))
-    cost_per_turn = p_fill * (spread - rebate + adv) + (1 - p_fill) * (spread + taker_fee)
+    p_fill * (spread - rebate + adv) + (1 - p_fill) * (spread + taker_fee)
 
     gross, turn, fund_pnl, dates_out = [], [], [], []
     prevw = np.zeros(n_sym)
@@ -309,7 +308,7 @@ def main() -> None:
     print(f"\nBest by net (train+val): {name}")
 
     # holdout for best config
-    print(f"\nHOLDOUT 2025 for best config:")
+    print("\nHOLDOUT 2025 for best config:")
     holdout_results = {}
     for fm in fee_models:
         r = backtest(perp, fw, h, k, ho, fm)
@@ -343,16 +342,16 @@ def main() -> None:
     out_path = Path("docs/analysis") / f"{pd.Timestamp.now(tz='UTC').strftime('%Y-%m-%d')}_crypto_funding_carry_findings.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        f"# Crypto standalone funding-carry — findings\n",
+        "# Crypto standalone funding-carry — findings\n",
         f"Date: {pd.Timestamp.now(tz='UTC').strftime('%Y-%m-%d %H:%M UTC')}\n",
-        f"## Method\n",
+        "## Method\n",
         f"- Data: Binance USD-M perp 1h ({len(keep_syms)} symbols, 2020–2025).\n",
         f"- Signal: rolling mean of 8h funding rate over {fw} bars.\n",
         f"- Book: concentrated top-{k}/bottom-{k} dollar-neutral, rebalanced every {h} bars.\n",
-        f"- Long most negative funding (receives when rate < 0); short most positive (receives when rate > 0).\n",
-        f"\n## Best config (train+val 2020-2024)\n",
+        "- Long most negative funding (receives when rate < 0); short most positive (receives when rate > 0).\n",
+        "\n## Best config (train+val 2020-2024)\n",
         f"- `{name}`\n",
-        f"\n## Holdout 2025\n",
+        "\n## Holdout 2025\n",
     ]
     for fm in fee_models:
         if fm["name"] not in holdout_results:

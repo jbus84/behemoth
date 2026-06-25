@@ -120,8 +120,8 @@ def simulate_rebalance(
     targetw = tgt["targetw"]
     prevw = tgt["prevw"]
     fwd = tgt["fwd"]
-    k_eff = tgt["k_eff"]
-    n_sym = len(targetw)
+    tgt["k_eff"]
+    len(targetw)
 
     # active legs: those where target weight differs from previous
     delta = targetw - prevw
@@ -132,7 +132,7 @@ def simulate_rebalance(
 
     # expand to (n_paths, n_active)
     delta_active = delta[active_mask]  # shape (n_active,)
-    fwd_active = fwd[active_mask]      # shape (n_active,)
+    fwd[active_mask]      # shape (n_active,)
 
     # draws
     filled = rng.random((n_paths, n_active)) < p_fill
@@ -194,7 +194,7 @@ def run_simulation(
 
     # per-rebalance mean/std
     reb_mean = net_arr.mean(axis=1)
-    reb_std = net_arr.std(axis=1)
+    net_arr.std(axis=1)
 
     # aggregate across rebalances
     mean_net = reb_mean.mean()
@@ -314,23 +314,23 @@ def main() -> None:
     period = "holdout 2025" if args.holdout else "train+val 2020-2024"
     best = df.loc[df["mean_net_bps"].idxmax()]
     lines = [
-        f"# Crypto flow — Monte-Carlo maker execution simulation\n",
+        "# Crypto flow — Monte-Carlo maker execution simulation\n",
         f"Date: {pd.Timestamp.now(tz='UTC').strftime('%Y-%m-%d %H:%M UTC')}\n",
-        f"## Method\n",
+        "## Method\n",
         f"- Period: **{period}**\n",
-        f"- Signal: w24 h24 k3 flow rank (59 symbols)\n",
+        "- Signal: w24 h24 k3 flow rank (59 symbols)\n",
         f"- Simulation: {args.n_paths} independent execution paths per rebalance\n",
-        f"- Legs fill independently as maker with probability p_fill, else taker\n",
-        f"- Post-fill adverse selection drawn from N(adv_mean, adv_std²) in bps\n",
-        f"\n## Best scenario (highest expected net)\n",
+        "- Legs fill independently as maker with probability p_fill, else taker\n",
+        "- Post-fill adverse selection drawn from N(adv_mean, adv_std²) in bps\n",
+        "\n## Best scenario (highest expected net)\n",
         f"- p_fill={best['p_fill']:.2f}, adv_mean={best['adv_mean']:.1f} bps, adv_std={best['adv_std']:.1f} bps\n",
         f"- Expected net: **{best['mean_net_bps']:+.2f} bps** (t={best['t_stat']:+.2f}, sharpe={best['sharpe']:+.2f})\n",
         f"- Probability of positive per rebalance: {best['p_positive']:.1%}\n",
-        f"\n## Break-even observations\n",
-        f"See JSON grid for full parameter sweep.\n",
-        f"\n## Verdict\n",
-        f"- The signal's viability is a function of fill probability and adverse selection.\n",
-        f"- See break-even frontier above for required execution quality.\n",
+        "\n## Break-even observations\n",
+        "See JSON grid for full parameter sweep.\n",
+        "\n## Verdict\n",
+        "- The signal's viability is a function of fill probability and adverse selection.\n",
+        "- See break-even frontier above for required execution quality.\n",
     ]
     md_path.write_text("".join(lines))
     print(f"Wrote findings → {md_path}")
