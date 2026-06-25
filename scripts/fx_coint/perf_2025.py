@@ -60,7 +60,8 @@ def rev_trades(sym, L=10, H=2, q=0.90, warmup=60):
     """Causal fade of past-L extended move, hold H days, non-overlapping; per-trade net + bucket."""
     bars = rsh.build_freq_bars(pl.read_parquet(DATA / f"{sym}_1m_flow.parquet"), "1d", session=(0, 24))
     mid = bars["mid"].to_numpy()
-    r = np.empty(len(mid)); r[0] = np.nan
+    r = np.empty(len(mid))
+    r[0] = np.nan
     r[1:] = (np.log(mid[1:]) - np.log(mid[:-1])) * 1e4
     r[~bars["contig"].to_numpy()] = np.nan
     rs = pd.Series(r)
@@ -78,9 +79,11 @@ def rev_trades(sym, L=10, H=2, q=0.90, warmup=60):
         if len(hist) >= warmup:
             hi_t, lo_t = np.quantile(hist, q), np.quantile(hist, 1 - q)
             if s >= hi_t:
-                nets.append(-fwd[gi] - c); bks.append(bk[gi])
+                nets.append(-fwd[gi] - c)
+                bks.append(bk[gi])
             elif s <= lo_t:
-                nets.append(fwd[gi] - c); bks.append(bk[gi])
+                nets.append(fwd[gi] - c)
+                bks.append(bk[gi])
         hist.append(s)
     return pd.DataFrame({"net": nets, "bucket": pd.to_datetime(bks)})
 

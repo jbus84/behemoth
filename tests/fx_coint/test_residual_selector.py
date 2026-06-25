@@ -62,8 +62,8 @@ def test_label_construction():
         [0.0002, 0.0001],   # t2
         [0.0001, -0.0002],  # t3
     ])
-    spreads = np.full_like(residuals, 0.0001)
-    y, cap, net = _build_labels_and_capture(residuals, spreads)
+    cost_bps = 1.0  # flat commission
+    y, cap, net = _build_labels_and_capture(residuals, cost_bps)
     # flat order: t0p0, t0p1, t1p0, t1p1, t2p0, t2p1
     # t0p0: sign=+1, fwd=-0.0008 -> fade wins -> y=1, cap=+0.0008
     # t0p1: sign=-1, fwd=+0.0003 -> fade wins -> y=1, cap=+0.0003
@@ -74,7 +74,7 @@ def test_label_construction():
     assert y[2] == 1
     assert y[3] == 0
     np.testing.assert_allclose(cap[0], 0.0008 * 1e4, rtol=1e-9)
-    np.testing.assert_allclose(net[0], (0.0008 - 2 * 0.0001) * 1e4, rtol=1e-9)
+    np.testing.assert_allclose(net[0], 0.0008 * 1e4 - cost_bps, rtol=1e-9)
 
 
 def test_no_look_ahead_in_features():
@@ -166,10 +166,7 @@ def test_regime_selector_lifts_gross():
     hours, oriented = _oriented_returns(hourly)
     factor, residuals = _residuals(oriented)
     features_df = _build_features(hourly, fine, oriented, residuals, factor)
-    y_flat, capture_flat, net_flat = _build_labels_and_capture(
-        residuals,
-        np.stack([hourly[(sym, "spread")].to_numpy()[1:] for sym in pairs], axis=1),
-    )
+    y_flat, capture_flat, net_flat = _build_labels_and_capture(residuals)
 
     # Trim last hour
     features_df = features_df.iloc[:-len(pairs)]

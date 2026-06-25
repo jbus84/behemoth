@@ -165,7 +165,7 @@ def run_freq(freq: str, freq_label: str) -> None:
         print(f"    T-stat:     {t:+.1f}")
         print(f"    Win rate:   {(all_arr>0).mean()*100:.1f}%")
     else:
-        print(f"\n  No valid trades.")
+        print("\n  No valid trades.")
 
 
 def main() -> None:

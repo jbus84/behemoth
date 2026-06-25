@@ -65,6 +65,19 @@ def main() -> None:
     se = np.abs(s[:, eu]) * 1e4
     ce = (-np.sign(s[:, eu]) * fwd[:, eu]) * 1e4
     spe = spr[:, eu] * 1e4
+
+    # EURUSD gross capture by dislocation SIZE band vs fixed-commission floor (~0.65 RT)
+    print("\n=== EURUSD: does gross capture clear commission, by move size? ===")
+    print("  |s| band (bps)     n      gross    win%   net@0.65   (commission floor=0.65)")
+    bands = [(0, 2), (2, 4), (4, 6), (6, 8), (8, 12), (12, 18), (18, 30), (30, 1e9)]
+    for lo, hi in bands:
+        mb = (se >= lo) & (se < hi)
+        if mb.sum() < 30:
+            continue
+        g = ce[mb].mean()
+        flag = "  <-- clears" if g - 0.65 > 0 else ""
+        print(f"  [{lo:>3.0f},{hi if hi < 1e9 else 999:>3.0f})  {mb.sum():>8}   {g:+.3f}   {(ce[mb]>0).mean()*100:4.0f}    {g-0.65:+.3f}{flag}")
+
     print(f"\n=== EURUSD only (spread ~{spe.mean():.2f}bps RT), top-decile tail ===")
     thr = np.percentile(se, 90)
     m = se >= thr
@@ -87,6 +100,32 @@ def main() -> None:
             continue
         gc = capd[ym_].mean()
         print(f"  {y}  {ym_.sum():>4}   {gc:+.3f}    {gc-0.33:+.3f}      {gc-1.5:+.3f}")
+
+    # --- Pepperstone-style cost: commission-dominated, FIXED per round-trip ---
+    # ~$3.5/side/100k ~= 0.3 pip/side ~= 0.6-0.7 bps RT; raw spread "almost zero".
+    # Commission is fixed, so the strategy must select trades whose gross beats it.
+    print("\n=== net vs SELECTION level under fixed commission (EURUSD) ===")
+    print("  NOTE: commission is flat per RT; raw spread/slippage AT the dislocation")
+    print("  not captured here -> tick-exact fill test still decides the thin margin.")
+    print("  select      n     gross    net@0.6   net@0.7   net@0.8   win%")
+    for p in (90, 95, 99, 99.5, 99.9):
+        mm = se >= np.percentile(se, p)
+        if mm.sum() < 30:
+            continue
+        g = ce[mm].mean()
+        print(f"  top-{100-p:>4.1f}%  {mm.sum():>6}   {g:+.3f}    {g-0.6:+.3f}    {g-0.7:+.3f}    {g-0.8:+.3f}    {(ce[mm]>0).mean()*100:.0f}")
+
+    print("\n=== EURUSD top-1% per-year net @0.65 (Pepperstone-like) ===")
+    m1 = se >= np.percentile(se, 99)
+    ye1 = years[m1]
+    c1 = ce[m1]
+    print("  year   n    gross   net@0.65")
+    for y in sorted(set(ye1.tolist())):
+        ym_ = ye1 == y
+        if ym_.sum() < 10:
+            continue
+        gc = c1[ym_].mean()
+        print(f"  {y}  {ym_.sum():>4}   {gc:+.3f}   {gc-0.65:+.3f}")
 
 
 if __name__ == "__main__":

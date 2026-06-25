@@ -1,7 +1,7 @@
 # FX USD-Factor Residual Mean-Reversion — Causal Selector Probe
 
-**Date:** 2026-06-14  
-**Branch:** worktree-fx-usd-factor-residual (PR #334+)  
+**Date:** 2026-06-14
+**Branch:** worktree-fx-usd-factor-residual (PR #334+)
 **Question:** Can a supervised causal selector predict which 6–12 bps residual dislocations will revert next hour, lifting gross/net enough to clear measured spread cost?
 
 ---
@@ -60,13 +60,13 @@
 | factor_eff_6       | −0.15  | Lower efficiency (choppy) → slightly more revert  |
 | pers_3             | +0.21  | Recent persistence → model thinks revert (noise?) |
 | factor_eff_12      | +0.12  | Contradicts the 6h version                       |
-| res_vol_12         | +0.08  | Higher vol → slightly more revert                |
+| res_vol_12         | +0.08  | Higher vol → slightly more revert              |
 | dispersion         | +0.07  | More dispersion → slightly more revert           |
 | intra_efficiency   | +0.06  | Higher intra-hour efficiency → more revert       |
-| pers_6             | −0.11  | Longer persistence → less revert                 |
+| pers_6             | −0.11  | Longer persistence → less revert               |
 | breadth            | −0.07  | More pairs dislocating → less revert             |
 | spr_pct            | −0.06  | Wider spread → less revert                       |
-| disloc_bps         | −0.01  | Size within band → negligible                    |
+| disloc_bps         | −0.01  | Size within band → negligible                  |
 
 Coefficients are small, inconsistent across windows, and do not point to a robust causal structure. The model is essentially fitting noise.
 
@@ -74,17 +74,29 @@ Coefficients are small, inconsistent across windows, and do not point to a robus
 
 ## 3. Honest verdict
 
-**Model capacity does not convert to P&L here because the signal is below the cost floor.**
+### 3a. The "sub-cost" result in §2 was a COST-MODEL ARTIFACT (corrected)
 
-The 6–12 bps band was the best-sampled, highest-win-rate zone in the univariate analysis, but that analysis was EURUSD-centric and used a fixed-commission assumption. On the actual 6-pair cross-section with measured spreads:
+The §2 selector charged each pair its **Dukascopy quoted spread** as cost (avg ≈ 0.87 bps, with AUDUSD ~1.49). That is *not* the user's execution cost. At a Pepperstone-Razor-style account the cost is **commission-dominated and roughly UNIFORM**: ~0.3 pip/side ×2 + near-zero raw spread ≈ **0.7 bps round-trip for every major**. Charging Dukascopy spreads spuriously sinks the wide-spread pairs (AUDUSD swings −0.80 → +0.04 just by using the right cost). Also confirmed: the `spread` column is the full ask−bid, so round-trip cost referenced to mid = **1× quoted spread** (a 2× "round-trip" correction is a double-count).
 
-- Average gross capture ≈ 0.67 bps.
-- Average measured spread cost ≈ 0.87 bps.
-- Margin = −0.20 bps.
+Per-pair always-fade, 6–12 bps band, at flat 0.7 bps commission:
 
-Even a perfect selector that kept only winning trades would cap out at ~1.28 bps gross (0.67 / 0.526), yielding ~+0.40 bps net on half the sample. No realistic model approaches perfection. Logistic achieves +0.76 bps gross on 26% of trades — a small, unstable lift that is swallowed by cost.
+| Residual | Mean net/pair | Pairs net>0 |
+|---|---|---|
+| **1-factor (dollar)** | −0.03 | 3/6 (EURUSD +0.13, GBPUSD +0.06, USDCHF +0.11) |
+| **2-factor (dollar+risk)** | **+0.08** | **4/6** (adds USDCAD +0.15; USDCHF +0.11→+0.29) |
+| 3-factor | +0.02 | 3/6 (over-removes) |
 
-**Boosting is decisively ruled out.** CatBoost overfits massively (train t-stats 16–19, OOS net still negative). The hourly residual is fundamentally unpredictable at this signal-to-noise ratio.
+So under the *correct* cost model the book is **~break-even to mildly positive**, not −0.20 sub-cost. EURUSD is the most stable winner (~+0.13–0.19).
+
+### 3b. Does improving the USD factor help? YES — *structure*, not *estimation*
+
+- More PCs of the same dollar factor: **no** (EW ≈ PC1 at 0.997).
+- A **2-factor** model (dollar + a risk/carry PC2, 17% of variance): **yes**. Mean net/pair −0.03 → +0.08, 3/6 → 4/6 pairs positive, win rates +1–2 pts. The gain concentrates in the safe-haven/commodity pairs (USDCHF, USDCAD) whose 1-factor residual still carried an un-removed common component. 3-factor over-removes (scrubs signal).
+- **Caveat:** PCA removal is full-sample (in-sample) → optimistic upper bound. A causal *rolling* 2-factor is the next build.
+
+### 3c. Modeling (LR/CatBoost) still adds ~no gross lift
+
+Independent of the cost fix (lift is gross): logistic gives only ~+0.09 bps gross lift, CatBoost overfits (train t 16–19, worse OOS). The *selection* edge is faint. The leverage is in **the 2nd factor and pair selection**, not a classifier.
 
 ---
 
@@ -102,15 +114,138 @@ Even a perfect selector that kept only winning trades would cap out at ~1.28 bps
 
 ## 5. Files / artifacts
 
-- `scripts/fx_coint/residual_selector.py` — causal selector prototype (walk-forward LR + CatBoost).
-- `tests/fx_coint/test_residual_selector.py` — look-ahead guard + regime-lift smoke tests.
-- `scripts/fx_coint/usd_factor_residual_probe.py` — original hourly probe (untracked, root checkout).
-- `scripts/fx_coint/usd_factor_move_distribution.py` — cost-sensitivity by move-size band (untracked, root checkout).
+- `scripts/fx_coint/residual_selector.py` — causal selector (walk-forward LR + CatBoost); cost = flat commission.
+- `scripts/fx_coint/usd_factor_nfactor_probe.py` — 1- vs 2- vs 3-factor residual comparison under commission cost.
+- `tests/fx_coint/test_residual_selector.py` — look-ahead guard + regime-lift + cost smoke tests.
+- `scripts/fx_coint/usd_factor_residual_probe.py` — original hourly probe.
+- `scripts/fx_coint/usd_factor_move_distribution.py` — cost-sensitivity by move-size band.
 
 ---
 
+## 5b. Kalman state-space on the residual — does NOT help at hourly
+
+Tested whether decomposing the residual price into a random-walk (permanent) +
+AR(1) (transitory/mean-reverting) state and fading the filtered *stretch* beats
+thresholding the raw |residual move|. (`usd_factor_kalman_residual.py`; EW
+factor, train-only MLE params, causal *filtered* states, OOS tail.)
+
+Result: **Kalman stretch loses to simple |move| thresholding on 5/6 pairs at 1h**
+(matched trade count). Reason: φ ≈ 0.69 → ~1–2h half-life; reversion is so fast
+that the *last hour's move already is the stretch*, and integrating older history
+adds stale noise. Simple thresholding is near-optimal for a 1h-half-life signal.
+
+Lone exception: EURUSD at a 3h hold (Kalman +0.48 vs baseline +0.18) — longer
+holds let the level-stretch matter, but isolated (GBPUSD reverses). Implication:
+state-space decomposition is the right tool at *slower* reversion → another
+argument for the **daily/weekly port**, not hourly.
+
+## 5c. 4-hour timeframe (PCA) — body fades, tail is a fragile mirage
+
+Stepped up to 4h bars (`usd_factor_4h_probe.py`, PCA 1- and 2-factor, commission
+cost). PC structure unchanged (PC1 60%, PC2 17%). Findings:
+- Pooled reversion *weaker* than hourly (lag-1 corr −0.039 vs −0.058) — fast
+  hourly reversion averages out.
+- The moderate band (p75–95) that worked hourly is ~breakeven/negative at 4h.
+- The big-dislocation **top-10% tail** had strong *aggregate* net (+0.5..+1.0 bps,
+  5/6 pairs) — opposite to hourly where the extreme tail was non-reverting info.
+- **But per-year it is NOT robust:** win ~53–55% (coin-flip), every pair has
+  multiple large losing years, aggregates carried by 2–3 outlier years
+  (GBPUSD swings −2.27 → +3.96). Classic tail-concentration mirage.
+
+Timeframe verdict: robust reversion lives at **hourly** (cost-gated, 9/9 yrs
+gross+); the proven tradeable edge lives at **weekly+**; **4h is the worst of
+both** — less robust than hourly, not the weekly edge. Do not pursue 4h.
+
+## 5d. Timeframe sweep: 30m / 1h / 4h / daily (PCA) — a U-shape
+
+`usd_factor_4h_probe.py <freq>` runs any frequency. Pooled lag-1 residual corr
+(1-factor): 15m −0.077, 30m −0.074, 1h −0.058, 4h −0.039, daily −0.033. It
+strengthens toward higher frequency but **PLATEAUS at 15–30m (~−0.075)** — it
+does NOT keep exploding toward the tick. Pure bid-ask/tick bounce would keep
+growing; a plateau argues for a *genuine ~15–30 min reversion timescale* in the
+residual mid (mildly reassuring vs the microstructure-illusion worry).
+
+| TF | Robust (per-yr)? | Net @0.7 commission | Verdict |
+|---|---|---|---|
+| **15m** | ✅ 5/6 pairs 8–9/9 yrs, win 57–62% | net+ (EUR/GBP/CHF 9/9) | as 30m; USDJPY fails fast end (2/9) |
+| **30m** | ✅ 8–9/9 yrs, win 58–62% | net+ (USDCHF +1/yr every yr) | strongest on paper; microstructure-contamination risk |
+| 1h | ✅ 9/9 gross+ | marginal | cost-gated |
+| 4h | ❌ tail mirage | fragile | skip |
+| daily | small-n/noisy | big but unstable (USDCHF clean) | overlaps proven weekly |
+| weekly+ | ✅ proven | clears cost | the macro edge |
+
+30m is the most statistically robust result here (look-ahead-clean 1-factor body
+net +0.15..+0.26, 2-factor stronger). BUT capture uses **mid** prices + flat
+commission; the frequency-scaling warns a chunk may be non-tradeable
+microstructure that dies once you cross the real spread at the stressed moment
+(the [[project_fx_range_band_maker_illusion]] pattern). **Decisive test: tick-exact
+fills at the 30m boundary (real ask/bid).** Until then 30m is unproven, not real.
+
+## 5e. GARCH/vol-normalisation — no selection lift, but a tradeability red flag
+
+`usd_factor_volnorm_probe.py [freq]`: dislocation in conditional-vol z-scores
+(causal EWMA, λ=0.94 = integrated-GARCH) vs raw bps. Findings (15m & 30m):
+- **No selection improvement:** raw-bps ≈ vol-z top-decile (raw often marginally
+  higher net), no robustness gain. Lagged/rolling PCA not pursued (validation
+  only; lead-lag PCA = overfit risk on 6 assets).
+- **The edge is concentrated in HIGH-vol regimes** (every pair, both TFs:
+  high-vol-half net > low-vol-half net). Opposite of the tradeability hope.
+  Mechanism: high vol → bigger absolute moves → bigger gross vs the FLAT 0.7bps
+  commission. So the flat-commission net **flatters the high-vol trades that
+  carry the edge**; real (vol-scaling) spread would hit exactly those.
+
+### 5e-correction: high vol is NOT wide spread — it's the liquid sessions
+
+A follow-up check (`usd_factor_vol_spread_check.py`) overturns the worry above.
+The "edge in high-vol = expensive regime" claim assumed high vol ⇒ wide spread.
+It is false:
+- Hour-of-day (EURUSD): peak-vol hour is 14 UTC (LDN/NY overlap, vol 4.2bps) at
+  the **tightest** spread (0.27bps); the **widest** spreads (0.60–0.70bps) are
+  the low-vol 20–22 UTC rollover. High realized vol = busy liquid sessions =
+  tight spreads.
+- corr(vol, spread) only weakly positive (+0.10..+0.26); high-vol-half spread is
+  just ~0.05–0.14bps wider than low-vol-half.
+- Net of the **actual quoted spread** (wider than Pepperstone) is STILL higher in
+  the high-vol half for every pair (EURUSD +0.90, GBPUSD +0.64, USDJPY +0.56).
+
+So the high-vol concentration is **favourable** for tradeability, not adverse —
+the prior "flat-commission flatters it" conclusion was wrong. The only unmodeled
+piece left is the boundary-tick fill (entry timing/slippage); the spread-regime
+worry is resolved in the edge's favour. Tick-exact is now a confirmation step,
+not an expected killer. (AUDUSD lone negative only under its 1.5bps Dukascopy
+spread; fine at Pepperstone commission.)
+
+## 5f. TICK-EXACT FILLS — the gate PASSES for EURUSD & GBPUSD
+
+`usd_factor_tickexact_fill.py [freq]`: fade top-decile |1-factor residual|, enter
+at the ACTUAL quoted ask/bid at the bar-close tick, hold one bar, exit at actual
+bid/ask. Single tradeable instrument, look-ahead-free factor, real spread crossed
+at the stressed moment. THIS is the test every prior FX lead died on.
+
+30m (15m near-identical, slightly stronger):
+
+| Pair | mid gross | tick-exact NET | win% | t | per-year |
+|---|---|---|---|---|---|
+| **EURUSD** | +1.66 | **+1.32** | 55 | **+9.1** | **9/9 yrs +, growing** |
+| **GBPUSD** | +1.44 | **+0.61** | 52 | +3.4 | 8/9 yrs + |
+| AUDUSD | +0.78 | −0.89 | 48 | −4.1 | dead (Dukascopy 1.66bps spr) |
+| USDJPY | +0.50 | +0.01 | 52 | +0.1 | breakeven |
+| USDCHF | +0.72 | −0.51 | 47 | −3.7 | dead (1.23bps spr) |
+| USDCAD | +0.69 | −0.30 | 48 | −2.3 | dead (0.98bps spr) |
+
+**EURUSD & GBPUSD survive tick-exact fills, robustly** — first intraday edge in
+the thread to clear this gate. Wide pairs die only on Dukascopy's wide spreads;
+at Pepperstone (~0.7bps commission + tiny raw) they'd be ~breakeven and
+EURUSD/GBPUSD stay clearly + (EURUSD ≈ +0.9–1.1 net). Verdict MORE favourable at
+the real broker.
+
+Still unproven (honest): entry-at-close-tick assumes ~instant exec; no slippage
+beyond quote; single-pair unhedged (win 55–57%, factor adds variance — a
+dollar-neutral build raises Sharpe); still a backtest (needs walk-forward + live
+paper). But the core question — survives real spread at the real moment — PASSED.
+
 ## 6. Next (if continuing this thread)
 
-1. **Tick-exact fills on EURUSD 6–12 bps band** — the margin-deciding test for the only pair that might clear cost.
-2. **Lower-frequency port** — daily/weekly factor-residual reversion, where cost is not the binding constraint.
-3. **Close this avenue** — record as another model-proof NO-GO and redirect modeling capacity to the weekly mean-reversion signal (the only surviving FX edge).
+1. **Causal rolling 2-factor residual** — confirm the in-sample 2-factor lift (§3b) survives out-of-sample with a rolling factor estimate.
+2. **Tick-exact fills on the 6–12 bps band** — the margin-deciding test; band is moderate (not event candles) so fills should be benign.
+3. **Lower-frequency port** — daily/weekly factor-residual reversion, where cost is negligible and a richer factor model converts directly to P&L.
