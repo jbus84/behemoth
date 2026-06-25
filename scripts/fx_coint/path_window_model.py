@@ -18,8 +18,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from feature_ic_definitive import build_all  # noqa: E402, F401
-from model_search import COST_BPS, build_design  # noqa: E402, F401
+from model_search import COST_BPS, _histgbm, build_design  # noqa: E402, F401
 from sample_weights import event_weights  # noqa: E402
+from sklearn.neural_network import MLPRegressor  # noqa: E402
+from sklearn.pipeline import Pipeline  # noqa: E402
+from sklearn.preprocessing import StandardScaler  # noqa: E402
 from triple_barrier import triple_barrier_core  # noqa: E402
 
 
@@ -103,3 +106,27 @@ def build_sym_pointwise(cache, ev_by_sym, n_tb):
         sym_data[s] = dict(X=X[fin], y=ret[fin], entry=entry[fin],
                            t1=t1[fin], ret=ret[fin], sw=sw[fin])
     return sym_data
+
+
+def make_window_models(seed=0):
+    """Stage-1 path models: scaled MLP + regularized HistGBM."""
+    mlp = Pipeline([
+        ("scale", StandardScaler()),
+        ("mlp", MLPRegressor(hidden_layer_sizes=(64, 32), alpha=1e-3,
+                             max_iter=300, early_stopping=True,
+                             validation_fraction=0.15, random_state=seed)),
+    ])
+    return {"mlp": mlp, "histgbm": _histgbm(seed)}
+
+
+def fit_predict_for(model):
+    """fit_predict closure for model_oos_pnl. HistGBM gets sample_weight; MLP pipeline
+    is fit unweighted (keeps step-prefixed sample_weight plumbing out of scope)."""
+    def _fn(train_dict, test_dict):
+        if isinstance(model, Pipeline):
+            model.fit(train_dict["X"], train_dict["y"])
+        else:
+            model.fit(train_dict["X"], train_dict["y"],
+                      sample_weight=train_dict.get("sw"))
+        return model.predict(test_dict["X"])
+    return _fn

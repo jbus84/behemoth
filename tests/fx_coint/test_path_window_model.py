@@ -70,3 +70,22 @@ def test_build_sym_window_shapes_align():
     assert d["X"].shape[1] == 32 * 4
     assert d["X"].shape[0] == d["entry"].shape[0] == d["ret"].shape[0]
     assert np.isfinite(d["X"]).all()
+
+
+def test_window_models_learn_linear_signal():
+    from scripts.fx_coint.path_window_model import fit_predict_for, make_window_models
+
+    rng = np.random.default_rng(0)
+    n, p = 4000, 16
+    X = rng.standard_normal((n, p))
+    beta = np.zeros(p)
+    beta[0] = 2.0
+    y = X @ beta + rng.standard_normal(n) * 0.1
+    cut = 3200
+    train = {"X": X[:cut], "y": y[:cut], "sw": np.ones(cut)}
+    test = {"X": X[cut:], "y": y[cut:], "sw": np.ones(n - cut)}
+    models = make_window_models(seed=0)
+    for name, model in models.items():
+        mu = fit_predict_for(model)(train, test)
+        corr = np.corrcoef(mu, test["X"][:, 0])[0, 1]
+        assert corr > 0.5, f"{name} corr={corr:.2f}"
