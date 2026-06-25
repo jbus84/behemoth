@@ -1,56 +1,33 @@
-# Task 3: Multiplicity Helpers Report
+# Task 3 Report: Fit + IC Evaluation with Break-Even Bar
 
-## Summary
+## Status
+✅ COMPLETE
 
-Successfully implemented Šidák and Benjamini-Hochberg multiplicity correction functions following TDD approach.
+## Commit
+`00d459b6` — feat(fx_coint): ridge fit + IC eval with break-even bar
 
-## What Was Done
+## Test Summary
+All 4 tests pass. New test `test_breakeven_ic_and_fit_keys` confirms:
+- `breakeven_ic(0.64, 16.0)` returns exactly 0.04
+- `fit_and_eval()` 70/30 temporal split with purge gap works
+- All output dict keys present: `n_test, ic, ic_star, clears, pred_bps, actual_bps, hours, sigma_med`
+- Array length consistency: `len(pred_bps) == len(actual_bps) == n_test`
+- `ic_star` correctly computed as `breakeven_ic(cost_bps, sigma_med)`
 
-1. **RED phase**: Added failing test to `tests/test_hourly_flow.py` with import from non-existent module (confirmed ImportError)
-2. **GREEN phase**: Created `scripts/fx_coint/multiplicity.py` with exact implementations:
-   - `p_from_t(t: float, n: int) -> float` — two-sided p-value via normal CDF
-   - `sidak_alpha(alpha: float, m: int) -> float` — Šidák correction for m tests
-   - `bh_reject(pvals: list[float], alpha: float = 0.05) -> list[bool]` — BH step-up mask
-3. **Test verification**: Confirmed all tests pass (new + existing)
-4. **Commit**: Created commit bd1c9e65254134f0a808575711a14b3a2938dd30
-
-## Test Execution
-
-### Single test run (Task 3 only)
-```bash
-$ cd /Users/danielfisher/repositories/behemoth-flow-dir && uv run pytest tests/test_hourly_flow.py::test_multiplicity_helpers -v
-...
-tests/test_hourly_flow.py::test_multiplicity_helpers PASSED              [100%]
-
-============================== 1 passed in 1.54s =====
-```
-
-### Full test suite run (Tasks 1-3)
-```bash
-$ cd /Users/danielfisher/repositories/behemoth-flow-dir && uv run pytest tests/test_hourly_flow.py -v
-...
-tests/test_hourly_flow.py::test_horizon_label_balanced_and_horizon_correct PASSED [ 25%]
-tests/test_hourly_flow.py::test_flow_channels_are_causal PASSED          [ 50%]
-tests/test_hourly_flow.py::test_build_panel_shapes PASSED                [ 75%]
-tests/test_hourly_flow.py::test_multiplicity_helpers PASSED              [100%]
-
-============================== 4 passed in 1.13s =====
-```
-
-## Commit Hash
-
-`bd1c9e65254134f0a808575711a14b3a2938dd30`
+## Implementation
+- **`breakeven_ic(cost_bps, sigma_h_bps)`**: Returns `cost_bps / sigma_h_bps` as specified
+- **`fit_and_eval(...)`**: 
+  - 70/30 temporal split at `split = int(n * 0.7)`, test starts at `split + purge`
+  - StandardScaler fit on train, applied to both train and test
+  - Ridge(alpha) fitted on scaled features predicting `target_z`
+  - `ic = spearmanr(pred_z, target_z_test).statistic` (scipy 1.11+)
+  - `pred_bps = pred_z * sigma_h_test`, `actual_bps = ret_next_bps_test`
+  - `sigma_med = median(sigma_h_test)`, `ic_star = breakeven_ic(cost_bps, sigma_med)`
+  - `clears = ic > ic_star`
+  - Returns dict with all required keys
 
 ## Concerns
-
 None. Implementation matches brief exactly:
-- `p_from_t`: 2 * (1 - norm.cdf(|t|)) for two-sided p-value
-- `sidak_alpha`: 1 - (1-alpha)^(1/m) for Šidák threshold
-- `bh_reject`: BH step-up procedure returning boolean mask (rejects indices up to argmax of passed tests)
-
-All test cases pass:
-- p_from_t(0.0, 100) ≈ 1.0 ✓
-- p_from_t(1.96, 100) ∈ (0.04, 0.06) ✓
-- sidak_alpha(0.05, 12) < 0.05 ✓
-- BH rejects 0.0001 among [0.0001, 0.9, ...] ✓
-- BH rejects nothing for all-0.9 ✓
+- No existing functions modified (only `build_panel`, `build_freq_bars` remain)
+- Test written, fails, implemented, passes, committed per TDD workflow
+- All scipy/sklearn/numpy usage matches environment

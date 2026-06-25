@@ -1,81 +1,47 @@
-# Task 1: Horizon-generalised drift-immune tercile labeler — Report
+# Task 1: Fix build_freq_bars contig labeling bug
 
-## Summary
-Implemented `label_horizon_tercile()` function following TDD principles. All test cases pass.
+## Status: COMPLETE
 
-## Implementation Details
+### Commit
+- **d3979852**: fix(fx_coint): compute contig adjacency after session filter in build_freq_bars
+
+### Bug Description
+`build_freq_bars` computed the `contig` boolean on the FULL aggregated bar series, then applied the session filter (hour in [7,21), weekday) and reset the index. This caused mislabeled contiguity:
+- Bars at session boundaries (e.g., 07:00 on day 2) that had 1-hour-earlier predecessors in the unfiltered series (e.g., 06:00 on day 2) were marked `contig=True`
+- But in the filtered frame returned to the caller, their true predecessor was many hours earlier (e.g., 20:00 from day 1's last session hour)
+- This leaked overnight returns into the contiguity mask, which `build_panel` uses to filter adjacent returns
+
+### Fix Applied
+Reordered operations in `build_freq_bars`:
+1. Apply session/weekday filter first: `keep = (hour >= session[0]) & (hour < session[1]) & (dayofweek < 5)`
+2. Reset index: `bars = bars[keep].reset_index(drop=True)`
+3. Compute `contig` on the filtered frame: `contig[i] = (bucket[i] - bucket[i-1]) == FREQ_MINUTES[freq]`
+4. Set `contig[0] = False` (no prior bar exists)
+
+This ensures `contig` reflects true adjacency in the frame returned to the caller.
+
+### Test Coverage
+Added `test_build_freq_bars_overnight_gap_not_contiguous` to `/tests/fx_coint/test_reg_signal_hunt.py`:
+- Creates two full 24-hour days of synthetic 1-min bars
+- Applies session filter [7,21) on both days
+- Asserts first bar of day 1 has `contig=False` (no predecessor)
+- Asserts first bar of day 2 has `contig=False` (predecessor is 11+ hours earlier, not 1 hour)
+- Asserts all within-day consecutive bars have `contig=True`
+
+### Test Results
+```
+tests/fx_coint/test_reg_signal_hunt.py::test_build_freq_bars_session_and_contiguity PASSED
+tests/fx_coint/test_reg_signal_hunt.py::test_build_freq_bars_overnight_gap_not_contiguous PASSED
+
+2 passed in 0.86s
+```
 
 ### Files Modified
-- `scripts/fx_coint/hourly_nextbar_label.py` — appended new function
-- `tests/test_hourly_flow.py` — created new test file
+- `scripts/fx_coint/reg_signal_hunt.py`: `build_freq_bars()` function (24 → 27 lines; reordered filter before contig computation)
+- `tests/fx_coint/test_reg_signal_hunt.py`: Added 30-line test case capturing overnight gap scenario
 
-### Key Implementation Decision
-**h-bar realized returns for tercile computation**: The initial brief suggested using 1-bar realized returns for terciles, but this produced imbalanced class distributions (41%/39%/20% vs target ~33%/33%/33%). Investigation revealed the issue: when terciles are computed from 1-bar returns but applied to h-bar forward returns (which have h× the variance for a random walk), the distribution becomes skewed.
-
-The solution: use h-bar realized returns for tercile computation. This maintains the statistical property that terciles produce exactly ~33%/33%/33% balance when applied to similarly-distributed data, and it aligns the drift-immunity across different horizons (thresholds track regime at the prediction scale).
-
-### Function Signature
-```python
-def label_horizon_tercile(df: pd.DataFrame, horizon: int, window: int = 500) -> pd.DataFrame:
-    """Drift-immune h-bar-ahead 3-class label via rolling causal terciles.
-    
-    Returns DataFrame with columns:
-    - tb_label: int8 {-1, 0, 1} — tercile class
-    - fwd_ret_bps: float — h-bar forward return in basis points
-    - _label_valid: bool — false for rows without enough history or forward data
-    """
-```
-
-## Test Results
-
-### Test Command
-```bash
-uv run pytest tests/test_hourly_flow.py::test_horizon_label_balanced_and_horizon_correct -v
-```
-
-### Output
-```
-============================= test session starts ==============================
-platform darwin -- Python 3.12.7, pytest-9.0.2, pluggy-1.6.0
-cachedir: .pytest_cache
-rootdir: /Users/danielfisher/repositories/behemoth-flow-dir
-plugins: anyio-4.12.1, cov-7.0.0
-collecting ... collected 1 item
-
-tests/test_hourly_flow.py::test_horizon_label_balanced_and_horizon_correct PASSED [100%]
-
-============================== 1 passed in 1.29s =======================================
-```
-
-### Test Validation
-The test verifies:
-1. **Class balance**: -1, 0, +1 each ~33% ± 5% on valid rows
-2. **Forward return accuracy**: `fwd_ret_bps` matches h-bar return in basis points (checked at row 1000)
-3. **Causality**: last `horizon` rows correctly marked `_label_valid=False` (no forward data)
-
-All assertions pass.
-
-## Commit
-```
-Hash: 44e8f9a4b5824bb0306cb83757a65deb1e2f7be4
-Message: feat(fx_coint): horizon-generalised drift-immune tercile labeler
-         (commit body documents the 1-bar -> h-bar threshold deviation)
-Files: 2 changed, 63 insertions(+)
-  - scripts/fx_coint/hourly_nextbar_label.py (new function appended)
-  - tests/test_hourly_flow.py (new test file)
-```
-
-## Post-implementation verification (code review follow-up)
-- `label_next_bar_tercile` (pre-existing function) still works and is balanced (33.5/33.2/33.3) — not broken by the append.
-- `label_horizon_tercile(df, horizon=1)` reproduces `label_next_bar_tercile` tb_label exactly.
-- All `tb_label` values are strictly in {-1, 0, 1}.
-- Commit body now explicitly documents the 1-bar -> h-bar threshold deviation.
-
-## Concerns
-One documented spec deviation: the brief's literal wording was "trailing realized
-1-bar returns" for the terciles; the implementation uses h-bar realized returns.
-Deliberate correction — 1-bar thresholds produce imbalanced classes for h>1 (h-bar
-forward returns carry ~sqrt(h)x the variance) and fail the test's balance assertion.
-h-bar thresholds are the more principled choice for drift-immunity at the prediction
-scale, and horizon=1 still reproduces the original next-bar labeler exactly. Deviation
-is noted in the docstring, the report, and the commit body.
+### No Concerns
+- Fix is minimal and focused
+- Existing test remains green
+- New test directly verifies the bug fix
+- No API changes to `build_freq_bars` or downstream consumers
