@@ -17,6 +17,11 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from feature_ic_definitive import build_all  # noqa: E402, F401
+from model_search import COST_BPS, build_design  # noqa: E402, F401
+from sample_weights import event_weights  # noqa: E402
+from triple_barrier import triple_barrier_core  # noqa: E402
+
 
 def path_channels(logp, f, vol) -> list[np.ndarray]:
     """Per-bar path channels in fixed order: [log_return, vol, intra_bar_mom, hl_pos_frac]."""
@@ -40,3 +45,61 @@ def build_window_matrix(channels, entry, W: int) -> np.ndarray:
     for i, e in enumerate(entry):
         rows[i] = np.concatenate([ch[e - W + 1:e + 1] for ch in channels])
     return rows
+
+
+POOL = ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF"]
+N_GRID = [30, 50]
+W_GRID = [16, 32, 64]
+N_EVENTS = 10000
+
+
+def sample_events(cache, n_tb, W_max, rng):
+    """Per-symbol sorted event indices, shared across builders for fair comparison."""
+    out = {}
+    for s, (logp, _f, vol, bph) in cache.items():
+        n = len(logp)
+        warm = max(int(96 * bph) + 60, W_max - 1)
+        idx = np.arange(warm, n - n_tb - 3)
+        idx = idx[np.isfinite(vol[idx + 1]) & (vol[idx + 1] > 0)]
+        out[s] = np.sort(rng.choice(idx, min(N_EVENTS, len(idx)), replace=False))
+    return out
+
+
+def _tb_and_weights(logp, vol, ev, n_tb):
+    entry = ev + 1
+    n = len(logp)
+    t1, ret, _, _ = triple_barrier_core(
+        logp, entry, np.minimum(entry + n_tb, n - 1),
+        1.0 * vol[entry] * np.sqrt(n_tb))
+    bar_log_ret = np.diff(logp, prepend=logp[0])
+    sw = event_weights(bar_log_ret, entry, t1)
+    return entry, t1, ret, sw
+
+
+def build_sym_window(cache, ev_by_sym, n_tb, W):
+    """Per-symbol dicts with X = flattened W-bar path window."""
+    sym_data = {}
+    for s, (logp, f, vol, _bph) in cache.items():
+        ev = ev_by_sym[s]
+        entry, t1, ret, sw = _tb_and_weights(logp, vol, ev, n_tb)
+        channels = path_channels(logp, f, vol)
+        X = build_window_matrix(channels, entry, W)
+        fin = np.isfinite(X).all(axis=1) & np.isfinite(ret)
+        sym_data[s] = dict(X=X[fin], y=ret[fin], entry=entry[fin],
+                           t1=t1[fin], ret=ret[fin], sw=sw[fin])
+    return sym_data
+
+
+def build_sym_pointwise(cache, ev_by_sym, n_tb):
+    """Per-symbol dicts with X = existing 30-feature point-in-time design matrix."""
+    sym_data = {}
+    for s, (logp, f, vol, _bph) in cache.items():
+        ev = ev_by_sym[s]
+        entry, t1, ret, sw = _tb_and_weights(logp, vol, ev, n_tb)
+        feature_names = [k for k in f if k != "ent_sign"]
+        interactions = [("ffd_0.1", "ffd_zvol20")]
+        X, _ = build_design(f, entry, feature_names, interactions)
+        fin = np.isfinite(X).all(axis=1) & np.isfinite(ret)
+        sym_data[s] = dict(X=X[fin], y=ret[fin], entry=entry[fin],
+                           t1=t1[fin], ret=ret[fin], sw=sw[fin])
+    return sym_data
