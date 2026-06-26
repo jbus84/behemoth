@@ -63,7 +63,6 @@ def evaluate_l30(panel, n_folds, seed):
     all_entry = np.concatenate([panel[s]["entry"] for s in syms])
     edges = np.quantile(all_entry, np.linspace(0, 1, n_folds + 1))
 
-    fold_rows = []
     year_rows = []
     per_sym_rows = []
 
@@ -94,7 +93,7 @@ def evaluate_l30(panel, n_folds, seed):
         train_conf = np.abs(clf.predict_proba(np.concatenate(Xtr))[:, 1] - 0.5)
         thr = np.quantile(train_conf, 1 - SEL_Q)
 
-        for si, s in enumerate(syms):
+        for _si, s in enumerate(syms):
             d = panel[s]
             te = (d["entry"] >= lo) & (d["entry"] < hi)
             if te.sum() < 50:
@@ -168,13 +167,7 @@ def main():
         total_n += int(r["n_trades"])
     print("-" * 110)
 
-    # Overall
-    all_dd = []
-    all_rr = []
-    for _, r in yr_df.iterrows():
-        # Reconstruct sign and return from aggregated data is hard; use weighted avg
-        pass
-    # Use sym_rows for overall
+    # Overall — use sym_rows
     sym_df = pd.DataFrame(sym_rows)
     all_n = int(sym_df["n"].sum())
     weighted_acc = np.average(sym_df["acc"], weights=sym_df["n"])

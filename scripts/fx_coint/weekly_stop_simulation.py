@@ -185,7 +185,6 @@ def main():
     print("=" * 100)
     print("POSITION SIZING FOR 10% MAX DD (best stop level)")
     print("=" * 100)
-    best_stop = -75  # heuristic; we'll show all
     for stop in [-50, -75, -100, -125, -150]:
         sim = simulate_with_stop(base_df, stop)
         m = metrics(sim)

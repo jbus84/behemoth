@@ -106,7 +106,7 @@ def main():
     print("\n[H3 range breakout]  brk*fwd (continuation>0, reversion<0), oriented-agnostic")
     for label, d in (("IS", df_is), ("OOS", df_oos)):
         m = d[d["brk"] != 0]
-        cont = (m["brk"] * (np.sign(m["fwd"]) * np.abs(m["fwd"]))).mean()
+        (m["brk"] * (np.sign(m["fwd"]) * np.abs(m["fwd"]))).mean()
         # use raw per-pair fwd magnitude (not oriented) for breakout direction:
         print(f"   {label}: mean(brk*fwd_oriented)={ (m['brk']*m['fwd']).mean():+.3f} bps  n={len(m):,}")
 

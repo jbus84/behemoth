@@ -44,7 +44,7 @@ def _ts(sym):
 
 
 def tb_daily(signal, n_tb):
-    cache = {s: build_all(s) for s in POOL}
+    {s: build_all(s) for s in POOL}
     ts = {s: _ts(s) for s in POOL}
     sym = {}
     for s in POOL:
@@ -99,7 +99,7 @@ def main():
         s = tb_daily(sig, n)
         s.index = pd.to_datetime(s.index)
         series[f"{sig}@{n}"] = _u(s)
-    xs = xsr.__dict__.setdefault("TURN_COST_FRAC", 1.0)
+    xsr.__dict__.setdefault("TURN_COST_FRAC", 1.0)
     xsr.TURN_COST_FRAC = 1.0
     x = xsr.backtest(xsr.residualise(xsr.daily_returns()), 20)
     x.index = pd.to_datetime(x.index)
