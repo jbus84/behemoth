@@ -84,7 +84,7 @@ def main():
 
     # tradeable check on the most-positive (regime,ext,N) continuation cell
     best = None
-    for alabel, eb, nsz, row in cells:
+    for alabel, eb, _nsz, row in cells:
         for ni, N in enumerate(N_GRID):
             if best is None or row[ni] > best[3]:
                 best = (alabel, eb, N, row[ni])

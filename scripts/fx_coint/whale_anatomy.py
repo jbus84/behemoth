@@ -61,10 +61,7 @@ def event_study(loader, has_flow, by):
         logp, flow = loader(sym)
         n = len(logp)
         r = np.append(np.nan, np.diff(logp)) * 1e4             # RAW bar return (bps)
-        if by == "flow" and has_flow:
-            score = np.abs(flow)
-        else:
-            score = np.abs(r)
+        score = np.abs(flow) if (by == "flow" and has_flow) else np.abs(r)
         thr = np.nanquantile(score[np.isfinite(score)], 0.99)
         idx = np.where(score >= thr)[0]
         idx = idx[(idx >= PRE + 1) & (idx < n - POST)]

@@ -88,7 +88,6 @@ def evaluate(data, select_fn, n_folds):
         if fold:
             fnet.append(np.mean(np.concatenate(fold)))
     fn = np.array(fnet)
-    hit = np.nan
     return dict(net=fn.mean() if len(fn) else np.nan, n=n_tr,
                 folds_pos=int((fn > 0).sum()), nf=len(fn),
                 sym_pos=int((sym_pos >= (n_folds - 1) / 2).sum()))
