@@ -1,7 +1,7 @@
-"""BoostLSS GEV causal walk-forward model.
+"""BoostLSS causal walk-forward model with Gaussian and GEV families.
 
-Note: only GEVLSS is available in the installed boostlss_py build.
-StudentTLSS is listed for interface compatibility but maps to GEVLSS.
+Approach A: GaussianLSS (2 params: mu, sigma) — symmetric baseline.
+Approach B: GEVLSS (3 params: mu, sigma, nu) — asymmetric tail family.
 """
 from __future__ import annotations
 
@@ -10,14 +10,8 @@ from boostlss_py import BoostLssModel, PyFamily, PyTreeLearner
 
 # Parameters exposed by each distribution family
 FAMILY_PARAMS: dict[str, list[str]] = {
-    "StudentTLSS": ["mu", "sigma", "nu"],  # maps to GEVLSS at runtime
+    "GaussianLSS": ["mu", "sigma"],
     "GEVLSS": ["mu", "sigma", "nu"],
-}
-
-# Family name aliases: map requested name to boostlss_py accepted name
-_FAMILY_ALIAS: dict[str, str] = {
-    "StudentTLSS": "GEVLSS",
-    "GEVLSS": "GEVLSS",
 }
 
 # Fixed hyperparameters — tune on fold 1 if needed
@@ -51,7 +45,7 @@ class BoostLssWFO:
     Assembles OOS predictions across all folds.
     """
 
-    def __init__(self, family: str = "StudentTLSS") -> None:
+    def __init__(self, family: str = "GEVLSS") -> None:
         if family not in FAMILY_PARAMS:
             raise ValueError(f"family must be one of {list(FAMILY_PARAMS)}, got {family!r}")
         self.family = family
@@ -59,7 +53,7 @@ class BoostLssWFO:
 
     def _build_model(self, n_features: int) -> BoostLssModel:
         model = BoostLssModel(
-            PyFamily(_FAMILY_ALIAS[self.family]),
+            PyFamily(self.family),
             mstop=_MSTOP,
             step_length=_STEP_LENGTH,
         )
