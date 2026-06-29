@@ -151,3 +151,206 @@ def within_symbol_features(df: pl.DataFrame, symbol: str) -> pl.DataFrame:  # no
     df = df.with_columns(_s("tail_count_100", tail))
 
     return df
+
+
+# Ordered XS feature column names (indices 17-29 in final matrix)
+XS_FEATURES: list[str] = [
+    "xs_rank",
+    "xs_robust_z",
+    "usd_factor_resid",
+    "xs_iqr",
+    "xs_iqr_trend",
+    "xs_dispersion_zz",
+    "loo_robust_z",
+    "xs_kurt",
+    "xs_bimodality",
+    "pair_corr_mean",
+    "mom_vol_interaction",
+    "is_jpy",
+    "symbol_code",
+]
+
+# Full ordered feature list (30 features)
+ALL_FEATURES: list[str] = WITHIN_SYMBOL_FEATURES + XS_FEATURES
+
+# Symbol encoding (sorted alphabetically, stable)
+_SYMBOL_CODES: dict[str, int] = {}
+
+
+def _encode_symbol(symbols: list[str], target: str) -> int:
+    """Return deterministic alphabetical integer code for target among all symbols."""
+    sorted_syms = sorted(symbols)
+    return sorted_syms.index(target)
+
+
+def xs_features(universe: dict[str, pl.DataFrame]) -> dict[str, pl.DataFrame]:
+    """Append cross-sectional features to each symbol using backward as-of join.
+
+    For each target (symbol, bar) at close_ts=T, XS features are computed from
+    the most recent bar for each peer with close_ts <= T (look-ahead-free).
+    """
+    sorted_uni = {sym: df.sort("close_ts") for sym, df in universe.items()}
+    symbols = sorted(sorted_uni.keys())
+
+    result: dict[str, pl.DataFrame] = {}
+
+    for target_sym in symbols:
+        target = sorted_uni[target_sym].clone()
+        target_ret = target["log_ret_bps"].to_numpy()
+        n = len(target)
+
+        # Collect peer returns at each target bar via backward as-of join
+        peer_rets: dict[str, np.ndarray] = {}
+        for peer_sym in symbols:
+            if peer_sym == target_sym:
+                continue
+            peer = sorted_uni[peer_sym].select(["close_ts", "log_ret_bps"])
+            joined = target.select(["close_ts"]).join_asof(
+                peer.rename({"log_ret_bps": f"_peer_{peer_sym}"}),
+                on="close_ts",
+                strategy="backward",
+            )
+            peer_rets[peer_sym] = joined[f"_peer_{peer_sym}"].to_numpy()
+
+        peer_syms = [s for s in symbols if s != target_sym]
+        peer_mat = np.column_stack([peer_rets[s] for s in peer_syms])  # (n, n_peers)
+
+        # Full cross-section: (n, n_syms)
+        full_mat = np.column_stack([target_ret, peer_mat])
+
+        # XS rank of target (ordinal rank normalized [0,1])
+        xs_rank = np.array(
+            [
+                float(np.sum(~np.isnan(full_mat[i]) & (full_mat[i] <= target_ret[i])))
+                / max(float(np.sum(~np.isnan(full_mat[i]))), 1.0)
+                for i in range(n)
+            ]
+        )
+
+        xs_robust_z = np.full(n, np.nan)
+        xs_iqr = np.full(n, np.nan)
+        xs_kurt = np.full(n, np.nan)
+        xs_bimodality = np.full(n, np.nan)
+
+        for i in range(n):
+            row = full_mat[i]
+            valid = row[~np.isnan(row)]
+            if len(valid) < 3:
+                continue
+            med = float(np.median(valid))
+            mad = 1.4826 * float(np.median(np.abs(valid - med)))
+            xs_robust_z[i] = (target_ret[i] - med) / max(mad, 1e-9)
+            q75, q25 = float(np.percentile(valid, 75)), float(np.percentile(valid, 25))
+            xs_iqr[i] = q75 - q25
+            if len(valid) >= 4:
+                xs_kurt[i] = float(scipy_kurtosis(valid, fisher=True, bias=False))
+                sk = float(np.mean(((valid - np.mean(valid)) / (np.std(valid) + 1e-9)) ** 3))
+                xs_bimodality[i] = (sk**2 + 1.0) / (xs_kurt[i] + 3.0 + 1e-9)
+
+        xs_iqr_trend = np.concatenate([[np.nan], np.diff(xs_iqr)])
+        xs_dispersion_zz = _rolling_mad(xs_iqr, 100)
+
+        loo_robust_z = np.full(n, np.nan)
+        for i in range(n):
+            peers = peer_mat[i]
+            valid = peers[~np.isnan(peers)]
+            if len(valid) < 2:
+                continue
+            med = float(np.median(valid))
+            mad = 1.4826 * float(np.median(np.abs(valid - med)))
+            loo_robust_z[i] = (target_ret[i] - med) / max(mad, 1e-9)
+
+        # USD-factor residual: causal rolling OLS residual of target vs basket mean
+        basket = np.nanmean(full_mat, axis=1)
+        usd_factor_resid = np.full(n, np.nan)
+        W = 250
+        for i in range(W, n):
+            yw = target_ret[i - W : i]
+            xw = basket[i - W : i]
+            valid_mask = ~(np.isnan(yw) | np.isnan(xw))
+            if valid_mask.sum() < 50:
+                continue
+            xv, yv = xw[valid_mask], yw[valid_mask]
+            beta = float(np.cov(xv, yv)[0, 1]) / max(float(np.var(xv)), 1e-12)
+            alpha = float(np.mean(yv)) - beta * float(np.mean(xv))
+            usd_factor_resid[i] = target_ret[i] - (alpha + beta * basket[i])
+
+        # Rolling mean pairwise correlation (W=100)
+        pair_corr_mean = np.full(n, np.nan)
+        for i in range(100, n):
+            block = full_mat[i - 100 : i]
+            valid_cols = ~np.all(np.isnan(block), axis=0)
+            if valid_cols.sum() < 2:
+                continue
+            with np.errstate(divide="ignore", invalid="ignore"):
+                corr = np.corrcoef(block[:, valid_cols].T)
+            if corr.shape[0] > 1:
+                mask = ~np.eye(corr.shape[0], dtype=bool)
+                pair_corr_mean[i] = float(np.nanmean(corr[mask]))
+
+        mom_rank_20 = (
+            target["mom_rank_20"].to_numpy()
+            if "mom_rank_20" in target.columns
+            else np.full(n, np.nan)
+        )
+        vol_of_vol_20 = (
+            target["vol_of_vol_20"].to_numpy()
+            if "vol_of_vol_20" in target.columns
+            else np.full(n, np.nan)
+        )
+        mom_vol_interaction = mom_rank_20 * vol_of_vol_20
+
+        sym_code = float(_encode_symbol(symbols, target_sym))
+
+        target = target.with_columns(
+            [
+                pl.Series("xs_rank", xs_rank),
+                pl.Series("xs_robust_z", xs_robust_z),
+                pl.Series("usd_factor_resid", usd_factor_resid),
+                pl.Series("xs_iqr", xs_iqr),
+                pl.Series("xs_iqr_trend", xs_iqr_trend),
+                pl.Series("xs_dispersion_zz", xs_dispersion_zz),
+                pl.Series("loo_robust_z", loo_robust_z),
+                pl.Series("xs_kurt", xs_kurt),
+                pl.Series("xs_bimodality", xs_bimodality),
+                pl.Series("pair_corr_mean", pair_corr_mean),
+                pl.Series("mom_vol_interaction", mom_vol_interaction),
+                pl.col("is_jpy").cast(pl.Float64),
+                pl.Series("symbol_code", np.full(n, sym_code)),
+            ]
+        )
+        result[target_sym] = target
+
+    return result
+
+
+def build_features(
+    universe: dict[str, pl.DataFrame],
+) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
+    """Stack all symbols into a single feature matrix.
+
+    Returns:
+        X: float32 array of shape (valid_rows, 30)
+        close_ts_arr: datetime64 array aligned with X rows
+        feature_names: list of 30 feature column names
+        symbols_arr: symbol string per row
+    """
+    X_parts: list[np.ndarray] = []
+    ts_parts: list[np.ndarray] = []
+    sym_parts: list[list[str]] = []
+
+    for sym in sorted(universe.keys()):
+        df = universe[sym]
+        mat = df.select(ALL_FEATURES).to_numpy().astype(np.float32)
+        ts = df["close_ts"].to_numpy()
+
+        # Drop rows with any NaN
+        valid = ~np.any(np.isnan(mat), axis=1)
+        X_parts.append(mat[valid])
+        ts_parts.append(ts[valid])
+        sym_parts.append([sym] * int(valid.sum()))
+
+    X = np.vstack(X_parts)
+    close_ts_arr = np.concatenate(ts_parts)
+    symbols_arr: list[str] = sum(sym_parts, [])
+    return X, close_ts_arr, ALL_FEATURES, symbols_arr

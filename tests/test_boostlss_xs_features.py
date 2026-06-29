@@ -1,6 +1,7 @@
 """Tests for within-symbol feature engineering."""
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from scripts.boostlss_xs.universe import load_universe
@@ -13,6 +14,18 @@ def eurusd_bars():
     uni = load_universe(DATA_DIR)
     # Limit to 2000 rows for speed (O(N×W) Python loops in rolling helpers)
     return uni["EURUSD"].head(2000)
+
+
+@pytest.fixture(scope="module")
+def small_universe_ws():
+    """Small 3-symbol universe with within-symbol features applied (2000 bars each)."""
+    from scripts.boostlss_xs.features import within_symbol_features
+
+    uni = load_universe(DATA_DIR)
+    # Pick 3 symbols for speed; 2000 bars each
+    syms = sorted(uni.keys())[:3]
+    small = {sym: uni[sym].head(2000) for sym in syms}
+    return {sym: within_symbol_features(df, sym) for sym, df in small.items()}
 
 
 def test_within_symbol_features_adds_all_columns(eurusd_bars):
@@ -71,3 +84,53 @@ def test_tail_count_non_negative(eurusd_bars):
 
     result = within_symbol_features(eurusd_bars, "EURUSD")
     assert (result["tail_count_100"].drop_nulls() >= 0).all()
+
+
+def test_xs_features_adds_all_xs_columns(small_universe_ws):
+    from scripts.boostlss_xs.features import XS_FEATURES, xs_features
+
+    result = xs_features(small_universe_ws)
+    for sym, df in result.items():
+        for col in XS_FEATURES:
+            assert col in df.columns, f"{sym} missing xs column: {col}"
+
+
+def test_xs_no_look_ahead(small_universe_ws):
+    """XS features at bar T must not use peer bars with close_ts > T."""
+    import polars as pl
+
+    from scripts.boostlss_xs.features import xs_features
+
+    syms = sorted(small_universe_ws.keys())
+    target_sym = syms[0]
+
+    cutoff_idx = len(small_universe_ws[target_sym]) // 2
+    cutoff_ts = small_universe_ws[target_sym]["close_ts"].to_numpy()[cutoff_idx]
+
+    full = xs_features(small_universe_ws)
+
+    uni_trunc = dict(small_universe_ws)
+    uni_trunc[target_sym] = small_universe_ws[target_sym].filter(
+        pl.col("close_ts") <= pl.lit(cutoff_ts).cast(pl.Datetime("us"))
+    )
+    partial = xs_features(uni_trunc)
+
+    full_val = full[target_sym]["xs_rank"].to_numpy()[cutoff_idx]
+    partial_val = partial[target_sym]["xs_rank"].to_numpy()[-1]
+    assert abs(full_val - partial_val) < 1e-6, (
+        f"Look-ahead in xs_rank: full={full_val:.4f}, partial={partial_val:.4f}"
+    )
+
+
+def test_build_features_shape(small_universe_ws):
+    from scripts.boostlss_xs.features import build_features, xs_features
+
+    uni = xs_features(small_universe_ws)
+    X, close_ts_arr, feature_names, symbols_arr = build_features(uni)
+
+    assert X.ndim == 2
+    assert X.shape[1] == 30
+    assert len(close_ts_arr) == X.shape[0]
+    assert len(symbols_arr) == X.shape[0]
+    assert len(feature_names) == 30
+    assert X.dtype == np.float32
