@@ -174,7 +174,6 @@ XS_FEATURES: list[str] = [
 ALL_FEATURES: list[str] = WITHIN_SYMBOL_FEATURES + XS_FEATURES
 
 # Symbol encoding (sorted alphabetically, stable)
-_SYMBOL_CODES: dict[str, int] = {}
 
 
 def _encode_symbol(symbols: list[str], target: str) -> int:
@@ -221,8 +220,12 @@ def xs_features(universe: dict[str, pl.DataFrame]) -> dict[str, pl.DataFrame]:
         # XS rank of target (ordinal rank normalized [0,1])
         xs_rank = np.array(
             [
-                float(np.sum(~np.isnan(full_mat[i]) & (full_mat[i] <= target_ret[i])))
-                / max(float(np.sum(~np.isnan(full_mat[i]))), 1.0)
+                (
+                    np.nan
+                    if np.isnan(target_ret[i])
+                    else float(np.sum(~np.isnan(full_mat[i]) & (full_mat[i] <= target_ret[i])))
+                    / max(float(np.sum(~np.isnan(full_mat[i]))), 1.0)
+                )
                 for i in range(n)
             ]
         )
