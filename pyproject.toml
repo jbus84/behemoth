@@ -26,6 +26,7 @@ dependencies = [
     "numpyro>=0.19.0",
     "statsmodels>=0.14.6",
 ]
+# NOTE: boostlss-py is not yet on PyPI; add once the package is published or provide a git source.
 
 
 
