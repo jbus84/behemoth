@@ -151,9 +151,11 @@ def run_pipeline(
                         "mu_flag": float(f["mu_flag"][i]),
                         "sigma_flag": float(f["sigma_flag"][i]),
                         "nu_flag": float(f["nu_flag"][i]),
+                        "tau_flag": float(f["tau_flag"][i]),
                         "mu_mag": float(f["mu_mag"][i]),
                         "sigma_mag": float(f["sigma_mag"][i]),
                         "nu_mag": float(f["nu_mag"][i]),
+                        "tau_mag": float(f["tau_mag"][i]),
                     }
                 )
 
@@ -173,6 +175,7 @@ def run_pipeline(
                     "mu_flag_rate": float(trade_log["mu_flag"].mean()),
                     "sigma_flag_rate": float(trade_log["sigma_flag"].mean()),
                     "nu_flag_rate": float(trade_log["nu_flag"].mean()),
+                    "tau_flag_rate": float(trade_log["tau_flag"].mean()),
                 }
             )
 

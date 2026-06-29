@@ -6,6 +6,7 @@ import numpy as np
 _MU_MAD_MULTIPLIER = 1.5  # |pred_mu| > 1.5 × unconditional MAD(y)
 _SIGMA_PERCENTILE = 20.0  # pred_sigma below 20th pctile of OOS sigma
 _NU_GEV_THRESHOLD = 0.2  # |pred_nu| > 0.2 for GEV → tail-asymmetry flag
+_TAU_JSU_THRESHOLD = 1.5  # pred_tau > threshold for JSU → fat-tail flag (tau>1 = heavier than normal)
 
 
 def flag_channels(
@@ -18,22 +19,24 @@ def flag_channels(
     """Convert predicted parameters to binary flags and magnitudes.
 
     Args:
-        preds: output of BoostLssWFO.fit_predict() — {"mu", "sigma"} and optionally "nu"
+        preds: output of BoostLssWFO.fit_predict() — {"mu", "sigma"} and optionally "nu", "tau"
         y: full target array (used to compute unconditional MAD threshold)
-        family: "GaussianLSS" or "GEVLSS"
+        family: "GaussianLSS", "GEVLSS", or "JSULSS"
         mu_threshold: scalar, per-row array, or None (falls back to full-sample 1.5×MAD(y))
         sigma_threshold: scalar, per-row array, or None (falls back to full-OOS 20th pctile)
 
     Returns:
         dict with keys: mu_flag, mu_mag, sigma_flag, sigma_mag,
-                        nu_flag, nu_mag, direction
+                        nu_flag, nu_mag, tau_flag, tau_mag, direction
         All arrays are same length as preds arrays.
         NaN where preds are NaN (train rows).
         nu_flag/nu_mag are all NaN when family has no nu parameter (e.g. GaussianLSS).
+        tau_flag/tau_mag are all NaN when family is not JSULSS.
     """
     mu = preds["mu"]
     sigma = preds["sigma"]
     nu = preds.get("nu")
+    tau = preds.get("tau")
     n = len(mu)
 
     oos_mask = ~np.isnan(mu)
@@ -74,6 +77,8 @@ def flag_channels(
     sigma_mag = np.full(n, np.nan)
     nu_flag = np.full(n, np.nan)
     nu_mag = np.full(n, np.nan)
+    tau_flag = np.full(n, np.nan)
+    tau_mag = np.full(n, np.nan)
     direction = np.full(n, np.nan)
 
     # mu: threshold guard only applies when threshold was derived from y (not caller-supplied)
@@ -104,10 +109,16 @@ def flag_channels(
     sigma_mag[oos_mask] = sigma[oos_mask]
 
     if nu is not None:
-        # GEVLSS: |nu| > threshold signals asymmetric tail
+        # GEVLSS/JSULSS: |nu| > threshold signals asymmetric tail / skewness
         nu_flag[oos_mask] = (np.abs(nu[oos_mask]) > _NU_GEV_THRESHOLD).astype(float)
         nu_mag[oos_mask] = nu[oos_mask]
     # else: nu_flag and nu_mag remain all NaN (GaussianLSS has no nu parameter)
+
+    if tau is not None:
+        # JSULSS: tau > threshold signals fat tail (tau > 1 = heavier than normal)
+        tau_flag[oos_mask] = (tau[oos_mask] > _TAU_JSU_THRESHOLD).astype(float)
+        tau_mag[oos_mask] = tau[oos_mask]
+    # else: tau_flag and tau_mag remain all NaN
 
     direction[oos_mask] = np.sign(mu[oos_mask])
 
@@ -118,5 +129,7 @@ def flag_channels(
         "sigma_mag": sigma_mag,
         "nu_flag": nu_flag,
         "nu_mag": nu_mag,
+        "tau_flag": tau_flag,
+        "tau_mag": tau_mag,
         "direction": direction,
     }

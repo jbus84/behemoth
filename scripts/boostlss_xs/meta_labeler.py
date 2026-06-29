@@ -25,10 +25,12 @@ def _build_meta_features(
 
     for h in horizons:
         f = flags_by_horizon[h]
+        _nan = np.full(len(f["mu_flag"]), np.nan)
         cols.extend([
             f["mu_flag"], f["mu_mag"],
             f["sigma_flag"], f["sigma_mag"],
             f["nu_flag"], f["nu_mag"],
+            f.get("tau_flag", _nan), f.get("tau_mag", _nan),
         ])
         mu_flags.append(f["mu_flag"])
 
@@ -49,7 +51,11 @@ def _build_meta_features(
     # Direction
     cols.append(direction)
 
-    return np.column_stack(cols)
+    mat = np.column_stack(cols)
+    # Drop all-NaN columns so HistGBM binning doesn't fail on empty unique arrays
+    # (e.g. tau_flag/tau_mag are all-NaN for GaussianLSS/GEVLSS families)
+    keep = ~np.all(np.isnan(mat), axis=0)
+    return mat[:, keep]
 
 
 def _fold_boundaries(close_ts: np.ndarray, n_folds: int) -> list[tuple[int, int, int]]:

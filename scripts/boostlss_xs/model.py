@@ -1,7 +1,8 @@
-"""BoostLSS causal walk-forward model with Gaussian and GEV families.
+"""BoostLSS causal walk-forward model with Gaussian, GEV, and JSU families.
 
 Approach A: GaussianLSS (2 params: mu, sigma) — symmetric baseline.
 Approach B: GEVLSS (3 params: mu, sigma, nu) — asymmetric tail family.
+Approach C: JSULSS (4 params: mu, sigma, nu, tau) — full skew+tail family.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from boostlss_py import BoostLssModel, PyFamily, PyTreeLearner
 FAMILY_PARAMS: dict[str, list[str]] = {
     "GaussianLSS": ["mu", "sigma"],
     "GEVLSS": ["mu", "sigma", "nu"],
+    "JSULSS": ["mu", "sigma", "nu", "tau"],
 }
 
 # Fixed hyperparameters — tune on fold 1 if needed
