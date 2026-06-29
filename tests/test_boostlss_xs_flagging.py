@@ -87,6 +87,20 @@ def test_nan_propagated_for_train_rows():
     assert np.isnan(result["mu_flag"][:100]).all()
 
 
+def test_flag_channels_accepts_per_row_mu_threshold():
+    from scripts.boostlss_xs.flagging import flag_channels
+
+    n = 20
+    preds = {"mu": np.ones(n), "sigma": np.ones(n) * 0.5}
+    y = np.zeros(n)
+    # threshold = 2.0 → |mu|=1.0 does not fire
+    flags = flag_channels(preds, y, "GaussianLSS", mu_threshold=np.full(n, 2.0))
+    assert np.nansum(flags["mu_flag"]) == 0
+    # threshold = 0.5 → |mu|=1.0 fires for all rows
+    flags2 = flag_channels(preds, y, "GaussianLSS", mu_threshold=np.full(n, 0.5))
+    assert np.nansum(flags2["mu_flag"]) == n
+
+
 def test_gaussian_no_nu_key_returns_nan_nu_channels():
     from scripts.boostlss_xs.flagging import flag_channels
 

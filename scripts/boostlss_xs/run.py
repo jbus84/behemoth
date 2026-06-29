@@ -35,25 +35,31 @@ from scripts.boostlss_xs.model import BoostLssWFO
 from scripts.boostlss_xs.universe import load_universe
 
 
-def _build_horizon_target(y_raw: np.ndarray, horizon: int) -> np.ndarray:
-    """Gross return over next N=horizon bars (forward sum of vol-standardised returns)."""
-    out = np.full(len(y_raw), np.nan)
-    for i in range(len(y_raw) - horizon):
-        window = y_raw[i + 1 : i + 1 + horizon]
-        if not np.isnan(window).any():
-            out[i] = float(np.sum(window))
-    return out
-
-
-def _extract_y_raw(universe: dict) -> np.ndarray:
-    """Stack vol_std for the same valid rows as build_features()."""
-    parts: list[np.ndarray] = []
+def _extract_y_raw_per_symbol(universe: dict) -> dict[str, np.ndarray]:
+    """Per-symbol vol_std arrays, same valid-row mask as build_features()."""
+    result: dict[str, np.ndarray] = {}
     for sym in sorted(universe.keys()):
         df = universe[sym]
         mat = df.select(ALL_FEATURES).to_numpy()
         valid = ~np.any(np.isnan(mat), axis=1)
-        parts.append(df["vol_std"].to_numpy()[valid])
-    return np.concatenate(parts)
+        result[sym] = df["vol_std"].to_numpy()[valid]
+    return result
+
+
+def _build_horizon_target_per_symbol(
+    y_raw_per_sym: dict[str, np.ndarray], horizon: int
+) -> np.ndarray:
+    """Build forward-sum target per symbol (no cross-symbol bleed), then concat in sorted(keys) order."""
+    parts: list[np.ndarray] = []
+    for sym in sorted(y_raw_per_sym.keys()):
+        y = y_raw_per_sym[sym]
+        out = np.full(len(y), np.nan)
+        for i in range(len(y) - horizon):
+            window = y[i + 1 : i + 1 + horizon]
+            if not np.isnan(window).any():
+                out[i] = float(np.sum(window))
+        parts.append(out)
+    return np.concatenate(parts)  # symbol-sorted; caller applies sort_idx
 
 
 def run_pipeline(
@@ -79,13 +85,14 @@ def run_pipeline(
     uni = xs_features(uni)
 
     print("Building stacked feature matrix...")
-    X, close_ts_arr, feature_names, symbols_arr = build_features(uni)
+    X, close_ts_arr, feature_names, symbols_arr, sort_idx = build_features(uni)
     print(f"  Feature matrix: {X.shape}")
 
     print("Building horizon targets...")
-    y_raw_stacked = _extract_y_raw(uni)
+    y_raw_per_sym = _extract_y_raw_per_symbol(uni)
     y_by_horizon: dict[int, np.ndarray] = {
-        h: _build_horizon_target(y_raw_stacked, h) for h in horizons
+        h: _build_horizon_target_per_symbol(y_raw_per_sym, h)[sort_idx]
+        for h in horizons
     }
 
     comparison_rows: list[dict] = []
@@ -98,8 +105,14 @@ def run_pipeline(
             print(f"  Horizon N={horizon}...")
             y = y_by_horizon[horizon]
             wfo = BoostLssWFO(family=family)
-            preds = wfo.fit_predict(X, y, close_ts_arr)
-            flags = flag_channels(preds, y, family)
+            preds = wfo.fit_predict(X, y, close_ts_arr, embargo=max(horizons))
+            flags = flag_channels(
+                preds,
+                y,
+                family,
+                mu_threshold=preds.get("mu_threshold_per_row"),
+                sigma_threshold=preds.get("sigma_threshold_per_row"),
+            )
             all_flags[horizon] = flags
 
         print("  Running meta-labeler...")

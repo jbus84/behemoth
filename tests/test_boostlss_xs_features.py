@@ -126,7 +126,7 @@ def test_build_features_shape(small_universe_ws):
     from scripts.boostlss_xs.features import build_features, xs_features
 
     uni = xs_features(small_universe_ws)
-    X, close_ts_arr, feature_names, symbols_arr = build_features(uni)
+    X, close_ts_arr, feature_names, symbols_arr, sort_idx = build_features(uni)
 
     assert X.ndim == 2
     assert X.shape[1] == 30
@@ -134,3 +134,24 @@ def test_build_features_shape(small_universe_ws):
     assert len(symbols_arr) == X.shape[0]
     assert len(feature_names) == 30
     assert X.dtype == np.float32
+    assert len(sort_idx) == X.shape[0]
+
+
+def test_build_features_time_sorted(small_universe_ws):
+    """Returned close_ts_arr must be non-decreasing."""
+    from scripts.boostlss_xs.features import build_features, xs_features
+
+    uni = xs_features(small_universe_ws)
+    X, close_ts_arr, _, symbols_arr, sort_idx = build_features(uni)
+    assert np.all(close_ts_arr[1:] >= close_ts_arr[:-1]), "close_ts_arr is not non-decreasing"
+
+
+def test_build_features_sort_idx_aligns_symbols(small_universe_ws):
+    """symbols_arr[i] must match what sort_idx points to in the original symbol-blocked order."""
+    from scripts.boostlss_xs.features import build_features, xs_features
+
+    uni = xs_features(small_universe_ws)
+    X, close_ts_arr, _, symbols_arr, sort_idx = build_features(uni)
+    # sort_idx must be a valid permutation of range(len)
+    assert len(sort_idx) == len(symbols_arr)
+    assert set(sort_idx.tolist()) == set(range(len(symbols_arr)))

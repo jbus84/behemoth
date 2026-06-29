@@ -13,13 +13,17 @@ def flag_channels(
     preds: dict[str, np.ndarray],
     y: np.ndarray,
     family: str,
+    mu_threshold: float | np.ndarray | None = None,
+    sigma_threshold: float | np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     """Convert predicted parameters to binary flags and magnitudes.
 
     Args:
         preds: output of BoostLssWFO.fit_predict() — {"mu", "sigma"} and optionally "nu"
         y: full target array (used to compute unconditional MAD threshold)
-        family: "GaussianLSS", "StudentTLSS", or "GEVLSS"
+        family: "GaussianLSS" or "GEVLSS"
+        mu_threshold: scalar, per-row array, or None (falls back to full-sample 1.5×MAD(y))
+        sigma_threshold: scalar, per-row array, or None (falls back to full-OOS 20th pctile)
 
     Returns:
         dict with keys: mu_flag, mu_mag, sigma_flag, sigma_mag,
@@ -33,14 +37,36 @@ def flag_channels(
     nu = preds.get("nu")
     n = len(mu)
 
-    # Unconditional MAD of y (on non-NaN y values)
-    y_valid = y[~np.isnan(y)]
-    uncond_mad = 1.4826 * float(np.median(np.abs(y_valid - np.median(y_valid))))
-    mu_threshold = _MU_MAD_MULTIPLIER * max(uncond_mad, 1e-9)
+    oos_mask = ~np.isnan(mu)
 
-    # OOS sigma 20th percentile (only where sigma is not NaN)
-    oos_sigma = sigma[~np.isnan(sigma)]
-    sigma_threshold = float(np.percentile(oos_sigma, _SIGMA_PERCENTILE)) if len(oos_sigma) > 0 else 0.0
+    # --- mu threshold ---
+    if isinstance(mu_threshold, np.ndarray):
+        # Per-row array: use element-wise
+        _mu_thresh_arr = mu_threshold
+    else:
+        # Scalar or None: compute full-sample fallback
+        if mu_threshold is None:
+            y_valid = y[~np.isnan(y)]
+            uncond_mad = 1.4826 * float(np.median(np.abs(y_valid - np.median(y_valid))))
+            scalar_mu = _MU_MAD_MULTIPLIER * max(uncond_mad, 1e-9)
+        else:
+            scalar_mu = float(mu_threshold)
+        _mu_thresh_arr = np.full(n, scalar_mu)
+
+    # --- sigma threshold ---
+    if isinstance(sigma_threshold, np.ndarray):
+        _sigma_thresh_arr = sigma_threshold
+    else:
+        if sigma_threshold is None:
+            oos_sigma = sigma[~np.isnan(sigma)]
+            scalar_sigma = (
+                float(np.percentile(oos_sigma, _SIGMA_PERCENTILE))
+                if len(oos_sigma) > 0
+                else 0.0
+            )
+        else:
+            scalar_sigma = float(sigma_threshold)
+        _sigma_thresh_arr = np.full(n, scalar_sigma)
 
     # Initialise output arrays with NaN
     mu_flag = np.full(n, np.nan)
@@ -51,16 +77,31 @@ def flag_channels(
     nu_mag = np.full(n, np.nan)
     direction = np.full(n, np.nan)
 
-    oos_mask = ~np.isnan(mu)
-
-    if uncond_mad < 1e-12:
-        # y has no variation; mu threshold is undefined — treat all mu flags as 0
-        mu_flag[oos_mask] = 0.0
+    # mu: threshold guard only applies when threshold was derived from y (not caller-supplied)
+    caller_supplied_mu = isinstance(mu_threshold, (np.ndarray, float, int)) and mu_threshold is not None
+    if not caller_supplied_mu:
+        y_valid_all = y[~np.isnan(y)]
+        uncond_mad_check = (
+            1.4826 * float(np.median(np.abs(y_valid_all - np.median(y_valid_all))))
+            if len(y_valid_all) > 0
+            else 0.0
+        )
+        if uncond_mad_check < 1e-12:
+            mu_flag[oos_mask] = 0.0
+        else:
+            effective_thresh = _mu_thresh_arr[oos_mask]
+            effective_thresh = np.where(effective_thresh < 1e-9, 1e-9, effective_thresh)
+            mu_flag[oos_mask] = (np.abs(mu[oos_mask]) > effective_thresh).astype(float)
     else:
-        mu_flag[oos_mask] = (np.abs(mu[oos_mask]) > mu_threshold).astype(float)
-    mu_mag[oos_mask] = np.abs(mu[oos_mask])
+        effective_thresh = _mu_thresh_arr[oos_mask]
+        effective_thresh = np.where(effective_thresh < 1e-9, 1e-9, effective_thresh)
+        mu_flag[oos_mask] = (np.abs(mu[oos_mask]) > effective_thresh).astype(float)
 
-    sigma_flag[oos_mask] = (sigma[oos_mask] < sigma_threshold).astype(float)
+    mu_mag[oos_mask] = np.abs(mu[oos_mask]) / np.where(
+        _mu_thresh_arr[oos_mask] < 1e-9, 1e-9, _mu_thresh_arr[oos_mask]
+    )
+
+    sigma_flag[oos_mask] = (sigma[oos_mask] < _sigma_thresh_arr[oos_mask]).astype(float)
     sigma_mag[oos_mask] = sigma[oos_mask]
 
     if nu is not None:

@@ -329,14 +329,15 @@ def xs_features(universe: dict[str, pl.DataFrame]) -> dict[str, pl.DataFrame]:
 
 def build_features(
     universe: dict[str, pl.DataFrame],
-) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
-    """Stack all symbols into a single feature matrix.
+) -> tuple[np.ndarray, np.ndarray, list[str], list[str], np.ndarray]:
+    """Stack all symbols into a single feature matrix, sorted by close_ts.
 
     Returns:
         X: float32 array of shape (valid_rows, 30)
-        close_ts_arr: datetime64 array aligned with X rows
+        close_ts_arr: datetime64 array, time-sorted
         feature_names: list of 30 feature column names
-        symbols_arr: symbol string per row
+        symbols_arr: symbol string per row, time-sorted
+        sort_idx: np.intp array — use to reorder other per-row arrays to match time order
     """
     X_parts: list[np.ndarray] = []
     ts_parts: list[np.ndarray] = []
@@ -355,5 +356,12 @@ def build_features(
 
     X = np.vstack(X_parts)
     close_ts_arr = np.concatenate(ts_parts)
-    symbols_arr: list[str] = sum(sym_parts, [])
-    return X, close_ts_arr, ALL_FEATURES, symbols_arr
+    symbols_arr_raw: list[str] = sum(sym_parts, [])
+
+    # Sort by time so WFO fold boundaries are calendar-correct
+    sort_idx = np.argsort(close_ts_arr, kind="stable")
+    X = X[sort_idx]
+    close_ts_arr = close_ts_arr[sort_idx]
+    symbols_arr = [symbols_arr_raw[i] for i in sort_idx]
+
+    return X, close_ts_arr, ALL_FEATURES, symbols_arr, sort_idx
