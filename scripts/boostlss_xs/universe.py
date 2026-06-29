@@ -72,8 +72,7 @@ def load_universe(data_dir: str) -> dict[str, pl.DataFrame]:
         close_ts, mid, n_ticks, log_ret_bps, vol_std, is_jpy
 
     log_ret_bps is oriented to USD-strength (positive = USD strengthened).
-    vol_std divides log_ret_bps by the full-sample MAD for cross-symbol pooling,
-    scaled by 1.4826 to make MAD a consistent estimator of sigma (Gaussian equiv).
+    vol_std divides log_ret_bps by the full-sample MAD for cross-symbol pooling.
     """
     paths = sorted(glob.glob(os.path.join(data_dir, "*_1m_flow.parquet")))
     result: dict[str, pl.DataFrame] = {}
