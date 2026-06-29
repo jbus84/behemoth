@@ -18,14 +18,12 @@ def _build_meta_features(
     flags_by_horizon: dict[int, dict[str, np.ndarray]],
     direction: np.ndarray,
 ) -> np.ndarray:
-    """Stack flag outputs across horizons into meta-feature matrix.
-
-    Returns array of shape (N, 33) — 6 channels × 5 horizons + interaction features.
-    """
+    """Stack flag outputs across horizons into meta-feature matrix."""
+    horizons = sorted(flags_by_horizon.keys())
     cols: list[np.ndarray] = []
     mu_flags: list[np.ndarray] = []
 
-    for h in _HORIZONS:
+    for h in horizons:
         f = flags_by_horizon[h]
         cols.extend([
             f["mu_flag"], f["mu_mag"],
@@ -35,20 +33,20 @@ def _build_meta_features(
         mu_flags.append(f["mu_flag"])
 
     # Horizon agreement: how many horizons fired mu_flag
-    mu_stack = np.column_stack(mu_flags)
+    mu_stack = np.column_stack(mu_flags) if len(mu_flags) > 1 else mu_flags[0].reshape(-1, 1)
     horizon_agreement = np.nansum(mu_stack, axis=1).astype(float)
     cols.append(horizon_agreement)
 
-    # mu+sigma co-fire at horizon 1
-    h1 = flags_by_horizon[1]
+    # mu+sigma co-fire at smallest horizon
+    h_min = flags_by_horizon[horizons[0]]
     mu_sigma_agree = np.where(
-        np.isnan(h1["mu_flag"]) | np.isnan(h1["sigma_flag"]),
+        np.isnan(h_min["mu_flag"]) | np.isnan(h_min["sigma_flag"]),
         np.nan,
-        (h1["mu_flag"] * h1["sigma_flag"]),
+        (h_min["mu_flag"] * h_min["sigma_flag"]),
     )
     cols.append(mu_sigma_agree)
 
-    # Direction from primary horizon (N=1)
+    # Direction
     cols.append(direction)
 
     return np.column_stack(cols)
@@ -88,8 +86,9 @@ class MetaLabeler:
         n = len(direction)
         meta_X = _build_meta_features(flags_by_horizon, direction)
 
-        # Build label using horizon N=1 as primary, per-symbol median threshold
-        y1 = y_by_horizon[1]
+        # Build label using smallest horizon as primary, per-symbol median threshold
+        h_primary = min(y_by_horizon.keys())
+        y1 = y_by_horizon[h_primary]
         symbols = np.array(symbols_arr)
 
         probs = np.full(n, np.nan)
@@ -122,12 +121,9 @@ class MetaLabeler:
             row_thresh = np.array([thresholds.get(s, 0.0) for s in sym_train])
             labels = _build_label(dir_train, y1_train, row_thresh)
 
-            # Drop rows where either X or label has NaN
-            valid_mask = ~(
-                np.isnan(X_meta_train).any(axis=1)
-                | np.isnan(dir_train)
-                | np.isnan(y1_train)
-            )
+            # Drop rows where direction or label target is NaN
+            # (HistGBM handles NaN feature values natively)
+            valid_mask = ~(np.isnan(dir_train) | np.isnan(y1_train))
             if valid_mask.sum() < 20:
                 continue
 
@@ -137,7 +133,8 @@ class MetaLabeler:
             clf.fit(X_meta_train[valid_mask], labels[valid_mask])
 
             X_test = meta_X[test_start:test_end]
-            valid_test = ~np.isnan(X_test).any(axis=1)
+            dir_test = direction[test_start:test_end]
+            valid_test = ~np.isnan(dir_test)
             if valid_test.sum() == 0:
                 continue
 
