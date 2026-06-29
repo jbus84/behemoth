@@ -5,7 +5,6 @@ import numpy as np
 
 _MU_MAD_MULTIPLIER = 1.5  # |pred_mu| > 1.5 × unconditional MAD(y)
 _SIGMA_PERCENTILE = 20.0  # pred_sigma below 20th pctile of OOS sigma
-_NU_STUDENT_T_THRESHOLD = 5.0  # pred_nu < 5 for Student-T → fat-tail flag
 _NU_GEV_THRESHOLD = 0.2  # |pred_nu| > 0.2 for GEV → tail-asymmetry flag
 
 
@@ -105,10 +104,8 @@ def flag_channels(
     sigma_mag[oos_mask] = sigma[oos_mask]
 
     if nu is not None:
-        if family == "StudentTLSS":
-            nu_flag[oos_mask] = (nu[oos_mask] < _NU_STUDENT_T_THRESHOLD).astype(float)
-        else:  # GEVLSS or other families with nu
-            nu_flag[oos_mask] = (np.abs(nu[oos_mask]) > _NU_GEV_THRESHOLD).astype(float)
+        # GEVLSS: |nu| > threshold signals asymmetric tail
+        nu_flag[oos_mask] = (np.abs(nu[oos_mask]) > _NU_GEV_THRESHOLD).astype(float)
         nu_mag[oos_mask] = nu[oos_mask]
     # else: nu_flag and nu_mag remain all NaN (GaussianLSS has no nu parameter)
 
