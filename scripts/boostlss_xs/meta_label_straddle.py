@@ -256,7 +256,8 @@ def simulate_tick_exact(
       TP long:     BID >= original_close
       SL:          mid crosses sl_level (stop-market)
 
-    Returns (outcome, gross_bps) where outcome ∈ {'tp','sl','tb','no_fill','none'}.
+    Returns (outcome, gross_bps, fill_spread_bps) where outcome ∈ {'tp','sl','tb','no_fill','none'}
+    and fill_spread_bps is the actual bid-ask spread at the moment of entry fill.
     """
     eg = entry_k * sigma_bps
     sl_gap = sl_k * sigma_bps
@@ -266,7 +267,7 @@ def simulate_tick_exact(
     lo   = np.searchsorted(tick_ts, t0,   side="right")
     hi   = np.searchsorted(tick_ts, tend,  side="right")
     if hi <= lo:
-        return "none", 0.0
+        return "none", 0.0, 0.0
 
     bid_w = tick_bid[lo:hi]
     ask_w = tick_ask[lo:hi]
@@ -279,14 +280,15 @@ def simulate_tick_exact(
         tp_level    = c0
         entry_idx   = next((j for j, b in enumerate(bid_w) if b >= entry_level), None)
         if entry_idx is None:
-            return "no_fill", 0.0
+            return "no_fill", 0.0, 0.0
+        fill_spread = (ask_w[entry_idx] - bid_w[entry_idx]) / mid_w[entry_idx] * 1e4
         fill_price = entry_level
         for j in range(entry_idx + 1, len(ask_w)):
             if ask_w[j] <= tp_level:
-                return "tp", (fill_price - ask_w[j]) / fill_price * 1e4
+                return "tp", (fill_price - ask_w[j]) / fill_price * 1e4, fill_spread
             if mid_w[j] >= sl_level:
-                return "sl", (fill_price - mid_w[j]) / fill_price * 1e4
-        return "tb", 0.0
+                return "sl", (fill_price - mid_w[j]) / fill_price * 1e4, fill_spread
+        return "tb", 0.0, fill_spread
 
     else:   # fade-long: buy at c0 - eg
         entry_level = c0 * (1 - eg / 1e4)
@@ -294,14 +296,15 @@ def simulate_tick_exact(
         tp_level    = c0
         entry_idx   = next((j for j, a in enumerate(ask_w) if a <= entry_level), None)
         if entry_idx is None:
-            return "no_fill", 0.0
+            return "no_fill", 0.0, 0.0
+        fill_spread = (ask_w[entry_idx] - bid_w[entry_idx]) / mid_w[entry_idx] * 1e4
         fill_price = entry_level
         for j in range(entry_idx + 1, len(bid_w)):
             if bid_w[j] >= tp_level:
-                return "tp", (bid_w[j] - fill_price) / fill_price * 1e4
+                return "tp", (bid_w[j] - fill_price) / fill_price * 1e4, fill_spread
             if mid_w[j] <= sl_level:
-                return "sl", (mid_w[j] - fill_price) / fill_price * 1e4
-        return "tb", 0.0
+                return "sl", (mid_w[j] - fill_price) / fill_price * 1e4, fill_spread
+        return "tb", 0.0, fill_spread
 
 
 # ── 1m direction finder ───────────────────────────────────────────────────────
@@ -428,7 +431,7 @@ def run_tick_backtest(
             continue
         tick_ts, tick_bid, tick_ask, tick_mid = cur_ticks
 
-        outcome, gross = simulate_tick_exact(
+        outcome, gross, fill_spread = simulate_tick_exact(
             ts[i], mid[i], sigma_bps_i,
             tick_ts, tick_bid, tick_ask, tick_mid,
             direction, entry_k, tp_k, sl_k, hold_hours,
@@ -436,26 +439,33 @@ def run_tick_backtest(
         if outcome in ("none", "no_fill"):
             continue
 
-        # Live spread: median of ~40 ticks around bar open
+        # fill_spread is the actual bid-ask spread at the moment of entry fill.
+        # Use it for SL and reject-close costs (taker exits during momentum).
+        # Fall back to pair median if tick data gave an implausible value.
+        if fill_spread <= 0 or fill_spread > 50:
+            fill_spread = spread_med
+
+        # Live spread: median of ~40 ticks around bar open (meta-label feature only)
         lo = max(np.searchsorted(tick_ts, t_i) - 20, 0)
         sp_arr = ((tick_ask - tick_bid) / tick_mid * 1e4)[lo : lo + 40]
         sp_arr = sp_arr[(sp_arr > 0) & (sp_arr < 100)]
         live_sp = float(np.median(sp_arr)) if len(sp_arr) > 0 else spread_med
 
-        maker_cost = comm if outcome != "sl" else comm + spread_med
-        taker_cost = comm + spread_med
+        maker_cost = comm if outcome != "sl" else comm + fill_spread
+        taker_cost = comm + fill_spread
 
         rows.append({
-            "sym":        sym,
-            "ts":         str(ts[i]),
-            "outcome":    outcome,
-            "direction":  direction,
-            "gross":      gross,
-            "maker_net":  gross - maker_cost,
-            "taker_net":  gross - taker_cost,
-            "sigma_bps":  sigma_bps_i,
-            "live_spread": live_sp,
-            "spread_bps":  spread_med,
+            "sym":          sym,
+            "ts":           str(ts[i]),
+            "outcome":      outcome,
+            "direction":    direction,
+            "gross":        gross,
+            "maker_net":    gross - maker_cost,
+            "taker_net":    gross - taker_cost,
+            "sigma_bps":    sigma_bps_i,
+            "live_spread":  live_sp,
+            "spread_bps":   spread_med,
+            "fill_spread":  fill_spread,
         })
 
     df = pd.DataFrame(rows)
@@ -535,7 +545,8 @@ def _option_b_net_per_fill(df: pd.DataFrame, threshold: float) -> float:
     """
     accepted = df[df.prob_tp >= threshold]
     rejected = df[df.prob_tp < threshold]
-    reject_cost = rejected["spread_bps"] + _COMMISSION_RT
+    spread_col = "fill_spread" if "fill_spread" in df.columns else "spread_bps"
+    reject_cost = rejected[spread_col] + _COMMISSION_RT
     total_net = accepted["maker_net"].sum() + (-reject_cost).sum()
     return float(total_net / len(df)) if len(df) else 0.0
 
@@ -547,7 +558,8 @@ def _print_summary(df: pd.DataFrame, threshold: float) -> None:
 
     filtered = df[df.prob_tp >= threshold]
     rejected = df[df.prob_tp < threshold]
-    reject_cost_avg = (rejected["spread_bps"] + _COMMISSION_RT).mean() if len(rejected) else 0.0
+    spread_col = "fill_spread" if "fill_spread" in df.columns else "spread_bps"
+    reject_cost_avg = (rejected[spread_col] + _COMMISSION_RT).mean() if len(rejected) else 0.0
     ob_net = _option_b_net_per_fill(df, threshold)
 
     print("\n── Pooled ──")
@@ -570,7 +582,7 @@ def _print_summary(df: pd.DataFrame, threshold: float) -> None:
             continue
         sp = g_all.spread_bps.iloc[0]
         kept = len(g) / len(g_all)
-        rc = (sp + _COMMISSION_RT)
+        rc = (r[spread_col] + _COMMISSION_RT).mean() if len(r) else sp + _COMMISSION_RT
         b_net = (g["maker_net"].sum() + (-rc * len(r))) / len(g_all)
         print(f"  {sym:<8}  {len(g_all):>6}  {kept:>5.1%}  {sp:>7.3f}  "
               f"{g['maker_net'].mean() if len(g) else 0:>+10.3f}  {-rc:>+12.3f}  "
