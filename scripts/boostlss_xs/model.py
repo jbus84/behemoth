@@ -21,6 +21,7 @@ _MSTOP = 200
 _STEP_LENGTH = 0.1
 _MAX_DEPTH = 3
 _N_FOLDS = 5
+_MAX_TRAIN_ROWS = 20_000  # subsample per fold; None = use all rows
 
 
 def _make_fold_boundaries(
@@ -101,28 +102,35 @@ class BoostLssWFO:
             if valid.sum() < 100:
                 continue
 
+            valid_idx = np.where(valid)[0]
+            if _MAX_TRAIN_ROWS is not None and len(valid_idx) > _MAX_TRAIN_ROWS:
+                rng = np.random.default_rng(42 + fold_idx)
+                valid_idx = rng.choice(valid_idx, _MAX_TRAIN_ROWS, replace=False)
+                valid_idx.sort()  # preserve temporal order within fold
+
             model = self._build_model(n_features)
-            model.fit(X_train[valid], y_train[valid])
+            model.fit(X_train[valid_idx], y_train[valid_idx])
 
             for param in self.params:
                 pred = np.array(model.predict(X_test, param))
                 oos_preds[param][test_start:test_end] = pred
 
             # Per-fold thresholds computed on training labels only (no look-ahead)
-            y_tr = y_train[valid]
+            y_tr = y_train[valid_idx]
             fold_mu_threshold = 1.5 * max(
                 float(np.nanmedian(np.abs(y_tr - np.nanmedian(y_tr)))), 1e-9
             )
             mu_threshold_per_row[test_start:test_end] = fold_mu_threshold
 
             # sigma threshold: 20th percentile of training-fold sigma predictions
-            sigma_train_preds = np.array(model.predict(X_train[valid], "sigma"))
+            sigma_train_preds = np.array(model.predict(X_train[valid_idx], "sigma"))
             fold_sigma_threshold = float(np.nanpercentile(sigma_train_preds, 20))
             sigma_threshold_per_row[test_start:test_end] = fold_sigma_threshold
 
             print(
                 f"  Fold {fold_idx + 1}/{_N_FOLDS}: "
-                f"train={valid.sum()} rows, test={test_end - test_start} rows"
+                f"train={len(valid_idx)} rows (of {valid.sum()} valid), "
+                f"test={test_end - test_start} rows"
             )
 
         oos_preds["mu_threshold_per_row"] = mu_threshold_per_row
