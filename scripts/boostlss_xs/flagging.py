@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import numpy as np
 
-_MU_MAD_MULTIPLIER = 1.5  # |pred_mu| > 1.5 × unconditional MAD(y)
-_SIGMA_PERCENTILE = 20.0  # pred_sigma below 20th pctile of OOS sigma
-_NU_GEV_THRESHOLD = 0.2  # |pred_nu| > 0.2 for GEV → tail-asymmetry flag
-_TAU_JSU_THRESHOLD = 1.5  # pred_tau > threshold for JSU → fat-tail flag (tau>1 = heavier than normal)
+_MU_MAD_MULTIPLIER = 1.5   # |pred_mu| > 1.5 × unconditional MAD(y)
+_SIGMA_PERCENTILE = 20.0   # pred_sigma below 20th pctile of OOS sigma
+_NU_GEV_THRESHOLD = 0.2    # |pred_nu| > 0.2 for old GEVLSS → tail-asymmetry flag (unused)
+_TAU_JSU_THRESHOLD = 1.5   # pred_tau > threshold for old JSULSS → fat-tail flag (unused)
+_NU_STUDENT_T_THRESHOLD = 5.0  # pred_nu (df) < threshold for StudentT → fat-tail flag
 
 
 def flag_channels(
@@ -21,7 +22,7 @@ def flag_channels(
     Args:
         preds: output of BoostLssWFO.fit_predict() — {"mu", "sigma"} and optionally "nu", "tau"
         y: full target array (used to compute unconditional MAD threshold)
-        family: "GaussianLSS", "GEVLSS", or "JSULSS"
+        family: "Gaussian" or "StudentT"
         mu_threshold: scalar, per-row array, or None (falls back to full-sample 1.5×MAD(y))
         sigma_threshold: scalar, per-row array, or None (falls back to full-OOS 20th pctile)
 
@@ -109,8 +110,8 @@ def flag_channels(
     sigma_mag[oos_mask] = sigma[oos_mask]
 
     if nu is not None:
-        # GEVLSS/JSULSS: |nu| > threshold signals asymmetric tail / skewness
-        nu_flag[oos_mask] = (np.abs(nu[oos_mask]) > _NU_GEV_THRESHOLD).astype(float)
+        # StudentT: low df (nu) = fat tail; flag when df < threshold
+        nu_flag[oos_mask] = (nu[oos_mask] < _NU_STUDENT_T_THRESHOLD).astype(float)
         nu_mag[oos_mask] = nu[oos_mask]
     # else: nu_flag and nu_mag remain all NaN (GaussianLSS has no nu parameter)
 
