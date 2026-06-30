@@ -12,6 +12,7 @@ from boostlss_py import BoostLssModel, PyFamily, PyTreeLearner
 FAMILY_PARAMS: dict[str, list[str]] = {
     "GaussianLSS": ["mu", "sigma"],
     "GEVLSS": ["mu", "sigma", "nu"],
+    "JSULSS": ["mu", "sigma", "nu", "tau"],
 }
 
 # Fixed hyperparameters
@@ -19,7 +20,7 @@ _MSTOP = 200
 _STEP_LENGTH = 0.1
 _MAX_DEPTH = 3
 _N_FOLDS = 5
-_MAX_TRAIN_ROWS = 2_000  # subsample per fold; None = use all rows
+_MAX_TRAIN_ROWS = 20_000  # subsample per fold; None = use all rows
 
 
 def _make_fold_boundaries(

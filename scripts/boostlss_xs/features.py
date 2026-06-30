@@ -33,6 +33,14 @@ WITHIN_SYMBOL_FEATURES: list[str] = [
     "roll_kurt_50",
     "roll_kurt_100",
     "tail_count_100",
+    # Intrabar features (from 100-tick sub-bars)
+    "body_ratio",
+    "upper_wick",
+    "lower_wick",
+    "intrabar_momentum",
+    "intrabar_reversal",
+    "roll_body_ratio_20",
+    "roll_intrabar_mom_10",
 ]
 
 
@@ -167,6 +175,44 @@ def within_symbol_features(df: pl.DataFrame, symbol: str) -> pl.DataFrame:  # no
         tail[99:] = np.sum(windows_abs > thresholds[:, None], axis=1).astype(float)
     feature_cols.append(_s("tail_count_100", tail))
 
+    # ── Intrabar features (from 100-tick sub-bars via universe loader) ────────
+    has_intrabar = "bar_open" in df.columns
+    if has_intrabar:
+        bar_open = df["bar_open"].to_numpy(allow_copy=True).astype(np.float64)
+        bar_high = df["bar_high"].to_numpy(allow_copy=True).astype(np.float64)
+        bar_low = df["bar_low"].to_numpy(allow_copy=True).astype(np.float64)
+        bar_close = df["mid"].to_numpy(allow_copy=True).astype(np.float64)
+        ib_mom = df["intrabar_momentum"].to_numpy(allow_copy=True).astype(np.float64)
+        ib_rev = df["intrabar_reversal"].to_numpy(allow_copy=True).astype(np.float64)
+
+        bar_range = bar_high - bar_low
+        body = bar_close - bar_open
+        safe_range = np.where(bar_range > 1e-10, bar_range, np.nan)
+
+        # Body ratio: signed body / range ∈ [-1, +1]; +1 = full bull candle
+        body_ratio = body / safe_range
+
+        # Upper wick: (high - max(open,close)) / range ∈ [0, 1]
+        upper_wick = (bar_high - np.maximum(bar_open, bar_close)) / safe_range
+        # Lower wick: (min(open,close) - low) / range ∈ [0, 1]
+        lower_wick = (np.minimum(bar_open, bar_close) - bar_low) / safe_range
+
+        feature_cols += [
+            _s("body_ratio", body_ratio),
+            _s("upper_wick", upper_wick),
+            _s("lower_wick", lower_wick),
+            _s("intrabar_momentum", ib_mom),
+            _s("intrabar_reversal", ib_rev),
+            _s("roll_body_ratio_20", _rolling_mad(body_ratio, 20)),
+            _s("roll_intrabar_mom_10", _rolling_mad(ib_mom, 10)),
+        ]
+    else:
+        # Graceful fallback: all NaN if universe wasn't built with sub-bars
+        for col in ["body_ratio", "upper_wick", "lower_wick",
+                    "intrabar_momentum", "intrabar_reversal",
+                    "roll_body_ratio_20", "roll_intrabar_mom_10"]:
+            feature_cols.append(_s(col, np.full(n, np.nan)))
+
     return df.with_columns(feature_cols)
 
 
@@ -187,7 +233,7 @@ XS_FEATURES: list[str] = [
     "symbol_code",
 ]
 
-# Full ordered feature list (30 features)
+# Full ordered feature list (37 features: 24 within-symbol + 13 xs)
 ALL_FEATURES: list[str] = WITHIN_SYMBOL_FEATURES + XS_FEATURES
 
 
@@ -209,7 +255,7 @@ def _build_peer_mat(
     for peer_sym in peer_syms:
         peer = sorted_uni[peer_sym].select(["close_ts", "log_ret_bps"])
         joined = target.select(["close_ts"]).join_asof(
-            peer.rename({"log_ret_bps": f"_p"}),
+            peer.rename({"log_ret_bps": "_p"}),
             on="close_ts",
             strategy="backward",
         )
@@ -361,7 +407,6 @@ def xs_features(universe: dict[str, pl.DataFrame]) -> dict[str, pl.DataFrame]:
 
 def _rolling_ols_resid(y: np.ndarray, x: np.ndarray, window: int, min_periods: int) -> np.ndarray:
     """Rolling OLS residual of y ~ x using Polars rolling sums (vectorised)."""
-    n = len(y)
     # Joint validity mask: only count rows where both y and x are non-NaN
     joint_valid = ~(np.isnan(y) | np.isnan(x))
     y_j = np.where(joint_valid, y, np.nan)
@@ -466,16 +511,26 @@ def build_features(
         symbols_arr: symbol string per row, time-sorted
         sort_idx: np.intp array — use to reorder other per-row arrays to match time order
     """
+    # Determine which features are live (not all-NaN) across the universe
+    probe_parts: list[np.ndarray] = []
+    for sym in sorted(universe.keys()):
+        df = universe[sym]
+        probe_parts.append(df.select(ALL_FEATURES).to_numpy().astype(np.float32))
+    probe = np.vstack(probe_parts)
+    live_cols = ~np.all(np.isnan(probe), axis=0)
+    feature_names = [f for f, keep in zip(ALL_FEATURES, live_cols) if keep]
+    del probe, probe_parts
+
     X_parts: list[np.ndarray] = []
     ts_parts: list[np.ndarray] = []
     sym_parts: list[list[str]] = []
 
     for sym in sorted(universe.keys()):
         df = universe[sym]
-        mat = df.select(ALL_FEATURES).to_numpy().astype(np.float32)
+        mat = df.select(feature_names).to_numpy().astype(np.float32)
         ts = df["close_ts"].to_numpy()
 
-        # Drop rows with any NaN
+        # Drop rows with any NaN in live features
         valid = ~np.any(np.isnan(mat), axis=1)
         X_parts.append(mat[valid])
         ts_parts.append(ts[valid])
@@ -491,4 +546,4 @@ def build_features(
     close_ts_arr = close_ts_arr[sort_idx]
     symbols_arr = [symbols_arr_raw[i] for i in sort_idx]
 
-    return X, close_ts_arr, ALL_FEATURES, symbols_arr, sort_idx
+    return X, close_ts_arr, feature_names, symbols_arr, sort_idx

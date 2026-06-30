@@ -4,7 +4,7 @@ Usage:
     uv run python scripts/boostlss_xs/run.py \\
         --data-dir /path/to/tick_bars \\
         --output-dir /tmp/boostlss_xs_out \\
-        [--families GaussianLSS GEVLSS] \\
+        [--families GaussianLSS GEVLSS JSULSS] \\
         [--horizons 1 2 3 4 5] \\
         [--meta-threshold 0.55]
 """
@@ -35,12 +35,19 @@ from scripts.boostlss_xs.model import BoostLssWFO
 from scripts.boostlss_xs.universe import load_universe
 
 
-def _extract_y_raw_per_symbol(universe: dict) -> dict[str, np.ndarray]:
-    """Per-symbol vol_std arrays, same valid-row mask as build_features()."""
+def _extract_y_raw_per_symbol(
+    universe: dict, feature_names: list[str] | None = None
+) -> dict[str, np.ndarray]:
+    """Per-symbol vol_std arrays, same valid-row mask as build_features().
+
+    feature_names: live feature list from build_features(); defaults to ALL_FEATURES.
+    Must match the column set used in build_features to keep row alignment.
+    """
+    cols = feature_names if feature_names is not None else ALL_FEATURES
     result: dict[str, np.ndarray] = {}
     for sym in sorted(universe.keys()):
         df = universe[sym]
-        mat = df.select(ALL_FEATURES).to_numpy()
+        mat = df.select(cols).to_numpy()
         valid = ~np.any(np.isnan(mat), axis=1)
         result[sym] = df["vol_std"].to_numpy()[valid]
     return result
@@ -70,7 +77,7 @@ def run_pipeline(
     meta_threshold: float = 0.55,
 ) -> None:
     """Run the full BoostLSS XS anomaly pipeline and write trade logs."""
-    families = families or ["GaussianLSS", "GEVLSS"]
+    families = families or ["GaussianLSS", "GEVLSS", "JSULSS"]
     horizons = horizons or [1, 2, 3, 4, 5]
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -194,7 +201,7 @@ def _parse_args() -> argparse.Namespace:
         default="/Users/danielfisher/repositories/behemoth/data/tick_bars",
     )
     p.add_argument("--output-dir", default="/tmp/boostlss_xs_out")
-    p.add_argument("--families", nargs="+", default=["GaussianLSS", "GEVLSS"])
+    p.add_argument("--families", nargs="+", default=["GaussianLSS", "GEVLSS", "JSULSS"])
     p.add_argument("--horizons", nargs="+", type=int, default=[1, 2, 3, 4, 5])
     p.add_argument("--meta-threshold", type=float, default=0.55)
     return p.parse_args()
