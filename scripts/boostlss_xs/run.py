@@ -70,7 +70,7 @@ def run_pipeline(
     meta_threshold: float = 0.55,
 ) -> None:
     """Run the full BoostLSS XS anomaly pipeline and write trade logs."""
-    families = families or ["Gaussian", "StudentT"]
+    families = families or ["GaussianLSS", "GEVLSS"]
     horizons = horizons or [1, 2, 3, 4, 5]
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -194,7 +194,7 @@ def _parse_args() -> argparse.Namespace:
         default="/Users/danielfisher/repositories/behemoth/data/tick_bars",
     )
     p.add_argument("--output-dir", default="/tmp/boostlss_xs_out")
-    p.add_argument("--families", nargs="+", default=["Gaussian", "StudentT"])
+    p.add_argument("--families", nargs="+", default=["GaussianLSS", "GEVLSS"])
     p.add_argument("--horizons", nargs="+", type=int, default=[1, 2, 3, 4, 5])
     p.add_argument("--meta-threshold", type=float, default=0.55)
     return p.parse_args()

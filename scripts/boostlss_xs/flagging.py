@@ -22,7 +22,7 @@ def flag_channels(
     Args:
         preds: output of BoostLssWFO.fit_predict() — {"mu", "sigma"} and optionally "nu", "tau"
         y: full target array (used to compute unconditional MAD threshold)
-        family: "Gaussian" or "StudentT"
+        family: "GaussianLSS" or "GEVLSS"
         mu_threshold: scalar, per-row array, or None (falls back to full-sample 1.5×MAD(y))
         sigma_threshold: scalar, per-row array, or None (falls back to full-OOS 20th pctile)
 
@@ -110,8 +110,8 @@ def flag_channels(
     sigma_mag[oos_mask] = sigma[oos_mask]
 
     if nu is not None:
-        # StudentT: low df (nu) = fat tail; flag when df < threshold
-        nu_flag[oos_mask] = (nu[oos_mask] < _NU_STUDENT_T_THRESHOLD).astype(float)
+        # GEVLSS: |nu| > threshold signals asymmetric tail
+        nu_flag[oos_mask] = (np.abs(nu[oos_mask]) > _NU_GEV_THRESHOLD).astype(float)
         nu_mag[oos_mask] = nu[oos_mask]
     # else: nu_flag and nu_mag remain all NaN (GaussianLSS has no nu parameter)
 

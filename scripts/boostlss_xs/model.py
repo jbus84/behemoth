@@ -1,49 +1,25 @@
-"""XGBoostLSS causal walk-forward model.
+"""BoostLSS causal walk-forward model with Gaussian and GEV families.
 
-Approach A: Gaussian  (2 params: mu, sigma) — symmetric baseline.
-Approach B: StudentT  (3 params: mu, sigma, nu) — fat-tail family; low nu = heavy tail.
-
-XGBoostLSS replaces boostlss_py for ~2000× speed improvement (multi-threaded XGBoost
-vs single-threaded Rust; 0.2s vs 7min per fold on 20k rows × 30 features).
+Approach A: GaussianLSS (2 params: mu, sigma) — symmetric baseline.
+Approach B: GEVLSS (3 params: mu, sigma, nu) — asymmetric tail family.
 """
 from __future__ import annotations
 
 import numpy as np
-import xgboost as xgb
-from xgboostlss.distributions.Gaussian import Gaussian
-from xgboostlss.distributions.StudentT import StudentT
-from xgboostlss.model import XGBoostLSS
+from boostlss_py import BoostLssModel, PyFamily, PyTreeLearner
 
-# Internal param names (downstream flagging uses these)
+# Parameters exposed by each distribution family
 FAMILY_PARAMS: dict[str, list[str]] = {
-    "Gaussian": ["mu", "sigma"],
-    "StudentT": ["mu", "sigma", "nu"],
-}
-
-# XGBoostLSS param name → our internal name
-_PARAM_RENAME: dict[str, dict[str, str]] = {
-    "Gaussian": {"loc": "mu", "scale": "sigma"},
-    "StudentT": {"loc": "mu", "scale": "sigma", "df": "nu"},
+    "GaussianLSS": ["mu", "sigma"],
+    "GEVLSS": ["mu", "sigma", "nu"],
 }
 
 # Fixed hyperparameters
-_NUM_BOOST_ROUND = 200
-_XGB_PARAMS = {
-    "eta": 0.1,
-    "max_depth": 3,
-    "verbosity": 0,
-    "nthread": -1,
-}
+_MSTOP = 200
+_STEP_LENGTH = 0.1
+_MAX_DEPTH = 3
 _N_FOLDS = 5
-_MAX_TRAIN_ROWS = 20_000  # subsample per fold; None = use all rows
-
-
-def _make_distribution(family: str) -> Gaussian | StudentT:
-    if family == "Gaussian":
-        return Gaussian(stabilization="None", response_fn="softplus", loss_fn="nll")
-    if family == "StudentT":
-        return StudentT(stabilization="None", response_fn="softplus", loss_fn="nll")
-    raise ValueError(f"Unknown family {family!r}")
+_MAX_TRAIN_ROWS = 2_000  # subsample per fold; None = use all rows
 
 
 def _make_fold_boundaries(
@@ -62,17 +38,26 @@ def _make_fold_boundaries(
 
 
 class BoostLssWFO:
-    """Causal walk-forward XGBoostLSS model.
+    """Causal walk-forward BoostLSS model."""
 
-    Same interface as before: fit on train rows, predict on test rows,
-    return OOS parameter dict with NaN for train rows.
-    """
-
-    def __init__(self, family: str = "StudentT") -> None:
+    def __init__(self, family: str = "GEVLSS") -> None:
         if family not in FAMILY_PARAMS:
             raise ValueError(f"family must be one of {list(FAMILY_PARAMS)}, got {family!r}")
         self.family = family
         self.params = FAMILY_PARAMS[family]
+
+    def _build_model(self, n_features: int) -> BoostLssModel:
+        model = BoostLssModel(
+            PyFamily(self.family),
+            mstop=_MSTOP,
+            step_length=_STEP_LENGTH,
+        )
+        for param in self.params:
+            model.add_learner(param, PyTreeLearner(
+                feature_indices=list(range(n_features)),
+                max_depth=_MAX_DEPTH,
+            ))
+        return model
 
     def fit_predict(
         self,
@@ -81,22 +66,18 @@ class BoostLssWFO:
         close_ts: np.ndarray,
         embargo: int = 5,
     ) -> dict[str, np.ndarray]:
-        """Fit WFO, return OOS parameter predictions (NaN for train rows).
-
-        Per-fold thresholds are returned as per-row arrays to avoid look-ahead.
-        """
+        """Fit WFO, return OOS parameter predictions (NaN for train rows)."""
         n, n_features = X.shape
         oos_preds: dict[str, np.ndarray] = {p: np.full(n, np.nan) for p in self.params}
         mu_threshold_per_row = np.full(n, np.nan)
         sigma_threshold_per_row = np.full(n, np.nan)
-        rename = _PARAM_RENAME[self.family]
 
         folds = _make_fold_boundaries(close_ts, _N_FOLDS, embargo=embargo)
 
         for fold_idx, (train_end, test_start, test_end) in enumerate(folds):
-            X_train = X[:train_end].astype(np.float32)
-            y_train = y[:train_end].astype(np.float32)
-            X_test = X[test_start:test_end].astype(np.float32)
+            X_train = X[:train_end].astype(np.float64)
+            y_train = y[:train_end].astype(np.float64)
+            X_test = X[test_start:test_end].astype(np.float64)
 
             valid = ~(np.isnan(X_train).any(axis=1) | np.isnan(y_train))
             if valid.sum() < 100:
@@ -108,32 +89,29 @@ class BoostLssWFO:
                 valid_idx = rng.choice(valid_idx, _MAX_TRAIN_ROWS, replace=False)
                 valid_idx.sort()
 
-            dtrain = xgb.DMatrix(X_train[valid_idx], label=y_train[valid_idx])
-            dtest = xgb.DMatrix(X_test)
+            model = self._build_model(n_features)
+            model.fit(X_train[valid_idx], y_train[valid_idx])
 
-            model = XGBoostLSS(_make_distribution(self.family))
-            model.train(_XGB_PARAMS, dtrain, num_boost_round=_NUM_BOOST_ROUND, verbose_eval=False)
+            for param in self.params:
+                oos_preds[param][test_start:test_end] = np.array(
+                    model.predict(X_test, param)
+                )
 
-            pred_df = model.predict(dtest)
-            for xgb_name, our_name in rename.items():
-                oos_preds[our_name][test_start:test_end] = pred_df[xgb_name].to_numpy()
-
-            # Per-fold thresholds from training labels only
             y_tr = y_train[valid_idx]
-            fold_mu_threshold = 1.5 * max(
+            mu_threshold_per_row[test_start:test_end] = 1.5 * max(
                 float(np.nanmedian(np.abs(y_tr - np.nanmedian(y_tr)))), 1e-9
             )
-            mu_threshold_per_row[test_start:test_end] = fold_mu_threshold
 
-            # sigma threshold: 20th pctile of training-fold sigma predictions
-            dtrain_full = xgb.DMatrix(X_train[valid_idx])
-            sigma_tr = model.predict(dtrain_full)["scale"].to_numpy()
-            sigma_threshold_per_row[test_start:test_end] = float(np.nanpercentile(sigma_tr, 20))
+            sigma_tr = np.array(model.predict(X_train[valid_idx], "sigma"))
+            sigma_threshold_per_row[test_start:test_end] = float(
+                np.nanpercentile(sigma_tr, 20)
+            )
 
             print(
-                f"  Fold {fold_idx + 1}/{_N_FOLDS}: "
+                f"    [{self.family} fold {fold_idx + 1}/{_N_FOLDS}] "
                 f"train={len(valid_idx)} (of {valid.sum()} valid), "
-                f"test={test_end - test_start}"
+                f"test={test_end - test_start}",
+                flush=True,
             )
 
         oos_preds["mu_threshold_per_row"] = mu_threshold_per_row
