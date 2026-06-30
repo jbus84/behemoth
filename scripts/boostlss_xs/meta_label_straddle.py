@@ -23,11 +23,19 @@ Key finding (3-pair tick-exact validation, ~12k OOS trades):
   (large range but close near open) revert cleanly.
 
 Tick-exact fill model:
-  Entry  — sell-limit at (close + entry_k×sigma) or buy-limit at (close − entry_k×sigma)
-            fills when BID >= level (short) or ASK <= level (long)
+  Entry  — OCO straddle: both a sell-limit at (close + entry_k×sigma) and a buy-limit at
+            (close − entry_k×sigma) placed simultaneously; whichever fills first is the trade.
+            Short fills when BID >= level; long fills when ASK <= level.
   TP     — limit back to original close; fills when ASK <= close (short) or BID >= close (long)
   SL     — stop-market at entry ± sl_k×sigma; fills at mid on first tick past level
-  Cost   — commission 0.70 bps RT always; spread added only on SL exits (~6% of trades)
+  Cost (held trade)  — commission 0.70 bps RT; spread added only on SL exits (~15% of trades)
+  Cost (rejected)    — immediate market close: commission 0.70 bps RT + spread (Option B)
+
+Option B post-fill filter:
+  Every fill is scored by the meta-labeler.  If prob_tp >= threshold: hold to TP/SL.
+  If prob_tp < threshold: close immediately at market, paying spread + commission.
+  The "B all-in/fill" metric in the summary is the true all-in P&L per fill including
+  both held and rejected trades.
 
 Usage::
 
@@ -515,12 +523,33 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _option_b_net_per_fill(df: pd.DataFrame, threshold: float) -> float:
+    """
+    Option B (post-fill filter) P&L per fill, accounting for rejected-trade exit cost.
+
+    Every fill triggers the meta-labeler:
+      accepted (prob_tp >= threshold) → hold to TP/SL, net = maker_net
+      rejected (prob_tp <  threshold) → close immediately at market,
+                                        net = -(spread_bps + commission_rt)
+    Returns the per-fill average net across ALL fills.
+    """
+    accepted = df[df.prob_tp >= threshold]
+    rejected = df[df.prob_tp < threshold]
+    reject_cost = rejected["spread_bps"] + _COMMISSION_RT
+    total_net = accepted["maker_net"].sum() + (-reject_cost).sum()
+    return float(total_net / len(df)) if len(df) else 0.0
+
+
 def _print_summary(df: pd.DataFrame, threshold: float) -> None:
     print(f"\n{'═'*70}")
     print(f"META-LABEL RESULTS  threshold={threshold}")
     print(f"{'═'*70}")
 
     filtered = df[df.prob_tp >= threshold]
+    rejected = df[df.prob_tp < threshold]
+    reject_cost_avg = (rejected["spread_bps"] + _COMMISSION_RT).mean() if len(rejected) else 0.0
+    ob_net = _option_b_net_per_fill(df, threshold)
+
     print("\n── Pooled ──")
     for label, sub in [("All (unfiltered)", df), (f"Filtered P≥{threshold}", filtered)]:
         if len(sub) == 0:
@@ -528,36 +557,47 @@ def _print_summary(df: pd.DataFrame, threshold: float) -> None:
         print(f"  {label:<28}  n={len(sub):>5}  kept={len(sub)/len(df):>5.1%}  "
               f"gross={sub.gross.mean():>+7.3f}  maker_net={sub.maker_net.mean():>+7.3f}  "
               f"TP%={sub.label.mean():>5.1%}  AUC={sub.mean_auc.mean():.3f}")
+    print(f"\n  Option B all-in (per fill, incl. rejected exit cost={reject_cost_avg:.2f} bps): "
+          f"{ob_net:>+7.3f} bps")
 
-    print(f"\n── By pair (filtered P≥{threshold}) ──")
-    print(f"  {'Pair':<8}  {'n':>5}  {'kept%':>6}  {'Spread':>7}  "
-          f"{'Gross':>8}  {'Maker net':>10}  {'TP%':>7}  {'AUC':>6}")
+    print(f"\n── By pair (filtered P≥{threshold}, Option B all-in per fill) ──")
+    print(f"  {'Pair':<8}  {'n_all':>6}  {'kept%':>6}  {'Spread':>7}  "
+          f"{'Maker net':>10}  {'Reject cost':>12}  {'B all-in':>9}  {'TP%':>7}  {'AUC':>6}")
     for sym, g_all in df.groupby("sym"):
         g = g_all[g_all.prob_tp >= threshold]
-        if len(g) == 0:
+        r = g_all[g_all.prob_tp < threshold]
+        if len(g_all) == 0:
             continue
-        sp = g.spread_bps.iloc[0]
+        sp = g_all.spread_bps.iloc[0]
         kept = len(g) / len(g_all)
-        print(f"  {sym:<8}  {len(g):>5}  {kept:>5.1%}  {sp:>7.3f}  "
-              f"{g.gross.mean():>+8.3f}  {g.maker_net.mean():>+10.3f}  "
-              f"{g.label.mean():>6.1%}  {g.mean_auc.mean():>6.3f}")
+        rc = (sp + _COMMISSION_RT)
+        b_net = (g["maker_net"].sum() + (-rc * len(r))) / len(g_all)
+        print(f"  {sym:<8}  {len(g_all):>6}  {kept:>5.1%}  {sp:>7.3f}  "
+              f"{g['maker_net'].mean() if len(g) else 0:>+10.3f}  {-rc:>+12.3f}  "
+              f"{b_net:>+9.3f}  {g['label'].mean() if len(g) else 0:>6.1%}  "
+              f"{g_all.mean_auc.mean():>6.3f}")
 
-    print("\n── By year (filtered, pooled) ──")
-    filtered2 = filtered.copy()
-    filtered2["year"] = filtered2.ts.str[:4]
-    for yr, g in filtered2.groupby("year"):
-        print(f"  {yr}  n={len(g):>5}  gross={g.gross.mean():>+6.3f}  "
-              f"maker_net={g.maker_net.mean():>+6.3f}  win%={(g.maker_net > 0).mean():.3f}")
+    print("\n── By year (Option B all-in, pooled) ──")
+    df2 = df.copy()
+    df2["year"] = df2.ts.str[:4]
+    df2["option_b_net"] = df2.apply(
+        lambda r: r["maker_net"] if r["prob_tp"] >= threshold
+        else -(r["spread_bps"] + _COMMISSION_RT), axis=1
+    )
+    for yr, g in df2.groupby("year"):
+        print(f"  {yr}  n={len(g):>5}  option_b_net={g.option_b_net.mean():>+6.3f}  "
+              f"win%={(g.option_b_net > 0).mean():.3f}")
 
-    print("\n── Threshold sweep (pooled OOS) ──")
-    print(f"  {'Thresh':>7}  {'n':>6}  {'kept%':>6}  {'gross':>8}  {'maker_net':>10}  {'TP%':>7}")
+    print("\n── Threshold sweep — Option B all-in per fill (pooled OOS) ──")
+    print(f"  {'Thresh':>7}  {'n_all':>6}  {'kept%':>6}  {'maker_net (kept)':>17}  "
+          f"{'B all-in/fill':>14}  {'TP% (kept)':>11}")
     for thr in [0.0, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85]:
         sub = df[df.prob_tp >= thr]
         if len(sub) < 100:
             break
-        print(f"  {thr:>7.2f}  {len(sub):>6}  {len(sub)/len(df):>5.1%}  "
-              f"{sub.gross.mean():>+8.3f}  {sub.maker_net.mean():>+10.3f}  "
-              f"{sub.label.mean():>6.1%}")
+        b = _option_b_net_per_fill(df, thr)
+        print(f"  {thr:>7.2f}  {len(df):>6}  {len(sub)/len(df):>5.1%}  "
+              f"{sub.maker_net.mean():>+17.3f}  {b:>+14.3f}  {sub.label.mean():>10.1%}")
 
 
 if __name__ == "__main__":
