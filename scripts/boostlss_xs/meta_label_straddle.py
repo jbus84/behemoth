@@ -211,11 +211,14 @@ def fit_wfo_gaussian(X: np.ndarray, y: np.ndarray) -> np.ndarray:
 
 # ── Tick-exact simulation ────────────────────────────────────────────────────
 
-def load_tick_arrays(sym: str, tick_dir: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    files = sorted(glob.glob(os.path.join(tick_dir, sym, f"{sym}_*.parquet")))
-    dfs   = [pl.read_parquet(f, columns=["timestamp", "bid", "ask", "mid"]) for f in files]
-    df    = pl.concat(dfs).sort("timestamp")
-    ts    = df["timestamp"].cast(pl.Datetime("us")).to_numpy().astype("datetime64[us]")
+def _load_month_pair(sym: str, tick_dir: str, ym: str) -> tuple | None:
+    """Load one YYYYMM month of tick data. Returns None if missing."""
+    files = sorted(glob.glob(os.path.join(tick_dir, sym, f"{sym}_{ym}*.parquet")))
+    if not files:
+        return None
+    dfs = [pl.read_parquet(f, columns=["timestamp", "bid", "ask", "mid"]) for f in files]
+    df  = pl.concat(dfs).sort("timestamp")
+    ts  = df["timestamp"].cast(pl.Datetime("us")).to_numpy().astype("datetime64[us]")
     return ts, df["bid"].to_numpy(), df["ask"].to_numpy(), df["mid"].to_numpy()
 
 
@@ -361,59 +364,91 @@ def run_tick_backtest(
     m1_ts  = raw["bucket"].to_numpy().astype("datetime64[us]")
     m1_mid = raw["mid"].to_numpy()
 
-    if verbose:
-        print(f"  {sym}: loading tick data...", flush=True)
-    tick_ts, tick_bid, tick_ask, tick_mid = load_tick_arrays(sym, tick_dir)
-
-    # Precompute live spread per bar from tick data (median of 40 ticks around bar open)
-    def _bar_spread(bar_ts_val: np.datetime64) -> float:
-        lo = max(np.searchsorted(tick_ts, bar_ts_val) - 20, 0)
-        sp = ((tick_ask - tick_bid) / tick_mid * 1e4)[lo : lo + 40]
-        sp = sp[(sp > 0) & (sp < 100)]
-        return float(np.median(sp)) if len(sp) > 0 else _SPREAD_BPS.get(sym, 1.5)
-
     spread_med = _SPREAD_BPS.get(sym, 1.5)
     comm       = _COMMISSION_RT
 
-    rows: list[dict] = []
+    # Build candidate list first (direction from 1m, no tick data yet)
+    candidates: list[tuple[int, np.datetime64, float, int]] = []
     blocked_until = np.datetime64("1970", "us")
-
     for i in range(n):
         if np.isnan(sg_oos[i]) or sg_oos[i] <= sig_thresh:
             continue
         t_i = ts[i].astype("datetime64[us]")
         if t_i < blocked_until:
             continue
-
         direction = _find_direction_1m(i, ts, mid, sbps[i], m1_ts, m1_mid, entry_k, hold_hours)
         if direction is None:
             continue
+        candidates.append((i, t_i, sbps[i], direction))
+        blocked_until = t_i + np.timedelta64(hold_hours, "h")
+
+    if verbose:
+        print(f"  {sym}: {len(candidates)} candidates → streaming tick data month-by-month...",
+              flush=True)
+
+    # Group candidates by the tick month(s) they need (bar month + possibly next month)
+    rows: list[dict] = []
+    cur_ym: str = ""
+    cur_ticks: tuple | None = None
+
+    for i, t_i, sigma_bps_i, direction in candidates:
+        bar_dt  = pd.Timestamp(t_i)
+        bar_ym  = bar_dt.strftime("%Y%m")
+        # Trade window extends up to hold_hours forward — may spill into next month
+        end_ym  = (bar_dt + pd.Timedelta(hours=hold_hours)).strftime("%Y%m")
+
+        # Load month if changed
+        if bar_ym != cur_ym:
+            if bar_ym == end_ym:
+                cur_ticks = _load_month_pair(sym, tick_dir, bar_ym)
+            else:
+                # Window spans two months — load and concat both
+                m1 = _load_month_pair(sym, tick_dir, bar_ym)
+                m2 = _load_month_pair(sym, tick_dir, end_ym)
+                if m1 and m2:
+                    cur_ticks = (
+                        np.concatenate([m1[0], m2[0]]),
+                        np.concatenate([m1[1], m2[1]]),
+                        np.concatenate([m1[2], m2[2]]),
+                        np.concatenate([m1[3], m2[3]]),
+                    )
+                else:
+                    cur_ticks = m1 or m2
+            cur_ym = bar_ym
+
+        if cur_ticks is None:
+            continue
+        tick_ts, tick_bid, tick_ask, tick_mid = cur_ticks
 
         outcome, gross = simulate_tick_exact(
-            ts[i], mid[i], sbps[i],
+            ts[i], mid[i], sigma_bps_i,
             tick_ts, tick_bid, tick_ask, tick_mid,
             direction, entry_k, tp_k, sl_k, hold_hours,
         )
         if outcome in ("none", "no_fill"):
             continue
 
-        live_sp = _bar_spread(t_i)
+        # Live spread: median of ~40 ticks around bar open
+        lo = max(np.searchsorted(tick_ts, t_i) - 20, 0)
+        sp_arr = ((tick_ask - tick_bid) / tick_mid * 1e4)[lo : lo + 40]
+        sp_arr = sp_arr[(sp_arr > 0) & (sp_arr < 100)]
+        live_sp = float(np.median(sp_arr)) if len(sp_arr) > 0 else spread_med
+
         maker_cost = comm if outcome != "sl" else comm + spread_med
         taker_cost = comm + spread_med
 
         rows.append({
-            "sym":       sym,
-            "ts":        str(ts[i]),
-            "outcome":   outcome,
-            "direction": direction,
-            "gross":     gross,
-            "maker_net": gross - maker_cost,
-            "taker_net": gross - taker_cost,
-            "sigma_bps": sbps[i],
+            "sym":        sym,
+            "ts":         str(ts[i]),
+            "outcome":    outcome,
+            "direction":  direction,
+            "gross":      gross,
+            "maker_net":  gross - maker_cost,
+            "taker_net":  gross - taker_cost,
+            "sigma_bps":  sigma_bps_i,
             "live_spread": live_sp,
             "spread_bps":  spread_med,
         })
-        blocked_until = t_i + np.timedelta64(hold_hours, "h")
 
     df = pd.DataFrame(rows)
     if len(df) > 0:
