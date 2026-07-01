@@ -7,28 +7,31 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
 
 ## P0 — Must verify before any live deployment
 
-- [ ] **WFO causality: OOS sigma only at trade time**
-  `fit_wfo_gaussian` trains on `y[:-1] = vs[1:]` (next-bar return). Confirm sigma
-  predictions used in the candidate loop (`sg_oos[i]`) come from the OOS fold only and
-  never from in-sample rows.
+- [x] **WFO causality: OOS sigma only at trade time**
+  `sg_oos` initialised to `nan`; candidate loop skips `nan` rows; only OOS fold
+  windows are ever written. Clean.
 
-- [ ] **`_causal_roll` off-by-one**
-  Cumsum indexing at `cs[i - w]` — confirm this correctly excludes bar `i` and there is
-  no look-ahead into the current bar.
+- [x] **`_causal_roll` off-by-one**
+  Window at position `i` uses `cs[i] - cs[i-w]` = bars `[i-w+1 … i]`. Current bar
+  included (known at bar close). Not look-ahead. Clean.
 
-- [ ] **`oc` sourced from trigger bar, not next bar**
-  `oc = log(mid / op) * 1e4` at bar `i`. Confirm `op` is the *open* of bar `i` (first 1m
-  mid), not the open of bar `i+1`.
+- [x] **`oc` sourced from trigger bar, not next bar**
+  `op = .first()` over 1h bucket = first 1m mid of bar `i`. `mid = .last()`. Both from
+  bar `i`, known at close. Clean.
 
-- [ ] **OCO simultaneity: both legs are live simultaneously**
-  `simulate_tick_exact` currently scans only for the direction-specific leg. Confirm that
-  if the *opposite* leg fills first (price reverses before reaching entry level), the trade
-  is correctly labelled `no_fill` rather than silently dropped or miscounted as a fill.
+- [x] **OCO simultaneity: both legs are live simultaneously** ← **FIXED**
+  Old code pre-assigned direction from 1m mid (`_find_direction_1m`) and only scanned
+  for that one leg. Rewritten: `simulate_tick_exact` now scans all ticks for whichever
+  of `BID >= upper_entry` / `ASK <= lower_entry` fires first. Both-same-tick case
+  returns `no_fill`. `_find_direction_1m` → `_has_fill_1m` (pre-filter only, no
+  direction). P1 blocked-window fix bundled: `blocked_until_tick` now anchored to actual
+  fill tick timestamp, not bar open.
 
-- [ ] **Which script produced the PR #367 cited numbers?**
-  `reversion_straddle.py` uses 1m mid fills; `meta_label_straddle.py` uses tick-exact
-  bid/ask. Audit the docs/summary to confirm cited figures come from the tick-exact path,
-  not the 1m proxy.
+- [~] **Which script produced the PR #367 cited numbers?**
+  `reversion_straddle.py` docstring says "Pending tick-exact verification" and uses 1m
+  mid + fixed TP/SL bps. PR #367 headline (+3.65 bps, 93.3% win) matches that script.
+  Tick-exact numbers (lower gross, honest cost) are from `meta_label_straddle.py` and
+  subsequent PRs. No code fix needed; docs should note this distinction.
 
 ---
 
@@ -39,10 +42,9 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
   time-exit is a market order (taker). Quantify how many trades are TB and what adding
   spread would do to the headline figure.
 
-- [ ] **Blocked window anchored to bar timestamp, not fill timestamp**
-  `blocked_until = t_i + timedelta(hold_hours)` uses bar open time. If fill occurs 30–60
-  min into the bar the blackout window is systematically short. Measure the distribution
-  of fill lag (entry_idx in tick data) and assess whether this inflates trade count.
+- [x] **Blocked window anchored to bar timestamp, not fill timestamp** ← **FIXED**
+  `blocked_until_tick` now set from actual tick fill timestamp (`fill_ts + hold_hours`).
+  Bundled with OCO simultaneity fix above.
 
 - [ ] **Rejected-trade exit spread proxy**
   Option B rejection cost uses `fill_spread` (spread at *entry* tick). The rejection close

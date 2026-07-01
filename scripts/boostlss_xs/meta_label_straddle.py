@@ -238,28 +238,34 @@ def simulate_tick_exact(
     tick_bid: np.ndarray,
     tick_ask: np.ndarray,
     tick_mid: np.ndarray,
-    direction: int,
     entry_k: float,
     tp_k: float,
     sl_k: float,
     hold_hours: int,
-) -> tuple[str, float]:
+) -> tuple[str, float, float, int, np.datetime64 | None]:
     """
-    Tick-exact OCO reversion for a single bar.
+    True simultaneous-OCO tick-exact reversion for a single bar.
 
-    direction: +1 = fade-short (sell the upper spike), -1 = fade-long (buy the lower dip).
+    Both legs are live at the same time:
+      Upper leg (fade-short): limit sell at close + entry_k×sigma  → fills when BID >= level
+      Lower leg (fade-long):  limit buy  at close - entry_k×sigma  → fills when ASK <= level
 
-    Fill rules:
-      Short entry: BID >= entry_level  (limit sell fills when bid touches)
-      Long  entry: ASK <= entry_level  (limit buy fills when ask touches)
-      TP short:    ASK <= original_close
-      TP long:     BID >= original_close
-      SL:          mid crosses sl_level (stop-market)
+    Whichever leg the market reaches first determines direction.  If neither leg fills within
+    hold_hours the trade is 'no_fill'.
 
-    Returns (outcome, gross_bps, fill_spread_bps) where outcome ∈ {'tp','sl','tb','no_fill','none'}
-    and fill_spread_bps is the actual bid-ask spread at the moment of entry fill.
+    Exit rules (after entry fill):
+      TP short: ASK <= original_close      (buying back at limit)
+      TP long:  BID >= original_close      (selling at limit)
+      SL:       mid crosses sl_level       (stop-market, taker)
+      TB:       hold_hours expires with no exit
+
+    Returns:
+      (outcome, gross_bps, fill_spread_bps, direction, fill_ts)
+      outcome    ∈ {'tp', 'sl', 'tb', 'no_fill', 'none'}
+      direction  ∈ {+1 fade-short, -1 fade-long, 0 no fill}
+      fill_ts    — datetime64[us] of the entry fill tick, or None if no fill
     """
-    eg = entry_k * sigma_bps
+    eg     = entry_k * sigma_bps
     sl_gap = sl_k * sigma_bps
 
     t0   = bar_ts.astype("datetime64[us]")
@@ -267,49 +273,68 @@ def simulate_tick_exact(
     lo   = np.searchsorted(tick_ts, t0,   side="right")
     hi   = np.searchsorted(tick_ts, tend,  side="right")
     if hi <= lo:
-        return "none", 0.0, 0.0
+        return "none", 0.0, 0.0, 0, None
 
-    bid_w = tick_bid[lo:hi]
-    ask_w = tick_ask[lo:hi]
-    mid_w = tick_mid[lo:hi]
-    c0    = bar_mid
+    bid_w  = tick_bid[lo:hi]
+    ask_w  = tick_ask[lo:hi]
+    mid_w  = tick_mid[lo:hi]
+    ts_w   = tick_ts[lo:hi]
+    c0     = bar_mid
 
-    if direction == 1:   # fade-short: sell at c0 + eg
-        entry_level = c0 * (1 + eg / 1e4)
-        sl_level    = entry_level * (1 + sl_gap / 1e4)
-        tp_level    = c0
-        entry_idx   = next((j for j, b in enumerate(bid_w) if b >= entry_level), None)
-        if entry_idx is None:
-            return "no_fill", 0.0, 0.0
-        fill_spread = (ask_w[entry_idx] - bid_w[entry_idx]) / mid_w[entry_idx] * 1e4
-        fill_price = entry_level
+    upper_entry = c0 * (1 + eg / 1e4)
+    lower_entry = c0 * (1 - eg / 1e4)
+
+    # Scan for whichever leg the market reaches first.
+    entry_idx = None
+    direction = 0
+    for j in range(len(bid_w)):
+        upper_hit = bid_w[j] >= upper_entry
+        lower_hit = ask_w[j] <= lower_entry
+        if upper_hit and lower_hit:
+            # Both levels touched on the same tick (gap open / wide spread).
+            # Treat as no_fill — ambiguous which would have been resting first.
+            return "no_fill", 0.0, 0.0, 0, None
+        if upper_hit:
+            entry_idx = j
+            direction = 1
+            break
+        if lower_hit:
+            entry_idx = j
+            direction = -1
+            break
+
+    if entry_idx is None:
+        return "no_fill", 0.0, 0.0, 0, None
+
+    fill_spread = (ask_w[entry_idx] - bid_w[entry_idx]) / mid_w[entry_idx] * 1e4
+    fill_ts     = ts_w[entry_idx]
+
+    if direction == 1:   # fade-short: sold at upper_entry
+        fill_price = upper_entry
+        sl_level   = fill_price * (1 + sl_gap / 1e4)
+        tp_level   = c0
         for j in range(entry_idx + 1, len(ask_w)):
             if ask_w[j] <= tp_level:
-                return "tp", (fill_price - ask_w[j]) / fill_price * 1e4, fill_spread
+                return "tp", (fill_price - ask_w[j]) / fill_price * 1e4, fill_spread, direction, fill_ts
             if mid_w[j] >= sl_level:
-                return "sl", (fill_price - mid_w[j]) / fill_price * 1e4, fill_spread
-        return "tb", 0.0, fill_spread
+                return "sl", (fill_price - mid_w[j]) / fill_price * 1e4, fill_spread, direction, fill_ts
+        return "tb", 0.0, fill_spread, direction, fill_ts
 
-    else:   # fade-long: buy at c0 - eg
-        entry_level = c0 * (1 - eg / 1e4)
-        sl_level    = entry_level * (1 - sl_gap / 1e4)
-        tp_level    = c0
-        entry_idx   = next((j for j, a in enumerate(ask_w) if a <= entry_level), None)
-        if entry_idx is None:
-            return "no_fill", 0.0, 0.0
-        fill_spread = (ask_w[entry_idx] - bid_w[entry_idx]) / mid_w[entry_idx] * 1e4
-        fill_price = entry_level
+    else:   # fade-long: bought at lower_entry
+        fill_price = lower_entry
+        sl_level   = fill_price * (1 - sl_gap / 1e4)
+        tp_level   = c0
         for j in range(entry_idx + 1, len(bid_w)):
             if bid_w[j] >= tp_level:
-                return "tp", (bid_w[j] - fill_price) / fill_price * 1e4, fill_spread
+                return "tp", (bid_w[j] - fill_price) / fill_price * 1e4, fill_spread, direction, fill_ts
             if mid_w[j] <= sl_level:
-                return "sl", (mid_w[j] - fill_price) / fill_price * 1e4, fill_spread
-        return "tb", 0.0, fill_spread
+                return "sl", (mid_w[j] - fill_price) / fill_price * 1e4, fill_spread, direction, fill_ts
+        return "tb", 0.0, fill_spread, direction, fill_ts
 
 
-# ── 1m direction finder ───────────────────────────────────────────────────────
+# ── 1m fill-existence pre-filter ─────────────────────────────────────────────
 
-def _find_direction_1m(
+def _has_fill_1m(
     i: int,
     ts_arr: np.ndarray,
     mid_arr: np.ndarray,
@@ -318,23 +343,22 @@ def _find_direction_1m(
     m1_mid: np.ndarray,
     entry_k: float,
     hold_hours: int,
-) -> int | None:
-    """Return +1/-1 direction from 1m data, or None if no fill."""
-    eg  = entry_k * sigma_bps
-    t0  = ts_arr[i].astype("datetime64[us]")
-    lo  = np.searchsorted(m1_ts, t0, side="right")
+) -> bool:
+    """
+    Fast 1m-mid pre-filter: returns True if either OCO leg would fill within
+    hold_hours based on 1m bar closes.  Used only to skip loading tick data for
+    bars that clearly won't trade.  Direction is NOT derived here — the true
+    simultaneous-OCO direction comes from simulate_tick_exact (tick bid/ask).
+    """
+    eg   = entry_k * sigma_bps
+    t0   = ts_arr[i].astype("datetime64[us]")
+    lo   = np.searchsorted(m1_ts, t0, side="right")
     mids = m1_mid[lo : lo + hold_hours * 60]
     if len(mids) == 0:
-        return None
-    c0 = mid_arr[i]
+        return False
+    c0    = mid_arr[i]
     moves = (mids - c0) / c0 * 1e4
-    upper_t = next((j for j, m in enumerate(moves) if m >= eg),  len(moves) + 1)
-    lower_t = next((j for j, m in enumerate(moves) if m <= -eg), len(moves) + 1)
-    if upper_t <= lower_t and upper_t < len(moves):
-        return 1
-    if lower_t < upper_t and lower_t < len(moves):
-        return -1
-    return None
+    return any(abs(m) >= eg for m in moves)
 
 
 # ── Per-pair tick-exact backtest ──────────────────────────────────────────────
@@ -378,8 +402,10 @@ def run_tick_backtest(
     spread_med = _SPREAD_BPS.get(sym, 1.5)
     comm       = _COMMISSION_RT
 
-    # Build candidate list first (direction from 1m, no tick data yet)
-    candidates: list[tuple[int, np.datetime64, float, int]] = []
+    # Build candidate list using 1m pre-filter (checks if any fill likely; no direction used).
+    # Blocked window is conservatively anchored to bar timestamp here; the precise
+    # fill-time block is applied below using the actual tick fill timestamp.
+    candidates: list[tuple[int, np.datetime64, float]] = []
     blocked_until = np.datetime64("1970", "us")
     for i in range(n):
         if np.isnan(sg_oos[i]) or sg_oos[i] <= sig_thresh:
@@ -387,10 +413,9 @@ def run_tick_backtest(
         t_i = ts[i].astype("datetime64[us]")
         if t_i < blocked_until:
             continue
-        direction = _find_direction_1m(i, ts, mid, sbps[i], m1_ts, m1_mid, entry_k, hold_hours)
-        if direction is None:
+        if not _has_fill_1m(i, ts, mid, sbps[i], m1_ts, m1_mid, entry_k, hold_hours):
             continue
-        candidates.append((i, t_i, sbps[i], direction))
+        candidates.append((i, t_i, sbps[i]))
         blocked_until = t_i + np.timedelta64(hold_hours, "h")
 
     if verbose:
@@ -402,7 +427,17 @@ def run_tick_backtest(
     cur_ym: str = ""
     cur_ticks: tuple | None = None
 
-    for i, t_i, sigma_bps_i, direction in candidates:
+    # Second pass: non-overlap re-enforced on fill timestamps (not bar timestamps).
+    # The pre-filter blocked_until above may admit a candidate whose previous trade
+    # actually filled late (up to ~60min into the bar); we re-check here with the
+    # precise fill time once tick data resolves it.
+    blocked_until_tick = np.datetime64("1970", "us")
+
+    for i, t_i, sigma_bps_i in candidates:
+        # Skip if still inside a previous trade's hold window (fill-time anchored).
+        if t_i < blocked_until_tick:
+            continue
+
         bar_dt  = pd.Timestamp(t_i)
         bar_ym  = bar_dt.strftime("%Y%m")
         # Trade window extends up to hold_hours forward — may spill into next month
@@ -431,17 +466,20 @@ def run_tick_backtest(
             continue
         tick_ts, tick_bid, tick_ask, tick_mid = cur_ticks
 
-        outcome, gross, fill_spread = simulate_tick_exact(
+        # True simultaneous-OCO: direction discovered from tick bid/ask.
+        outcome, gross, fill_spread, direction, fill_ts = simulate_tick_exact(
             ts[i], mid[i], sigma_bps_i,
             tick_ts, tick_bid, tick_ask, tick_mid,
-            direction, entry_k, tp_k, sl_k, hold_hours,
+            entry_k, tp_k, sl_k, hold_hours,
         )
         if outcome in ("none", "no_fill"):
             continue
 
-        # fill_spread is the actual bid-ask spread at the moment of entry fill.
-        # Use it for SL and reject-close costs (taker exits during momentum).
-        # Fall back to pair median if tick data gave an implausible value.
+        # Block from actual fill time (not bar open time) to prevent overlap.
+        if fill_ts is not None:
+            blocked_until_tick = fill_ts + np.timedelta64(hold_hours, "h")
+
+        # fill_spread: actual bid-ask at entry tick. Fall back to pair median if implausible.
         if fill_spread <= 0 or fill_spread > 50:
             fill_spread = spread_med
 
