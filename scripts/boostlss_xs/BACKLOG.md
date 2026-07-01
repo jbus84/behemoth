@@ -38,11 +38,8 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
 ## P1 — Material cost/P&L impact
 
 - [x] **TB (time-barrier) exits charged no spread** ← **FIXED**
-  `maker_cost` condition changed from `outcome != "sl"` to `outcome == "tp"` in both
-  `meta_label_straddle.py` and `reversion_straddle.py`. TB exits now pay `comm + spread`
-  (market order at expiry). Estimated drag: −0.05 to −0.16 bps/fill depending on TB%
-  (5–15% of fills). Headline likely moves from +1.019 → ~+0.91 to +0.97 bps/fill.
-  Exact figure needs a full re-run.
+  TB rate was only 0.8% (not 5-15% as estimated) — minor direct impact.
+  Primary driver of headline drop was the OCO simultaneity fix (see above).
 
 - [x] **Blocked window anchored to bar timestamp, not fill timestamp** ← **FIXED**
   `blocked_until_tick` now set from actual tick fill timestamp (`fill_ts + hold_hours`).

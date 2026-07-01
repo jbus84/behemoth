@@ -8,20 +8,18 @@ Do not modify without re-running meta_label_v2.py and causal_validation.py.
 """
 
 # ── Pair universe ─────────────────────────────────────────────────────────────
-# Full G10 universe minus 4 wide-spread pairs that are negative all-in
-# even after meta-label filtering (AUDCAD, AUDNZD, EURNZD, GBPNZD).
+# 14 pairs positive all-in after post-bugfix re-run (excl 18-21 UTC).
+# Dropped: EURCHF/EURGBP/GBPCHF (reject-cost drag exceeds maker net).
+# Previously also excluded: AUDCAD, AUDNZD, EURNZD, GBPNZD (too wide).
 LIVE_PAIRS: list[str] = [
     "AUDJPY",
     "AUDUSD",
     "CADJPY",
     "CHFJPY",
     "EURAUD",
-    "EURCHF",
-    "EURGBP",
     "EURJPY",
     "EURUSD",
     "GBPAUD",
-    "GBPCHF",
     "GBPJPY",
     "GBPUSD",
     "NZDUSD",
@@ -62,10 +60,21 @@ SPREAD_BPS: dict[str, float] = {
     "CHFJPY": 1.278, "NZDUSD": 1.758,
 }
 
-# ── Performance summary (OOS, tick-exact, V2 meta-labeler) ───────────────────
+# ── Performance summary (OOS, tick-exact, post-bugfix re-run) ────────────────
 # Pairs: 17  |  Hours: excl 18–21 UTC  |  Threshold: 0.55
-# Option B all-in:  +1.019 bps/fill
-# AUC (V2):          0.868
-# Brier score:       0.123
-# Years positive:    2021–2025 (5/5 in OOS window)
-# Causal validation: placebo Δ−0.015, cross-pair 0.875, sub-period stable
+# Option B all-in:  +0.634 bps/fill        (was +1.019 before OCO + TB cost fixes)
+# AUC:               0.827
+# TP/SL/TB:          67.5% / 31.7% / 0.8%
+# Spread fallback:   0.0%  (tick data clean)
+# Years positive:    6/6 (2020–2025, all positive after hour filter)
+#
+# Positive pairs (excl 18-21 UTC):
+#   EURUSD +1.441  AUDJPY +1.691  USDJPY +1.314  EURJPY +1.285  GBPUSD +1.079
+#   AUDUSD +0.793  CADJPY +0.767  GBPJPY +0.738  NZDUSD +0.487  USDCHF +0.482
+#   USDCAD +0.293  CHFJPY +0.368  GBPAUD +0.347  EURAUD +0.059
+# Negative pairs (reject-cost drag exceeds maker net):
+#   EURCHF -0.274  EURGBP -0.285  GBPCHF -0.328
+#
+# Previous headline (+1.019) reflected: (a) direction pre-assigned from 1m mid
+# (not true simultaneous OCO), (b) TB exits charged commission-only not taker,
+# (c) blocked window anchored to bar open not fill time.
