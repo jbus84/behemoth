@@ -54,10 +54,11 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
   close spread — likely slightly conservative (wide momentum spread) rather than optimistic.
   No systematic bias toward flattering P&L. No fix needed.
 
-- [ ] **Spread validity fallback frequency**
-  Lines 445-447: falls back to pair median when `fill_spread <= 0 or > 50`. Log how often
-  this fires per pair — high frequency = tick data gaps during exactly the high-volatility
-  moments where costs matter most.
+- [x] **Spread validity fallback frequency** ← **INSTRUMENTED**
+  Added `spread_fallback_n` counter + `fill_spread_raw` column to trade log.
+  Per-pair fallback rate printed in verbose output with ⚠ if >5%. Summary section
+  in `_print_summary` shows pooled rate and per-pair breakdown if >5%.
+  Exact numbers will appear on next full backtest re-run.
 
 ---
 

@@ -431,7 +431,8 @@ def run_tick_backtest(
     # The pre-filter blocked_until above may admit a candidate whose previous trade
     # actually filled late (up to ~60min into the bar); we re-check here with the
     # precise fill time once tick data resolves it.
-    blocked_until_tick = np.datetime64("1970", "us")
+    blocked_until_tick  = np.datetime64("1970", "us")
+    spread_fallback_n   = 0   # tracks how often fill_spread is implausible
 
     for i, t_i, sigma_bps_i in candidates:
         # Skip if still inside a previous trade's hold window (fill-time anchored).
@@ -480,8 +481,10 @@ def run_tick_backtest(
             blocked_until_tick = fill_ts + np.timedelta64(hold_hours, "h")
 
         # fill_spread: actual bid-ask at entry tick. Fall back to pair median if implausible.
+        fill_spread_raw = fill_spread
         if fill_spread <= 0 or fill_spread > 50:
             fill_spread = spread_med
+            spread_fallback_n += 1
 
         # Live spread: median of ~40 ticks around bar open (meta-label feature only)
         lo = max(np.searchsorted(tick_ts, t_i) - 20, 0)
@@ -496,17 +499,18 @@ def run_tick_backtest(
         taker_cost = comm + fill_spread
 
         rows.append({
-            "sym":          sym,
-            "ts":           str(ts[i]),
-            "outcome":      outcome,
-            "direction":    direction,
-            "gross":        gross,
-            "maker_net":    gross - maker_cost,
-            "taker_net":    gross - taker_cost,
-            "sigma_bps":    sigma_bps_i,
-            "live_spread":  live_sp,
-            "spread_bps":   spread_med,
-            "fill_spread":  fill_spread,
+            "sym":             sym,
+            "ts":              str(ts[i]),
+            "outcome":         outcome,
+            "direction":       direction,
+            "gross":           gross,
+            "maker_net":       gross - maker_cost,
+            "taker_net":       gross - taker_cost,
+            "sigma_bps":       sigma_bps_i,
+            "live_spread":     live_sp,
+            "spread_bps":      spread_med,
+            "fill_spread":     fill_spread,
+            "fill_spread_raw": fill_spread_raw,  # pre-fallback; NaN/0/outlier → implausible tick
         })
 
     df = pd.DataFrame(rows)
@@ -516,9 +520,13 @@ def run_tick_backtest(
                                          if c not in ("sigma_bps","direction","live_spread")]],
                       on="ts", how="left")
     if verbose:
-        tp_r = (df.outcome=="tp").mean() if len(df) else 0
-        print(f"  {sym}: {len(df)} trades  gross={df.gross.mean():+.3f}  "
-              f"maker_net={df.maker_net.mean():+.3f}  TP%={tp_r:.1%}", flush=True)
+        n_trades  = len(df)
+        tp_r      = (df.outcome == "tp").mean() if n_trades else 0
+        fallback_r = spread_fallback_n / n_trades if n_trades else 0
+        warn = "  ⚠ HIGH FALLBACK RATE" if fallback_r > 0.05 else ""
+        print(f"  {sym}: {n_trades} trades  gross={df.gross.mean():+.3f}  "
+              f"maker_net={df.maker_net.mean():+.3f}  TP%={tp_r:.1%}  "
+              f"spread_fallback={fallback_r:.1%}{warn}", flush=True)
     return df
 
 
@@ -602,6 +610,21 @@ def _print_summary(df: pd.DataFrame, threshold: float) -> None:
     spread_col = "fill_spread" if "fill_spread" in df.columns else "spread_bps"
     reject_cost_avg = (rejected[spread_col] + _COMMISSION_RT).mean() if len(rejected) else 0.0
     ob_net = _option_b_net_per_fill(df, threshold)
+
+    # Spread fallback audit — fires when fill_spread was <=0 or >50 bps
+    if "fill_spread_raw" in df.columns:
+        n_fallback = ((df.fill_spread_raw <= 0) | (df.fill_spread_raw > 50)).sum()
+        fallback_r = n_fallback / len(df)
+        warn = "  ⚠ HIGH — cost model may be inaccurate" if fallback_r > 0.05 else "  OK"
+        print(f"\n── Spread fallback audit ──")
+        print(f"  Implausible fill_spread (≤0 or >50 bps): {n_fallback}/{len(df)} = {fallback_r:.1%}{warn}")
+        if fallback_r > 0.05:
+            by_pair = df.groupby("sym").apply(
+                lambda g: ((g.fill_spread_raw <= 0) | (g.fill_spread_raw > 50)).mean()
+            ).sort_values(ascending=False)
+            print("  Per-pair fallback rates (top offenders):")
+            for sym, r in by_pair[by_pair > 0.01].items():
+                print(f"    {sym}: {r:.1%}")
 
     print("\n── Pooled ──")
     for label, sub in [("All (unfiltered)", df), (f"Filtered P≥{threshold}", filtered)]:
