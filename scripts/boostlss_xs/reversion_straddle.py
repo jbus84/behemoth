@@ -1,5 +1,11 @@
 """
-BoostLSS Reversion-OCO Straddle.
+BoostLSS Reversion-OCO Straddle — 1m MID PROXY (DEPRECATED).
+
+.. warning::
+    This script uses 1m bar mid-prices as fill proxies and fixed TP/SL bps,
+    NOT tick-exact bid/ask fills.  P&L figures from this script are optimistic
+    and should not be cited as final results.  Use meta_label_straddle.py for
+    all authoritative tick-exact backtest numbers.
 
 Strategy: BoostLSS GaussianLSS predicts high-volatility 1h bars.
 When predicted sigma exceeds a threshold, place pending OCO orders at
@@ -11,10 +17,7 @@ beyond the entry if momentum continues.
 Non-overlapping: once a trade is entered, a hold_hours blackout applies.
 
 Entry and TP legs are limit orders (maker); only SL exits are market (taker).
-Cost model: commission round-trip always + spread only on SL exits (~6% of trades).
-
-Validated on 20 pairs (6 majors + 14 crosses), ~89k OOS trades, 7yr, all positive.
-Maker net: +3.65 bps/trade avg, 93.3% win rate. Pending tick-exact fill verification.
+Cost model: commission round-trip always + spread only on SL/TB exits.
 
 Usage::
 

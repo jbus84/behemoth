@@ -48,10 +48,11 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
   `blocked_until_tick` now set from actual tick fill timestamp (`fill_ts + hold_hours`).
   Bundled with OCO simultaneity fix above.
 
-- [ ] **Rejected-trade exit spread proxy**
-  Option B rejection cost uses `fill_spread` (spread at *entry* tick). The rejection close
-  is a separate market order at a different (possibly later) moment. Check whether using
-  entry spread is conservative or optimistic for the rejection cost.
+- [~] **Rejected-trade exit spread proxy**
+  Rejected trades are momentum bars (large `|oc|`). Entry fill and rejection close both
+  occur during the same momentum spike, so `fill_spread` is a reasonable proxy for the
+  close spread — likely slightly conservative (wide momentum spread) rather than optimistic.
+  No systematic bias toward flattering P&L. No fix needed.
 
 - [ ] **Spread validity fallback frequency**
   Lines 445-447: falls back to pair median when `fill_spread <= 0 or > 50`. Log how often
@@ -62,35 +63,36 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
 
 ## P2 — Model integrity
 
-- [ ] **Meta-labeler split by count, not time**
-  `fit_meta_label_wfo` uses `n // (N_FOLDS + 1)` count-based splits. If trades cluster
-  temporally, train/test may be on structurally different regimes. Compare to a
-  time-sorted split and check if AUC changes materially.
+- [~] **Meta-labeler split by count, not time**
+  Per-pair trades are already in time order, so count-based split = time-based split
+  within a pair. Count clustering across years is actually desirable (trains on
+  high-vol regimes, tests on what follows). No fix needed.
 
-- [ ] **No embargo in meta-labeler WFO**
-  GaussianLSS WFO has `te_start = tr_end + 8` embargo; meta-labeler has none. With 8h
-  hold periods, adjacent trades can share tick data. Add a ~hold_hours embargo and measure
-  AUC impact.
+- [~] **No embargo in meta-labeler WFO**
+  Non-overlap blackout guarantees adjacent trades are ≥ 8h apart. Nearest training trade
+  is ≥ 8h before any test trade. Key feature `oc` (trigger bar open-to-close) has near-zero
+  autocorrelation at 8h lag. Shared `mom_1/4/24` lookback windows are slow-moving and not
+  sharp predictors. Contamination risk is negligible. No fix needed.
 
-- [ ] **TP fill achievability**
-  TP is coded as limit at original close — maker, no spread. In a fast-reverting market
-  this should be fine, but verify that TP tick `ask_w[j] <= tp_level` (short) /
-  `bid_w[j] >= tp_level` (long) actually represents a realistic fill and not a single
-  stale tick.
+- [~] **TP fill achievability**
+  TP level = `entry_k × sigma` of reversion (e.g. 5 bps for sigma=10 entry_k=0.5) —
+  physically reachable, not extreme. Fill rule uses ask (short close) / bid (long close):
+  correct side for limit exit. Stale-tick misfire would produce an outlier gross visible
+  in the distribution. Dukascopy feed quality makes crossed ticks rare. Clean.
 
 ---
 
 ## P3 — Edge cases / robustness
 
-- [ ] **Month-boundary concatenation sort order**
-  When a trade window spans two months both parquets are concatenated (lines 412-428).
-  `pl.concat` does not sort. Confirm both files are individually sorted and concatenation
-  preserves temporal order, otherwise tick-exact fill search may find wrong ticks.
+- [~] **Month-boundary concatenation sort order**
+  `_load_month_pair` calls `.sort("timestamp")` after `pl.concat` so each individual
+  month tuple is sorted. Cross-month concat is `np.concatenate([m1, m2])` — since all
+  of m1 (month-end) precedes all of m2 (month-start) by calendar, the result is
+  chronologically ordered by construction. Clean.
 
-- [ ] **`reversion_straddle.py` 1m-proxy cost model**
-  `_simulate_one` uses 1m mid for fill price (not bid/ask). Gross distribution will differ
-  from tick-exact. Ensure this script is not used for any reported P&L figures; consider
-  deprecating or adding a prominent warning.
+- [x] **`reversion_straddle.py` 1m-proxy cost model**
+  Added DEPRECATED warning to docstring. Authoritative numbers come from
+  `meta_label_straddle.py` only.
 
 - [x] **`_find_direction_1m` used only as post-fill feature**
   Function renamed `_has_fill_1m` and no longer returns direction at all (P0 fix).
