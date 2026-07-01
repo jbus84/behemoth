@@ -335,7 +335,8 @@ def run_backtest(
 
         # Maker cost: entry+TP are limit orders (commission only);
         # SL exits are stop-market (commission + spread).
-        maker_cost = comm if outcome != "sl" else comm + spread
+        # TP: limit exit → commission only. SL/TB: market exit → commission + spread.
+        maker_cost = comm if outcome == "tp" else comm + spread
         taker_cost = comm + spread
         rows.append({
             "sym":        sym,

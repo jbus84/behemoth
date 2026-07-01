@@ -37,10 +37,12 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
 
 ## P1 — Material cost/P&L impact
 
-- [ ] **TB (time-barrier) exits charged no spread**
-  `maker_cost = comm if outcome != "sl"` — TB exits pay commission only. In live, a
-  time-exit is a market order (taker). Quantify how many trades are TB and what adding
-  spread would do to the headline figure.
+- [x] **TB (time-barrier) exits charged no spread** ← **FIXED**
+  `maker_cost` condition changed from `outcome != "sl"` to `outcome == "tp"` in both
+  `meta_label_straddle.py` and `reversion_straddle.py`. TB exits now pay `comm + spread`
+  (market order at expiry). Estimated drag: −0.05 to −0.16 bps/fill depending on TB%
+  (5–15% of fills). Headline likely moves from +1.019 → ~+0.91 to +0.97 bps/fill.
+  Exact figure needs a full re-run.
 
 - [x] **Blocked window anchored to bar timestamp, not fill timestamp** ← **FIXED**
   `blocked_until_tick` now set from actual tick fill timestamp (`fill_ts + hold_hours`).
@@ -90,10 +92,9 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
   from tick-exact. Ensure this script is not used for any reported P&L figures; consider
   deprecating or adding a prominent warning.
 
-- [ ] **`_find_direction_1m` used only as post-fill feature**
-  Confirm this function is never called on a bar before tick data is loaded, and that
-  `direction` only enters the meta-labeler feature set (known at fill time), never used to
-  decide whether to place the OCO straddle.
+- [x] **`_find_direction_1m` used only as post-fill feature**
+  Function renamed `_has_fill_1m` and no longer returns direction at all (P0 fix).
+  Direction is discovered exclusively from tick bid/ask in `simulate_tick_exact`.
 
 ---
 

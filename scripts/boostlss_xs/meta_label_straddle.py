@@ -489,7 +489,10 @@ def run_tick_backtest(
         sp_arr = sp_arr[(sp_arr > 0) & (sp_arr < 100)]
         live_sp = float(np.median(sp_arr)) if len(sp_arr) > 0 else spread_med
 
-        maker_cost = comm if outcome != "sl" else comm + fill_spread
+        # TP: both legs limit orders → commission only.
+        # SL: stop-market taker exit → commission + spread.
+        # TB: time-barrier = market exit at expiry → commission + spread (same as SL).
+        maker_cost = comm if outcome == "tp" else comm + fill_spread
         taker_cost = comm + fill_spread
 
         rows.append({
