@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field, model_validator
 from src.behemoth.api.cache_manager import CacheManager
 from src.behemoth.api.dashboard import router as dashboard_router
 from src.behemoth.api.predict_orchestrator import PredictionOrchestrator
-from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths
+from src.behemoth.core.bundle_paths import BundlePaths
 from src.behemoth.core.candidate_catalog import CandidateCatalog, CatalogContext
 from src.behemoth.core.features import (
     FeatureConfig,
@@ -818,57 +818,21 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     try:
         _aggregators = {}
         _cache_manager.reset_all()
-        if _is_historical_mode():
-            hist_dir = Path(str(_config.governance_history_dir))
-            _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
-            _run_historical_preflight(hist_dir)
-            _registry = None
-            _historical_entries_loaded = _historical_registry.entry_count()
-            logger.info(
-                "Loaded %d month-scoped historical lock entries from %s",
-                _historical_entries_loaded,
-                hist_dir,
-            )
-            unique_bar_ticks = {int(c.bar_ticks) for c in _historical_registry.all_candidates()}
-        else:
-            _registry = CandidateRegistry.load(
-                os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"),
-                models_dir=Path(_config.models_dir),
-            )
-            _historical_registry = None
-            _historical_entries_loaded = 0
-            _historical_preflight_failed_checks = 0
-            _historical_preflight_summary = ""
-            logger.info("Loaded %d candidates from governance locks", len(_registry.all_candidates()))
-            unique_bar_ticks = {int(c.bar_ticks) for c in _registry.all_candidates()}
-
-        if not unique_bar_ticks:
-            unique_bar_ticks = {100}
+        # Model-serving is a placeholder pending boostlss_xs wiring (see
+        # docs/superpowers/plans/2026-07-02-repo-cleanup.md). No model is loaded;
+        # /predict returns an empty prediction list until a model is wired in.
+        _registry = None
+        _historical_registry = None
+        _historical_entries_loaded = 0
+        _historical_preflight_failed_checks = 0
+        _historical_preflight_summary = ""
+        unique_bar_ticks = {100}
         for bt in unique_bar_ticks:
             _aggregators[bt] = TickAggregator(bar_ticks=bt)
             logger.info("Initialized TickAggregator for %d ticks", bt)
-
-    except FileNotFoundError:
-        _registry = None
-        _historical_registry = None
-        _historical_entries_loaded = 0
-        _historical_preflight_failed_checks = 0
-        _historical_preflight_summary = ""
-        _aggregators = {100: TickAggregator(bar_ticks=100)}
-        logger.warning(
-            "Governance lock source not found — using empty registry and default 100-tick aggregator"
-        )
-    except BundleIntegrityError as exc:
-        _registry = None
-        _historical_registry = None
-        _historical_entries_loaded = 0
-        _historical_preflight_failed_checks = 0
-        _historical_preflight_summary = ""
-        _aggregators = {100: TickAggregator(bar_ticks=100)}
-        logger.warning(
-            "Governance bundle integrity issue — using empty registry and default 100-tick aggregator: %s",
-            exc,
-        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Runtime scaffold startup failed: %s", exc)
+        raise
     _models_dir = Path(_config.models_dir)
     _load_models()
     _load_seed_files()
@@ -895,24 +859,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         logger.error("Failed to load account risk rules: %s", exc)
 
-    # Initialize PredictionOrchestrator
-    # The orchestrator is HTTP-agnostic; we inject closures over server-module
-    # helpers to perform the inference (step 5) and scan registration (step 7).
-    # Without these, /predict would silently return empty predictions.
-    _orchestrator = PredictionOrchestrator(
-        state=_state,
-        barrier_manager=_barrier_manager,
-        model_registry=_model_registry,
-        candidate_registry=_registry,
-        historical_registry=_historical_registry,
-        account_risk_profile=_account_risk_profile,
-        config=_config,
-        is_historical_mode=_is_historical_mode(),
-        get_latest_month=_latest_loaded_month_for_symbol,
-        build_predictions_fn=_orchestrator_build_predictions_fn,
-        register_scans_fn=_orchestrator_register_scans_fn,
-    )
-    logger.info("PredictionOrchestrator initialized")
+    # PredictionOrchestrator is not constructed in placeholder mode: no
+    # registry is loaded, so /predict short-circuits to an empty response
+    # (handler-level guard) rather than entering the 7-step pipeline. The
+    # orchestrator symbol is retained for the Task 2.3 handler rewrite.
+    _orchestrator = None
+    logger.info("PredictionOrchestrator not initialized (placeholder mode, no registry)")
 
     # Sync the typed RuntimeAppState container with the freshly-built globals.
     # New code should prefer ``_app_state``; existing routes still use the
@@ -1055,57 +1007,11 @@ app = FastAPI(
 app.include_router(dashboard_router)
 
 
-def _catboost_cls() -> Any | None:
-    try:
-        from catboost import CatBoostClassifier
-    except ImportError:
-        logger.error("CatBoost not installed — predictions will be unavailable.")
-        return None
-    return CatBoostClassifier
-
-
 def _load_models() -> None:
-    """Load model cache according to governance mode."""
+    """No-op placeholder. Model-serving was removed with the tick-opportunity-mining
+    pipeline; /predict returns empty predictions until boostlss_xs is wired in."""
     _cache_manager.reset_all()
-    if not _models_dir.exists():
-        logger.warning("Models directory %s does not exist yet.", _models_dir)
-        return
-
-    if _is_historical_mode():
-        # Historical mode uses lazy per-(symbol,month) loading on /predict.
-        logger.info("Historical governance mode enabled: model cache is lazy-loaded by month.")
-        return
-
-    if _registry is None:
-        logger.error(
-            "Governance registry unavailable — refusing to load models without lock binding."
-        )
-        return
-
-    for sym in _config.symbols:
-        candidates = _registry.get_candidates(sym)
-        families = sorted({c.family for c in candidates if c.family})
-        if not families:
-            logger.error("No governance families for %s — skipping model load.", sym)
-            continue
-        for family in families:
-            try:
-                bundle_paths = _registry.get_bundle_paths(sym, family)
-                if not bundle_paths:
-                    logger.error("No governance bundle paths for %s family %s — skipping.", sym, family)
-                    continue
-                cache_key = _cache_key(sym, family=family)
-                _model_registry.load_bundle_paths(
-                    symbol=sym,
-                    bundle_paths=bundle_paths,
-                    cache_key=cache_key,
-                    locked_runtime_overrides={},
-                    expected_month=bundle_paths.model_month or None,
-                    catboost_cls=_catboost_cls(),
-                )
-            except BundleIntegrityError as exc:
-                logger.error("Bundle integrity error for %s %s — skipping: %s", sym, family, exc)
-                continue
+    logger.info("Model loading skipped — placeholder predict path active (no model wired).")
 
 def _load_seed_files(seed_dir: Path | None = None) -> None:
     """Load pre-computed threshold seed parquets into audit_logs."""
@@ -1718,12 +1624,18 @@ def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any
     if model is not None and isinstance(thr_cfg, dict):
         return model, thr_cfg
 
+    try:
+        from catboost import CatBoostClassifier
+        catboost_cls: Any | None = CatBoostClassifier
+    except ImportError:
+        logger.error("CatBoost not installed — predictions will be unavailable.")
+        catboost_cls = None
     ok, reason = _model_registry.load_bundle_paths(
         symbol=contract.symbol,
         bundle_paths=contract.bundle_paths,
         cache_key=contract.cache_key,
         expected_month=(contract.model_month if contract.model_month != "unknown" else None),
-        catboost_cls=_catboost_cls(),
+        catboost_cls=catboost_cls,
     )
     if not ok:
         raise HTTPException(
