@@ -185,7 +185,7 @@ dev = [
 [[package]]
 name = "boostlss"
 version = "0.1.0"
-source = { git = "https://github.com/dnf0/boostlss?subdirectory=crates%2Fboostlss-py#6b9924ea08db10e6bc440d93f20a5105f6b7e4ca" }
+source = { git = "https://github.com/dnf0/boostlss?subdirectory=crates%2Fboostlss-py#5b22552f23a0ba5b02823bd7659c1416dcf743b1" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
