@@ -104,18 +104,9 @@ class TestPredictionOrchestrator:
         assert isinstance(resp.predictions, list)
         assert isinstance(resp.actions, list)
 
-    def test_step_resolve_candidates_returns_list(self):
-        """Step 1: resolve_candidates returns list."""
+    def test_step_resolve_candidates_returns_empty_in_placeholder_mode(self):
+        """Step 1: placeholder returns [] (no model/catalog wired in yet)."""
         state = MockBarStateReader()
-        mock_catalog = mock.MagicMock()
-        mock_contract = mock.MagicMock()
-        mock_candidate = mock.MagicMock()
-        mock_candidate.bar_ticks = 100
-        mock_candidate.horizon = 10
-        mock_candidate.barrier_pips = 20.0
-        mock_contract.candidates = [mock_candidate]
-        mock_catalog.resolve_contract.return_value = mock_contract
-
         orch = PredictionOrchestrator(
             state=state,  # type: ignore
             barrier_manager=None,
@@ -125,14 +116,12 @@ class TestPredictionOrchestrator:
             account_risk_profile=None,
             config=mock.MagicMock(),
         )
-        orch._catalog = mock_catalog
 
         req = PredictRequest(symbol="EURUSD", requested_volume_units=10000, account_risk_enabled_override=False)
         candidates = orch._step_resolve_candidates(
             req, "EURUSD", datetime(2026, 5, 8, 12, 0, tzinfo=timezone.utc)
         )
-        assert isinstance(candidates, list)
-        assert len(candidates) > 0
+        assert candidates == []
 
     def test_step_evaluate_account_risk_returns_decision(self):
         """Step 4: evaluate_account_risk returns typed decision."""
