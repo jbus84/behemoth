@@ -1,9 +1,0 @@
-nodes:
-  - node_id: monthly_recert
-    required: true
-    evidence_path: data/analysis/backtest_reconcile/${MODEL_MONTH}/monthly_recert/monthly_recert_status.json
-    target_branch: main
-    model_month: ${MODEL_MONTH}
-    required_outputs:
-      - data/analysis/backtest_reconcile/${MODEL_MONTH}/monthly_recert/stage14_jforex_runtime_certification_checks.csv
-      - data/analysis/backtest_reconcile/${MODEL_MONTH}/monthly_recert/stage14_jforex_runtime_certification_summary.csv

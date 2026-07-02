@@ -1,7 +1,0 @@
-symbol,historical_deployable,non_deployable_reason,dukascopy_runtime_artifacts_complete_pass,stage12_api_parity_pass,dukascopy_testclient_signal_parity_pass,dukascopy_testclient_execution_parity_pass,stage13_dukascopy_testclient_pass,stage13_dukascopy_testclient_no_go,certification_outcome,go_decision,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-05-07T16:10:10Z
-EURUSD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-05-07T16:10:10Z
-GBPUSD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-05-07T16:10:10Z
-USDCAD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-05-07T16:10:10Z
-USDCHF,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-05-07T16:10:10Z
-USDJPY,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-05-07T16:10:10Z
