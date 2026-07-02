@@ -61,6 +61,8 @@ import polars as pl
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import roc_auc_score
 
+from distributions import DistSpec, get_dist_spec
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 _USD_SIGN: dict[str, int] = {
@@ -187,13 +189,26 @@ def build_1h_features(sym: str, data_dir: str) -> dict:
     }
 
 
-# ── WFO GaussianLSS ──────────────────────────────────────────────────────────
+# ── WFO distribution fitting ─────────────────────────────────────────────────
 
-def fit_wfo_gaussian(X: np.ndarray, y: np.ndarray) -> np.ndarray:
-    from boostlss_py import BoostLssModel, PyFamily, PyTreeLearner  # type: ignore[import]
+def fit_wfo_dist(
+    X: np.ndarray, y: np.ndarray, spec: "DistSpec"
+) -> tuple[dict[str, np.ndarray], list[float]]:
+    """
+    Generalized 5-fold expanding WFO with embargo=8 bars, for any registered
+    BoostLSS distribution family.
+
+    Returns:
+      preds:    dict mapping each spec.param_names entry to a length-n OOS
+                prediction array (NaN outside OOS windows).
+      fold_nll: list of per-fold mean OOS negative log-likelihood (diagnostic
+                fit-quality metric; lower is better; independent of sigma scale).
+    """
+    from boostlss_py import BoostLssModel, PyTreeLearner  # type: ignore[import]
 
     n, n_feat = X.shape
-    sg_oos    = np.full(n, np.nan)
+    preds: dict[str, np.ndarray] = {p: np.full(n, np.nan) for p in spec.param_names}
+    fold_nll: list[float] = []
     fold_size = n // (_N_FOLDS + 1)
     for fi in range(_N_FOLDS):
         tr_end   = fold_size * (fi + 1)
@@ -208,13 +223,21 @@ def fit_wfo_gaussian(X: np.ndarray, y: np.ndarray) -> np.ndarray:
             idx.sort()
         if len(idx) < 200:
             continue
-        model = BoostLssModel(PyFamily("GaussianLSS"), mstop=200, step_length=0.1)
-        for p in ["mu", "sigma"]:
+        model = BoostLssModel(spec.make_family(), mstop=200, step_length=0.1)
+        for p in spec.param_names:
             model.add_learner(p, PyTreeLearner(feature_indices=list(range(n_feat)), max_depth=3))
         model.fit(X[idx].astype(np.float64), y[idx].astype(np.float64))
-        sg_oos[te_start:te_end] = np.array(
-            model.predict(X[te_start:te_end].astype(np.float64), "sigma"))
-    return sg_oos
+
+        te_ok = ~(np.isnan(X[te_start:te_end]).any(axis=1) | np.isnan(y[te_start:te_end]))
+        fold_preds: dict[str, np.ndarray] = {}
+        for p in spec.param_names:
+            pred = np.array(model.predict(X[te_start:te_end].astype(np.float64), p))
+            preds[p][te_start:te_end] = pred
+            fold_preds[p] = pred[te_ok]
+        y_te = y[te_start:te_end][te_ok]
+        if len(y_te) > 0:
+            fold_nll.append(spec.nll_fn(y_te, fold_preds))
+    return preds, fold_nll
 
 
 # ── Tick-exact simulation ────────────────────────────────────────────────────
@@ -372,14 +395,22 @@ def run_tick_backtest(
     sl_k: float    = 1.0,
     hold_hours: int  = 8,
     sig_thresh: float = 1.5,
+    family: str = "gaussian",
     verbose: bool   = True,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, list[float]]:
     """
     Full tick-exact non-overlapping backtest for one symbol.
-    Returns a DataFrame with one row per trade (including tick-exact outcome and features).
+
+    Returns (trade_df, fold_nll):
+      trade_df — one row per trade (tick-exact outcome + features). Includes extra
+                 columns named after the family's extra_features (e.g. "lam" for
+                 merton) when family != "gaussian".
+      fold_nll — per-WFO-fold mean OOS negative log-likelihood (diagnostic).
     """
     if verbose:
-        print(f"  {sym}: building features + WFO...", flush=True)
+        print(f"  {sym}: building features + WFO ({family})...", flush=True)
+
+    spec = get_dist_spec(family)
 
     d   = build_1h_features(sym, data_dir)
     X   = d["X"]
@@ -393,7 +424,8 @@ def run_tick_backtest(
 
     y = np.full(n, np.nan)
     y[:-1] = vs[1:]
-    sg_oos = fit_wfo_gaussian(X, y)
+    preds, fold_nll = fit_wfo_dist(X, y, spec)
+    sg_oos = preds[spec.sizing_param]
     sbps   = np.clip(sg_oos * mad, 0.0, 200.0)
 
     m1_ts  = raw["bucket"].to_numpy().astype("datetime64[us]")
@@ -498,7 +530,7 @@ def run_tick_backtest(
         maker_cost = comm if outcome == "tp" else comm + fill_spread
         taker_cost = comm + fill_spread
 
-        rows.append({
+        row = {
             "sym":             sym,
             "ts":              str(ts[i]),
             "outcome":         outcome,
@@ -511,7 +543,13 @@ def run_tick_backtest(
             "spread_bps":      spread_med,
             "fill_spread":     fill_spread,
             "fill_spread_raw": fill_spread_raw,  # pre-fallback; NaN/0/outlier → implausible tick
-        })
+        }
+        # Extra distribution params (e.g. jump intensity, skew, kurtosis) exposed
+        # to the meta-labeler as features. Not MAD-rescaled — these are dimensionless
+        # shape parameters, unlike sigma/mu_j/sigma_j which are in normalised-return units.
+        for feat_name in spec.extra_features:
+            row[feat_name] = float(preds[feat_name][i])
+        rows.append(row)
 
     df = pd.DataFrame(rows)
     if len(df) > 0:
@@ -524,22 +562,27 @@ def run_tick_backtest(
         tp_r      = (df.outcome == "tp").mean() if n_trades else 0
         fallback_r = spread_fallback_n / n_trades if n_trades else 0
         warn = "  ⚠ HIGH FALLBACK RATE" if fallback_r > 0.05 else ""
+        avg_nll = np.mean(fold_nll) if fold_nll else float("nan")
         print(f"  {sym}: {n_trades} trades  gross={df.gross.mean():+.3f}  "
               f"maker_net={df.maker_net.mean():+.3f}  TP%={tp_r:.1%}  "
-              f"spread_fallback={fallback_r:.1%}{warn}", flush=True)
-    return df
+              f"spread_fallback={fallback_r:.1%}  oos_nll={avg_nll:.4f}{warn}", flush=True)
+    return df, fold_nll
 
 
 # ── Meta-labeler WFO ─────────────────────────────────────────────────────────
 
-def fit_meta_label_wfo(df: pd.DataFrame) -> pd.DataFrame:
+def fit_meta_label_wfo(df: pd.DataFrame, feat_cols: list[str] = _FEAT_COLS) -> pd.DataFrame:
     """
     Train a HistGradientBoostingClassifier in causal WFO on tick-exact outcomes.
     Adds 'prob_tp' column to df; returns only OOS rows.
+
+    feat_cols defaults to the base feature set (_FEAT_COLS); callers comparing
+    alternative distribution families pass feat_cols=_FEAT_COLS + spec.extra_features
+    to include e.g. jump-intensity or skew/kurtosis as additional meta-label inputs.
     """
-    df = df.dropna(subset=_FEAT_COLS).copy()
+    df = df.dropna(subset=feat_cols).copy()
     df["label"] = (df.outcome == "tp").astype(int)
-    X  = df[_FEAT_COLS].values
+    X  = df[feat_cols].values
     y  = df.label.values
     n  = len(df)
     fs = n // (_N_FOLDS + 1)
@@ -687,7 +730,7 @@ if __name__ == "__main__":
         if not os.path.exists(flow_path) or not os.path.isdir(tick_path):
             print(f"  {sym}: missing data, skipping")
             continue
-        df_sym = run_tick_backtest(
+        df_sym, _fold_nll = run_tick_backtest(
             sym=sym, data_dir=args.data_dir, tick_dir=args.tick_dir,
             entry_k=args.entry_k, tp_k=args.tp_k, sl_k=args.sl_k,
             hold_hours=args.hold_hours, sig_thresh=args.sig_thresh,
