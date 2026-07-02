@@ -27,10 +27,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.behemoth.api.predict_orchestrator import PredictionOrchestrator
-    from src.behemoth.core.registry import (
-        CandidateRegistry,
-        HistoricalCandidateRegistry,
-    )
     from src.behemoth.core.tick_aggregator import TickAggregator
     from src.behemoth.risk.account_risk import AccountRiskProfile
     from src.behemoth.runtime.barrier_manager import BarrierManager
@@ -64,8 +60,13 @@ class RuntimeAppState:
     state: "StateManager | None" = None
     barrier_manager: "BarrierManager | None" = None
     orchestrator: "PredictionOrchestrator | None" = None
-    registry: "CandidateRegistry | None" = None
-    historical_registry: "HistoricalCandidateRegistry | None" = None
+    # ``registry`` / ``historical_registry`` retained as ``Any``-typed slots
+    # defaulting to ``None``; the governance/model registry modules were
+    # removed (Task 2.4) and no live code populates these fields in
+    # placeholder mode. Kept so ``/status`` observability and existing tests
+    # can continue to read them as ``None`` until boostlss_xs wiring lands.
+    registry: Any = None
+    historical_registry: Any = None
     account_risk_profile: "AccountRiskProfile | None" = None
     aggregators: "dict[int, TickAggregator]" = field(default_factory=dict)
     feed_state: dict[str, Any] = field(default_factory=dict)

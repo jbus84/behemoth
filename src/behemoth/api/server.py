@@ -34,10 +34,6 @@ from src.behemoth.api.cache_manager import CacheManager
 from src.behemoth.api.dashboard import router as dashboard_router
 from src.behemoth.api.predict_orchestrator import PredictionOrchestrator
 from src.behemoth.core.features import FeatureConfig
-from src.behemoth.core.historical_prediction_stage import HistoricalPredictionStage
-from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
-from src.behemoth.core.model_registry import ModelRegistry
-from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     AccountRiskSnapshotRequest,
     ActiveTrade,
@@ -89,11 +85,7 @@ _state: StateManager | None = None
 _barrier_manager: BarrierManager | None = None
 _orchestrator: PredictionOrchestrator | None = None
 _aggregators: dict[int, TickAggregator] = {}
-_registry: CandidateRegistry | None = None
-_historical_registry: HistoricalCandidateRegistry | None = None
-_model_registry: ModelRegistry = ModelRegistry()
-_historical_prediction_stage: HistoricalPredictionStage = HistoricalPredictionStage()
-_cache_manager: CacheManager = CacheManager([_model_registry, _historical_prediction_stage])
+_cache_manager: CacheManager = CacheManager([])
 _models_dir: Path = Path("models/oco")
 _account_risk_rules_path: Path = Path("configs/research/governance/account_risk/account_risk_rules.yaml")
 _account_risk_profile: AccountRiskProfile | None = None
@@ -598,7 +590,7 @@ def _build_open_positions_summary(
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
-    global _state, _barrier_manager, _orchestrator, _aggregators, _registry, _historical_registry, _feed_state, _lifespan_ready
+    global _state, _barrier_manager, _orchestrator, _aggregators, _feed_state, _lifespan_ready
     global _models_dir, _account_risk_rules_path, _account_risk_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
 
@@ -643,8 +635,6 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         # Model-serving is a placeholder pending boostlss_xs wiring (see
         # docs/superpowers/plans/2026-07-02-repo-cleanup.md). No model is loaded;
         # /predict returns an empty prediction list until a model is wired in.
-        _registry = None
-        _historical_registry = None
         _historical_entries_loaded = 0
         _historical_preflight_failed_checks = 0
         _historical_preflight_summary = ""
@@ -694,8 +684,6 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _app_state.state = _state
     _app_state.barrier_manager = _barrier_manager
     _app_state.orchestrator = _orchestrator
-    _app_state.registry = _registry
-    _app_state.historical_registry = _historical_registry
     _app_state.account_risk_profile = _account_risk_profile
     _app_state.aggregators = _aggregators
     _app_state.feed_state = _feed_state

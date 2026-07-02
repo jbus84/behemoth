@@ -21,7 +21,6 @@ from typing import Any, Callable
 
 from fastapi import HTTPException
 
-from src.behemoth.core.candidate_catalog import CandidateCatalog, CatalogContext
 from src.behemoth.core.schemas import ModelFeatures, PredictResponse
 from src.behemoth.risk.account import AccountRiskDecision, evaluate_account_risk_decision
 from src.behemoth.runtime.barrier_manager import BarrierManager
@@ -156,26 +155,21 @@ class PredictionOrchestrator:
         """
         self._state = state
         self._barrier_manager = barrier_manager
-        self._model_registry = model_registry
-        self._candidate_registry = candidate_registry
         self._account_risk_profile = account_risk_profile
         self._pipeline_config = PredictPipelineConfig.from_config(config)
         self._get_latest_month = get_latest_month or (lambda _: None)
         self._build_predictions_fn = build_predictions_fn
         self._register_scans_fn = register_scans_fn
 
-        # Create catalog for resolving candidates
-        self._force_model_month = getattr(config, "force_model_month", None)
-        self._catalog = CandidateCatalog(
-            context=CatalogContext(
-                live_registry=candidate_registry,
-                historical_registry=historical_registry,
-                is_historical_mode=is_historical_mode,
-                missing_month_policy=self._pipeline_config.governance_missing_month_policy,
-                get_latest_month=self._get_latest_month,
-            ),
-            force_model_month=self._force_model_month,
-        )
+        # Candidate resolution is a placeholder (no catalog/model wired in);
+        # step 1 returns ``[]``. The registry/historical-mode dependencies are
+        # retained as harmless placeholder attributes (wired into the
+        # constructor for test fixtures) until boostlss_xs candidate wiring
+        # lands. They are not read by any live step today.
+        self._model_registry = model_registry
+        self._candidate_registry = candidate_registry
+        self._historical_registry = historical_registry
+        self._is_historical_mode = is_historical_mode
 
     def execute(self, req: Any, run_id: str) -> PredictResponse:
         """Run the full predict pipeline with explicit 7-step ordering.
