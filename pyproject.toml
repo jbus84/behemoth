@@ -78,6 +78,13 @@ ignore = [
     "B023", # Function definition does not bind loop variable
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Straddle-logic entrypoint scripts bootstrap sys.path before importing the
+# package, so module-level imports are intentionally not at the top of the file.
+# These files are preserved working logic (byte-identical to origin/main); the
+# pre-existing E402/F541 noise is suppressed here rather than editing the logic.
+"scripts/boostlss_xs/*" = ["E402", "F541"]
+
 [tool.ty.rules]
 # Treat pre-existing type noise as ignored to allow build to pass
 "unresolved-attribute" = "ignore"

@@ -98,7 +98,9 @@ class TestPredictionOrchestrator:
         )
         orch._catalog = mock_catalog
 
-        req = PredictRequest(symbol="EURUSD", requested_volume_units=10000, account_risk_enabled_override=False)
+        req = PredictRequest.model_validate(
+            {"symbol": "EURUSD", "requested_volume_units": 10000, "account_risk_enabled_override": False}
+        )
         resp = orch.execute(req, "run-123")
         assert isinstance(resp, PredictResponse)
         assert isinstance(resp.predictions, list)
@@ -117,7 +119,9 @@ class TestPredictionOrchestrator:
             config=mock.MagicMock(),
         )
 
-        req = PredictRequest(symbol="EURUSD", requested_volume_units=10000, account_risk_enabled_override=False)
+        req = PredictRequest.model_validate(
+            {"symbol": "EURUSD", "requested_volume_units": 10000, "account_risk_enabled_override": False}
+        )
         candidates = orch._step_resolve_candidates(
             req, "EURUSD", datetime(2026, 5, 8, 12, 0, tzinfo=timezone.utc)
         )
