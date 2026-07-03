@@ -58,10 +58,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
+from distributions import DistSpec, get_dist_spec
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import roc_auc_score
-
-from distributions import DistSpec, get_dist_spec
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,7 +193,7 @@ def build_1h_features(sym: str, data_dir: str, tail_rows: int | None = None) -> 
 # ── WFO distribution fitting ─────────────────────────────────────────────────
 
 def fit_wfo_dist(
-    X: np.ndarray, y: np.ndarray, spec: "DistSpec"
+    X: np.ndarray, y: np.ndarray, spec: DistSpec
 ) -> tuple[dict[str, np.ndarray], list[float]]:
     """
     Generalized 5-fold expanding WFO with embargo=8 bars, for any registered

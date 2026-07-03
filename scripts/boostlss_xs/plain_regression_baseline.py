@@ -60,8 +60,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingRegressor
-
 from meta_label_straddle import (
     _FEAT_COLS,
     _MAX_TRAIN,
@@ -71,6 +69,7 @@ from meta_label_straddle import (
     fit_meta_label_wfo,
     run_tick_backtest,
 )
+from sklearn.ensemble import HistGradientBoostingRegressor
 
 _DEFAULT_PAIRS: list[str] = ["EURUSD", "GBPJPY", "AUDUSD", "USDJPY"]
 

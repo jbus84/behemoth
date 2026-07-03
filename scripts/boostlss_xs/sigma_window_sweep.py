@@ -26,11 +26,17 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import contextlib
 
 import numpy as np
 import pandas as pd
-
-from meta_label_straddle import _FEAT_COLS, _option_b_net_per_fill, build_1h_features, fit_meta_label_wfo, run_tick_backtest
+from meta_label_straddle import (
+    _FEAT_COLS,
+    _option_b_net_per_fill,
+    build_1h_features,
+    fit_meta_label_wfo,
+    run_tick_backtest,
+)
 from plain_regression_baseline import _DEFAULT_PAIRS, fit_wfo_quantile_robust
 
 
@@ -52,11 +58,9 @@ def run_window(
         return None
     all_raw = pd.concat(tick_dfs, ignore_index=True)
     oos_dfs: list[pd.DataFrame] = []
-    for sym, g in all_raw.groupby("sym"):
-        try:
+    for _sym, g in all_raw.groupby("sym"):
+        with contextlib.suppress(Exception):
             oos_dfs.append(fit_meta_label_wfo(g.copy(), feat_cols=_FEAT_COLS))
-        except Exception:
-            pass
     if not oos_dfs:
         print(f"  lo={lo} hi={hi}: meta-labeling produced no results")
         return None
