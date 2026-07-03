@@ -191,14 +191,3 @@ def test_oco_lifecycle_now_panel_uses_current_state_layout() -> None:
     assert rename_map["behemoth_jforex_active_oco_groups"] == "Active groups"
     assert rename_map["behemoth_broker_open_positions_total"] == "Open trades"
     assert rename_map["behemoth_pending_broker_confirm_positions_total"] == "Pending / canceling"
-
-
-def test_makefile_exposes_demo_cert_monitor_target() -> None:
-    makefile_path = Path("Makefile")
-    makefile = makefile_path.read_text(encoding="utf-8")
-
-    assert "demo-cert-monitor: observability-up" in makefile
-    assert '"demo-cert-monitor"' in makefile
-    assert '"$(or $(METRICS_PORT),9464)"' in makefile
-    assert '"$(or $(REPORT_DIR),data/analysis/backtest_reconcile)"' in makefile
-    assert "Monitoring stack: started via make observability-up" in makefile

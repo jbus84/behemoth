@@ -21,7 +21,6 @@ from typing import Any, Callable
 
 from fastapi import HTTPException
 
-from src.behemoth.core.candidate_catalog import CandidateCatalog, CatalogContext
 from src.behemoth.core.schemas import ModelFeatures, PredictResponse
 from src.behemoth.risk.account import AccountRiskDecision, evaluate_account_risk_decision
 from src.behemoth.runtime.barrier_manager import BarrierManager
@@ -156,28 +155,21 @@ class PredictionOrchestrator:
         """
         self._state = state
         self._barrier_manager = barrier_manager
-        self._model_registry = model_registry
-        self._candidate_registry = candidate_registry
-        self._historical_registry = historical_registry
         self._account_risk_profile = account_risk_profile
         self._pipeline_config = PredictPipelineConfig.from_config(config)
-        self._is_historical_mode = is_historical_mode
         self._get_latest_month = get_latest_month or (lambda _: None)
         self._build_predictions_fn = build_predictions_fn
         self._register_scans_fn = register_scans_fn
 
-        # Create catalog for resolving candidates
-        self._force_model_month = getattr(config, "force_model_month", None)
-        self._catalog = CandidateCatalog(
-            context=CatalogContext(
-                live_registry=candidate_registry,
-                historical_registry=historical_registry,
-                is_historical_mode=is_historical_mode,
-                missing_month_policy=self._pipeline_config.governance_missing_month_policy,
-                get_latest_month=self._get_latest_month,
-            ),
-            force_model_month=self._force_model_month,
-        )
+        # Candidate resolution is a placeholder (no catalog/model wired in);
+        # step 1 returns ``[]``. The registry/historical-mode dependencies are
+        # retained as harmless placeholder attributes (wired into the
+        # constructor for test fixtures) until boostlss_xs candidate wiring
+        # lands. They are not read by any live step today.
+        self._model_registry = model_registry
+        self._candidate_registry = candidate_registry
+        self._historical_registry = historical_registry
+        self._is_historical_mode = is_historical_mode
 
     def execute(self, req: Any, run_id: str) -> PredictResponse:
         """Run the full predict pipeline with explicit 7-step ordering.
@@ -246,115 +238,14 @@ class PredictionOrchestrator:
     def _step_resolve_candidates(
         self, req: Any, sym: str, close_ts: datetime
     ) -> list[Any]:
-        """Step 1: Resolve candidates from contract with filters."""
-        logger.debug("Step 1: resolving candidates for %s", sym)
+        """Step 1: Placeholder — no candidate catalog/model wired in yet.
 
-        contract: Any = None
-        try:
-            if self._is_historical_mode:
-                contract = self._resolve_historical_aggregate_contract(sym, close_ts)
-            else:
-                contract = self._catalog.resolve_contract(sym, close_ts)
-        except (LookupError, KeyError, ValueError) as exc:
-            logger.warning("Step 1: failed to resolve contract for %s: %s", sym, exc)
-            raise HTTPException(status_code=422, detail=str(exc).strip("'")) from exc
-
-        candidates = list(contract.candidates)
-        if not candidates:
-            logger.warning("Step 1: no candidates registered for %s", sym)
-            raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
-
-        logger.info("Step 1: resolved %d candidates for %s", len(candidates), sym)
-
-        completed_ticks = self._normalize_completed_bar_ticks(req.completed_bar_ticks)
-        if completed_ticks:
-            candidates = [c for c in candidates if int(getattr(c, "bar_ticks", 0)) in completed_ticks]
-            if not candidates:
-                return []
-
-        candidates = self._apply_historical_prediction_universe_gate(
-            contract=contract,
-            close_ts=close_ts,
-            candidates=candidates,
-            bar_ordinals=req.bar_ordinals,
-        )
-
-        return candidates
-
-    def _resolve_historical_aggregate_contract(
-        self, sym: str, close_ts: datetime
-    ) -> Any:
-        """Resolve and merge all family contracts for a symbol in historical mode."""
-        if self._historical_registry is None:
-            raise LookupError("Historical governance registry not loaded")
-        # Derive month from close_ts or forced month, not from model cache
-        # (models are lazy-loaded and may not exist before first prediction).
-        month_str = str(self._force_model_month or "").strip()
-        if month_str:
-            from src.behemoth.core.candidate_catalog import _normalize_model_month
-            requested_month = _normalize_model_month(month_str)
-            if requested_month is None:
-                raise KeyError(
-                    f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={month_str!r}; expected YYYY-MM"
-                )
-        else:
-            requested_month = close_ts.strftime("%Y-%m")
-        families = self._historical_registry.families_for_symbol_month(sym, requested_month)
-        if not families:
-            raise KeyError(f"No historical families for {sym} month {requested_month}")
-
-        all_candidates: list[Any] = []
-        first_contract: Any = None
-        for family in families:
-            family_contract = self._catalog.resolve_contract(sym, close_ts, family=family)
-            all_candidates.extend(family_contract.candidates)
-            if first_contract is None:
-                first_contract = family_contract
-
-        if not all_candidates or first_contract is None:
-            raise KeyError(f"No historical contracts resolved for {sym}")
-
-        # Build a merged contract using first family's metadata.
-        # Callers that need per-family metadata (bundle_paths, cap_pips)
-        # should resolve per-family downstream in _orchestrator_build_predictions_fn.
-        return type(
-            "AggregateRuntimeCandidateContract",
-            (),
-            {
-                "symbol": sym,
-                "model_month": first_contract.model_month,
-                "cache_key": self._catalog.cache_key(sym, first_contract.model_month),
-                "candidates": all_candidates,
-                "bundle_paths": first_contract.bundle_paths,
-                "cap_pips": first_contract.cap_pips,
-                "source": "historical",
-                "lock_path": getattr(first_contract, "lock_path", None),
-            },
-        )()
-
-    def _normalize_completed_bar_ticks(self, raw: list[int] | None) -> set[int]:
-        """Normalize client-provided completed bar-tick identifiers."""
-        out: set[int] = set()
-        if not raw:
-            return out
-        for v in raw:
-            try:
-                iv = int(v)
-            except Exception:
-                continue
-            if iv > 0:
-                out.add(iv)
-        return out
-
-    def _apply_historical_prediction_universe_gate(
-        self,
-        contract: Any,
-        close_ts: datetime,
-        candidates: list[Any],
-        bar_ordinals: dict[int, int] | None,
-    ) -> list[Any]:
-        """Filter candidates through historical prediction universe gate if applicable."""
-        return candidates
+        Returning ``[]`` makes :meth:`execute` short-circuit to
+        ``PredictResponse(predictions=[], actions=[])``. Re-enable candidate
+        resolution when boostlss_xs is wired into the runtime.
+        """
+        logger.info("Step 1: placeholder — no candidates for %s (no model wired).", sym)
+        return []
 
     def _step_check_warmup(self, sym: str, candidates: list[Any]) -> None:
         """Step 2: Verify sufficient bars for feature computation."""

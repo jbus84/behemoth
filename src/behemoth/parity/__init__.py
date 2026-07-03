@@ -1,1 +1,0 @@
-"""Parity audit harness package."""

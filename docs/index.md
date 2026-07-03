@@ -1,66 +1,55 @@
-# Behemoth OCO Strategy Documentation
+# Behemoth
 
-This documentation set orients operators and new contributors to the active **tick-based OCO stop-limit research/governance pipeline**. The active execution path is monthly walk-forward, Python-led, and broker-adapter targeted at JForex.
+A trading-system repo holding two working surfaces: a **straddle meta-labeling** research logic and a **live JForex execution scaffold**.
 
-## What Is Active
-- Strategy type: directional OCO candidate selection with stop-limit entry realism and fixed-horizon post-touch outcome labeling.
-- Core model engine: CatBoost-based monthly WFO probability ranking (`pred_prob`) for execution-threshold selection.
-- Model lifecycle policy: one-month validity and monthly retrain, with predictions expiring at the next test-month boundary.
-- Active symbol universe: `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`.
-- Core objective: find high-count, positive gross microstructure opportunities and govern them with strict causal validation.
-- Validation posture: stage-gated, artifact-driven, and contract-checked.
+## Straddle logic — `scripts/boostlss_xs/`
 
-## Who This Is For
-- Operators should use this page to jump to current readiness, governing reports, and the runbook.
-- New contributors should use this page to find the manual, the walkthrough, and the stage specs in order.
+A standalone BoostLSS-based cross-symbol straddle meta-labeler:
 
-## Key Sources
-1. Strategy manual and stage bible: [`STRATEGY_MASTER_MANUAL.md`](./STRATEGY_MASTER_MANUAL.md), [`docs/strategy_bible/stage_01_data_foundation.md`](./strategy_bible/stage_01_data_foundation.md)
-2. Generated snapshots and governed status: [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md), [`docs/analysis/index.md`](./analysis/index.md)
-3. Contract checks and issues: [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md)
+- `features.py` — tick-bar feature computation
+- `flagging.py` — channel/straddle flagging
+- `meta_labeler.py` / `meta_label_v2.py` — meta-labeling (side + size)
+- `model.py` — BoostLSS walk-forward model (`BoostLssWFO`)
+- `universe.py` — symbol universe loading
+- `run.py`, `reversion_straddle.py`, `meta_label_straddle.py`, `causal_validation.py` — runners and validation
 
-## Authority
-- `canonical`: governing synthesis or policy source.
-- `generated truth snapshot`: generated status surface tied to current artifacts.
-- `interpretive report`: analysis or operator guidance derived from governed artifacts.
-- `compatibility`: legacy or optional surface that does not define the active path.
-- `candidate`: pre-governance or proposed material that is not yet binding.
-- `archive`: historical reference only.
+It is self-contained, writes outputs to `/tmp`, and is exercised by `tests/test_boostlss_xs_*.py`. It is not imported by the live runtime.
 
-### Authority Note
-- Authority label: `canonical`
-- Authoritative for: entrypoint guidance, authority hierarchy, and source-routing across the active docs set.
-- Not authoritative for: live symbol readiness, stage gate outcomes, or deployment decisions by itself.
-- Depends on: [`STRATEGY_MASTER_MANUAL.md`](./STRATEGY_MASTER_MANUAL.md), [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md), and [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md).
+## Live JForex scaffold — `src/behemoth/{api,runtime,core,risk}` + `src/jforex/`
 
-## Start Here
-- Full strategy definition: [`STRATEGY_MASTER_MANUAL.md`](./STRATEGY_MASTER_MANUAL.md)
-- Stage-by-stage specs: [`docs/strategy_bible/stage_01_data_foundation.md`](./strategy_bible/stage_01_data_foundation.md) through [`docs/strategy_bible/stage_14_jforex_runtime_certification.md`](./strategy_bible/stage_14_jforex_runtime_certification.md)
-- Daily operator flow: [`docs/strategy_bible/operator_runbook.md`](./strategy_bible/operator_runbook.md)
-- Current generated snapshot: [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md)
+A FastAPI runtime + Dukascopy JForex (Kotlin/Gradle) broker adapter:
 
-## Read This Next
-- Operator path: [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md), [`docs/analysis/operator_action_report.md`](./analysis/operator_action_report.md), [`docs/analysis/oco_alert_remediation_report.md`](./analysis/oco_alert_remediation_report.md), [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md)
-- New contributor path: [`docs/walkthrough.md`](./walkthrough.md), [`STRATEGY_MASTER_MANUAL.md`](./STRATEGY_MASTER_MANUAL.md), [`docs/strategy_bible/stage_01_data_foundation.md`](./strategy_bible/stage_01_data_foundation.md), [`docs/strategy_bible/stage_03_monthly_wfo.md`](./strategy_bible/stage_03_monthly_wfo.md)
+- `src/behemoth/api/server.py` — FastAPI app (`/health`, `/status`, `/metrics`, `/ticks`, `/bars`, `/trades`, `/risk/account*`, `/checkpoint`, `/open-summary`)
+- `src/behemoth/api/predict_orchestrator.py` — prediction orchestrator
+- `src/behemoth/runtime/` — state (DuckDB), tick aggregation, bar building
+- `src/behemoth/core/` — schemas, features, feature engine/pipeline/validator, regime + horizon contracts
+- `src/behemoth/risk/` — account risk allocation, barrier manager
+- `src/jforex/` — Kotlin/Gradle broker adapter (`BehemothJForexStrategy`, `JForexLiveRunner`, local surrogate + tester runners)
 
-## Current Symbol Status
-Use `docs/strategy_bible/generated/pipeline_snapshot.md` as the current per-symbol status view for all active symbols. It is the highest-signal top-level source for:
-- current symbol coverage across the six-symbol active universe
-- per-symbol mean gross and LB95 summary metrics
-- gate outcomes and all-gates-pass status
+The `/predict` endpoint is currently a **placeholder** returning empty predictions (`predictions: []`, `actions: []`). Wiring it to the boostlss_xs straddle logic is future work. Launch live with `make jforex-live` (requires broker creds in the shared root `.env`).
 
-The strategy manual remains the synthesis layer. When the manual and generated symbol status differ, the generated snapshot and docs-contract outputs win.
+## Active symbol universe
 
-## Standard Refresh Cycle
+`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`
+
+## Commands
+
 ```bash
-make docs-contract-ci
-uv run python scripts/build_oco_strategy_bible.py --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
-uv run python scripts/build_oco_system_reference_docs.py
-uv run mkdocs build
+make test          # pytest suite
+make test-java     # JForex (Kotlin) tests
+make quality       # ty + ruff + vulture + smellcheck + radon + xenon
+make jforex-live   # launch the live scaffold
 ```
 
-## Local Docs
-```bash
-make docs
-```
-Serves on `127.0.0.1:8001`.
+## Further reading
+
+- `AGENTS.md` — operator guide (JForex structure, commands, testing)
+- `UBIQUITOUS_LANGUAGE.md` — canonical vocabulary and verdict values
+- `CONTEXT.md` — architecture overview
+- [ADR 0005 — Dispersion Family Research Directions](adr/0005-dispersion-family-research-directions.md)
+
+## Notes
+
+- All code work happens in git worktrees; merge via PR, never commit directly to `main`.
+- Verdict values are canonical: `PASS`, `FAIL`, `GO`, `NO_GO`.
+- The previous OCO governance / tick-opportunity-mining / certification pipeline has been removed; GitHub history retains it.
