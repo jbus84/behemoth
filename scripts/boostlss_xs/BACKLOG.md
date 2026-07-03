@@ -198,18 +198,57 @@ from a better upstream signal, before the second stage even gets involved.
 `compare_distributions.py` (per-family comparison harness), `plain_regression_baseline.py`
 (squared-error/quantile regression variants, run through the identical pipeline via
 `run_tick_backtest`'s `sigma_override`), `regression_threshold_sweep.py` (sig_thresh
-sweep per variant).
+sweep per variant), `sigma_window_sweep.py` (windowed sigma_thresh/sigma_thresh_hi
+sweep, below).
+
+### Extended threshold sweep (2026-07-03) — real peak found, then a noise cliff
+
+Extended `regression_threshold_sweep.py` past sig_thresh=3.0 up to 8.0 for both
+regression variants. Quantile-robust regression shows a clean, monotonic climb with
+AUC and TP% holding or improving the whole way — Option B +2.56 (thresh=1.5) →
+**+4.98 (thresh=5.0, AUC=0.849, TP%=71.2%, n=1680)** — then a sharp collapse once
+trade count gets too thin: AUC craters to 0.799→0.736→0.565 (barely above random) by
+thresh=6/7/8, TP% falls to 60%, Option B goes **negative** (−4.79 at thresh=8, n=145
+across all 4 pairs over 6-8yr — too few trades for the meta-labeler's 5-fold WFO to
+learn anything). The AUC collapsing *in lockstep* with Option B at exactly the point
+trade count gets too thin is the tell that distinguishes real edge (thresh≤5.0) from
+overfitting noise (thresh≥6.0) — squared-error regression's curve is messier/less
+monotonic throughout, reinforcing that quantile-robust is the more trustworthy signal.
+
+### Windowed sigma (sig_thresh_hi) — new best result: +5.013 bps/fill
+
+Added `sig_thresh_hi` (upper bound) to `run_tick_backtest`'s candidate filter — tests
+whether excluding the anomalously *largest* predicted-sigma bars (not just requiring
+a lower floor) helps, since the strategy's own thesis is "momentum/jump bars fail,
+indecision bars revert" and we already found FX hourly returns have a small (~4.6%)
+genuine jump-driven tail. A bar at the very top of predicted sigma is more likely to
+*be* one of those jump bars.
+
+At fixed `sig_thresh=4.0`, tightening `sig_thresh_hi` gives a clean monotonic
+improvement: no cap (+4.591) → hi=10 (+4.607) → hi=8 (+4.643) → hi=6 (+4.811) →
+**hi=5 (+5.013 bps/fill, n=3495)** — the best result of the whole investigation,
+beating even the unwindowed thresh=5.0 peak (+4.983). Sigma percentiles for context:
+90th=4.22, 95th=4.95, 99th=6.75, 99.9th=9.25 — so hi=5 is genuinely excluding only
+the top few percent, not gutting the population.
+
+Note: `n_trades` can tick up slightly as the cap tightens (e.g. 3580→3595 at hi=6) —
+not more candidates surviving a stricter filter, but the meta-labeler's own WFO fold
+boundaries shifting with a marginally different raw trade count. Not a contradiction,
+just a downstream artifact of the second-stage fold splitting.
 
 **Next steps** (not yet done):
-- [ ] Extend the sig_thresh sweep past 3.0 to find where quantile-robust regression's
-  Option B actually peaks/plateaus, watching trade count for small-sample noise
+- [ ] Refine the window further: finer (lo, hi) grid around the (4.0, 5.0) sweet spot
+  — in progress as of this writing via `sigma_window_sweep.py`
 - [ ] Try other quantile levels (currently only q=0.85 tested) and other robust losses
   (Huber) for the sigma regressor
-- [ ] Re-tune `entry_k`/`sl_k` jointly with `sig_thresh` for the winning signal, since
-  those were also implicitly tuned around Gaussian's scale
-- [ ] Once a threshold/signal combo is chosen, re-verify meta-labeler feature
+- [ ] Re-tune `entry_k`/`sl_k` jointly with the winning `(sig_thresh, sig_thresh_hi)`
+  window, since those were also implicitly tuned around Gaussian's scale
+- [ ] Once a threshold/window/signal combo is chosen, re-verify meta-labeler feature
   importance and calibration on the new candidate population (different population →
   potentially different optimal meta-labeler features, untested so far)
+- [ ] Confirm the windowing logic's economic story (excludes likely-jump bars) by
+  directly checking `oc`/`rng_norm` distributions inside vs. outside the excluded
+  tail — would strengthen confidence this isn't overfitting even further
 
 ---
 

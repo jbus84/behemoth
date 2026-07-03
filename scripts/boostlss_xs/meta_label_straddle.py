@@ -404,6 +404,7 @@ def run_tick_backtest(
     sl_k: float    = 1.0,
     hold_hours: int  = 8,
     sig_thresh: float = 1.5,
+    sig_thresh_hi: float | None = None,
     family: str = "gaussian",
     tail_rows: int | None = None,
     sigma_override: np.ndarray | None = None,
@@ -415,6 +416,16 @@ def run_tick_backtest(
     tail_rows: if set, only the most recent N rows of 1m data are used to build
                features (fast sanity-check mode; smaller n -> much cheaper WFO fit,
                especially for expensive families like Merton).
+
+    sig_thresh_hi: if set, candidates also need sigma <= sig_thresh_hi (windowed
+                   filter instead of one-sided). Screens out anomalously large
+                   predicted-sigma bars, which may be unreliable tail-extrapolation
+                   from the regressor rather than a genuinely well-calibrated large
+                   move -- distinct from just raising sig_thresh, which shrinks the
+                   population from the bottom and eventually runs into small-sample
+                   noise (confirmed empirically: quantile-regression Option B and
+                   AUC both collapse together once sig_thresh alone pushes trade
+                   count too low).
 
     sigma_override: if provided, skips fit_wfo_dist entirely and uses this
                      length-n array (same vs-normalised units as preds[sizing_param]
@@ -468,6 +479,8 @@ def run_tick_backtest(
     blocked_until = np.datetime64("1970", "us")
     for i in range(n):
         if np.isnan(sg_oos[i]) or sg_oos[i] <= sig_thresh:
+            continue
+        if sig_thresh_hi is not None and sg_oos[i] > sig_thresh_hi:
             continue
         t_i = ts[i].astype("datetime64[us]")
         if t_i < blocked_until:
