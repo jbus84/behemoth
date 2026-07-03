@@ -236,9 +236,25 @@ not more candidates surviving a stricter filter, but the meta-labeler's own WFO 
 boundaries shifting with a marginally different raw trade count. Not a contradiction,
 just a downstream artifact of the second-stage fold splitting.
 
-**Next steps** (not yet done):
-- [ ] Refine the window further: finer (lo, hi) grid around the (4.0, 5.0) sweet spot
-  — in progress as of this writing via `sigma_window_sweep.py`
+### Refined window grid — a plateau, not a single sharp peak
+
+Finer grid (`lo` ∈ [3.5, 3.75, 4.0, 4.25, 4.5] × `hi` ∈ [4.5, 4.75, 5.0, 5.25, 5.5])
+found a marginally higher single point (`lo=4.5, hi=5.5` → n=2415, **+5.292 bps/fill**,
+AUC=0.828, TP%=76.9%), but the more important finding is the *shape*: roughly
+`lo∈[4.0,4.5] × hi∈[4.8,5.5]` all cluster around **+4.8 to +5.3 bps/fill** — a broad,
+robust plateau, not one hypersensitive optimum. Within that plateau the exact ranking
+bounces non-monotonically as trade count shrinks (1,480–2,970 in this finer grid vs.
+3,045–3,575 in the coarser lo=4.0 sweep) — a mild early-noise signal (AUC/TP% are
+still healthy, 0.74–0.83 / 77–82%, nowhere near the earlier full noise-collapse), but
+enough to prefer "there's a good region here" over "4.5/5.5 is precisely optimal."
+**Recommended target for follow-on work: `sig_thresh≈4.0-4.5, sig_thresh_hi≈4.8-5.5`**,
+treated as a region to land in, not a single exact cutoff to hit.
+
+**Status: this investigation is concluded for this PR.** Remaining refinement (finer
+grids, entry_k/sl_k retuning, other quantile levels/losses, meta-labeler feature
+re-check) is deferred to follow-on work — tracked below, not blocking.
+
+**Deferred next steps**:
 - [ ] Try other quantile levels (currently only q=0.85 tested) and other robust losses
   (Huber) for the sigma regressor
 - [ ] Re-tune `entry_k`/`sl_k` jointly with the winning `(sig_thresh, sig_thresh_hi)`
