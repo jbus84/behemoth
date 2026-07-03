@@ -72,20 +72,14 @@ class TestPredictionOrchestrator:
         )
         assert orch is not None
 
-    def test_execute_returns_predict_response_with_candidates(self):
-        """execute() returns typed PredictResponse."""
+    def test_execute_returns_predict_response(self):
+        """execute() returns typed PredictResponse.
+
+        The runtime is in placeholder mode: no candidate catalog is consulted,
+        so execute() short-circuits to empty predictions/actions. The response
+        shape contract is still asserted.
+        """
         state = MockBarStateReader()
-        mock_catalog = mock.MagicMock()
-        mock_contract = mock.MagicMock()
-
-        # Create a mock candidate
-        mock_candidate = mock.MagicMock()
-        mock_candidate.bar_ticks = 100
-        mock_candidate.horizon = 10
-        mock_candidate.barrier_pips = 20.0
-        mock_contract.candidates = [mock_candidate]
-
-        mock_catalog.resolve_contract.return_value = mock_contract
 
         orch = PredictionOrchestrator(
             state=state,  # type: ignore
@@ -96,7 +90,6 @@ class TestPredictionOrchestrator:
             account_risk_profile=None,
             config=mock.MagicMock(),
         )
-        orch._catalog = mock_catalog
 
         req = PredictRequest.model_validate(
             {"symbol": "EURUSD", "requested_volume_units": 10000, "account_risk_enabled_override": False}
