@@ -336,9 +336,11 @@ sweep). The pattern across quantile levels is clean and monotonic from 0.70→0.
 (Option B climbs steadily at both windows: 1.33→2.60→3.71→5.01→5.34 and
 0.13→1.89→3.84→5.29→5.96), then reverses at 0.95 (drops back to 4.02/4.97) — a
 single clean peak at q=0.90, not noise. This mirrors the earlier sig_thresh sweep
-shape (climb, peak, then AUC-linked collapse): AUC also declines monotonically
-across the whole range (0.881→0.724 as q rises 0.70→0.95) even while Option B is
-still climbing through q=0.90, so the AUC/P&L "disconnect" already documented for
+shape (climb, peak, then AUC-linked collapse): AUC trends downward from 0.70→0.95
+but is not strictly monotonic, showing minor upticks at intermediate levels (e.g.,
+0.881→0.888 at q=0.75 for window 4.0:5.0, and 0.852→0.871 at q=0.80 for window
+4.5:5.5 before continuing its overall decline to 0.724) even while Option B is still
+climbing through q=0.90, so the AUC/P&L "disconnect" already documented for
 distribution families reappears here too — a higher quantile level means less
 discriminating meta-labeler input (broader, noisier |y| targets) but sets a coarser
 sigma scale that shifts more of the trade population into the profitable window.
