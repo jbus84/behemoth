@@ -15,9 +15,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Essential
 
 - All code work happens in **git worktrees** (see `AGENTS.md` section 1)
-- Stage 12–14 certification runs from **root checkout only** (requires broker creds + local artifacts)
 - Verdict values are canonical: `PASS`, `FAIL`, `GO`, `NO_GO` (no synonyms)
-- `data/analysis/tick_opportunity_mining/` is governance-locked truth; regenerate via `make retrain-all`
+- The repo keeps two working surfaces: the **straddle logic** in `scripts/boostlss_xs/` and the **live JForex scaffold** in `src/behemoth/{api,runtime,core,risk}` + `src/jforex/`
+- The FastAPI `/predict` endpoint is currently a **placeholder** returning empty predictions; wiring it to the boostlss_xs straddle logic is future work, not part of this repo's current state
 
 ---
 
@@ -25,11 +25,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 mise install && uv sync
-uv run pytest -q tests/test_oco_docs_contract.py tests/test_tick_opportunity_mining.py
-make monthly-recert MODEL_MONTH=2026-02
+uv run pytest -q tests/test_boostlss_xs_features.py tests/test_boostlss_xs_flagging.py \
+  tests/test_boostlss_xs_meta_labeler.py tests/test_boostlss_xs_universe.py \
+  tests/test_predict_placeholder.py tests/test_api_server_routes.py
+make quality
 ```
 
-See `AGENTS.md` sections 4–6 for full command reference, scripts, and testing strategy.
+Run the live JForex scaffold (requires broker creds in the shared root `.env`):
+
+```bash
+make jforex-live
+```
+
+See `AGENTS.md` for the full command reference, JForex runtime structure, and testing strategy.
 
 ---
 
