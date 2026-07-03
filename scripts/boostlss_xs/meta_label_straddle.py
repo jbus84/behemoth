@@ -118,8 +118,10 @@ def _causal_roll(x: np.ndarray, w: int) -> tuple[np.ndarray, np.ndarray]:
     return nm, ns
 
 
-def build_1h_features(sym: str, data_dir: str) -> dict:
+def build_1h_features(sym: str, data_dir: str, tail_rows: int | None = None) -> dict:
     raw = pl.read_parquet(os.path.join(data_dir, f"{sym}_1m_flow.parquet")).sort("bucket")
+    if tail_rows is not None:
+        raw = raw.tail(tail_rows)
     h1 = (
         raw.with_columns(pl.col("bucket").dt.truncate("1h").alias("g"))
         .group_by("g")
@@ -223,7 +225,14 @@ def fit_wfo_dist(
             idx.sort()
         if len(idx) < 200:
             continue
-        model = BoostLssModel(spec.make_family(), mstop=200, step_length=0.1)
+        # algorithm is per-family (spec.algorithm): gaussian stays on "cyclic" to
+        # match every historical baseline in this repo; merton/shash use "noncyclic"
+        # since boostlss's "cyclic" engine has open upstream convergence bugs for
+        # both (github.com/dnf0/boostlss issues #53, #56, #62) that "noncyclic"
+        # avoids.
+        model = BoostLssModel(
+            spec.make_family(), mstop=200, step_length=0.1, algorithm=spec.algorithm
+        )
         for p in spec.param_names:
             model.add_learner(p, PyTreeLearner(feature_indices=list(range(n_feat)), max_depth=3))
         model.fit(X[idx].astype(np.float64), y[idx].astype(np.float64))
@@ -396,10 +405,24 @@ def run_tick_backtest(
     hold_hours: int  = 8,
     sig_thresh: float = 1.5,
     family: str = "gaussian",
+    tail_rows: int | None = None,
+    sigma_override: np.ndarray | None = None,
     verbose: bool   = True,
 ) -> tuple[pd.DataFrame, list[float]]:
     """
     Full tick-exact non-overlapping backtest for one symbol.
+
+    tail_rows: if set, only the most recent N rows of 1m data are used to build
+               features (fast sanity-check mode; smaller n -> much cheaper WFO fit,
+               especially for expensive families like Merton).
+
+    sigma_override: if provided, skips fit_wfo_dist entirely and uses this
+                     length-n array (same vs-normalised units as preds[sizing_param]
+                     would be) as the OOS sigma source. Lets an external/non-BoostLSS
+                     sigma estimator (e.g. a plain regressor) be run through the exact
+                     same candidate-generation + tick-exact + meta-labeler pipeline
+                     for a fair comparison. fold_nll is empty in this mode (no BoostLSS
+                     family/NLL applies).
 
     Returns (trade_df, fold_nll):
       trade_df — one row per trade (tick-exact outcome + features). Includes extra
@@ -408,11 +431,12 @@ def run_tick_backtest(
       fold_nll — per-WFO-fold mean OOS negative log-likelihood (diagnostic).
     """
     if verbose:
-        print(f"  {sym}: building features + WFO ({family})...", flush=True)
+        tail_note = f", tail_rows={tail_rows}" if tail_rows else ""
+        print(f"  {sym}: building features + WFO ({family}{tail_note})...", flush=True)
 
     spec = get_dist_spec(family)
 
-    d   = build_1h_features(sym, data_dir)
+    d   = build_1h_features(sym, data_dir, tail_rows=tail_rows)
     X   = d["X"]
     ts  = d["ts"]
     mid = d["mid"]
@@ -424,8 +448,11 @@ def run_tick_backtest(
 
     y = np.full(n, np.nan)
     y[:-1] = vs[1:]
-    preds, fold_nll = fit_wfo_dist(X, y, spec)
-    sg_oos = preds[spec.sizing_param]
+    if sigma_override is not None:
+        sg_oos, fold_nll = sigma_override, []
+    else:
+        preds, fold_nll = fit_wfo_dist(X, y, spec)
+        sg_oos = preds[spec.sizing_param]
     sbps   = np.clip(sg_oos * mad, 0.0, 200.0)
 
     m1_ts  = raw["bucket"].to_numpy().astype("datetime64[us]")
@@ -559,13 +586,16 @@ def run_tick_backtest(
                       on="ts", how="left")
     if verbose:
         n_trades  = len(df)
-        tp_r      = (df.outcome == "tp").mean() if n_trades else 0
-        fallback_r = spread_fallback_n / n_trades if n_trades else 0
-        warn = "  ⚠ HIGH FALLBACK RATE" if fallback_r > 0.05 else ""
-        avg_nll = np.mean(fold_nll) if fold_nll else float("nan")
-        print(f"  {sym}: {n_trades} trades  gross={df.gross.mean():+.3f}  "
-              f"maker_net={df.maker_net.mean():+.3f}  TP%={tp_r:.1%}  "
-              f"spread_fallback={fallback_r:.1%}  oos_nll={avg_nll:.4f}{warn}", flush=True)
+        avg_nll   = np.mean(fold_nll) if fold_nll else float("nan")
+        if n_trades == 0:
+            print(f"  {sym}: 0 trades  oos_nll={avg_nll:.4f}", flush=True)
+        else:
+            tp_r       = (df.outcome == "tp").mean()
+            fallback_r = spread_fallback_n / n_trades
+            warn = "  ⚠ HIGH FALLBACK RATE" if fallback_r > 0.05 else ""
+            print(f"  {sym}: {n_trades} trades  gross={df.gross.mean():+.3f}  "
+                  f"maker_net={df.maker_net.mean():+.3f}  TP%={tp_r:.1%}  "
+                  f"spread_fallback={fallback_r:.1%}  oos_nll={avg_nll:.4f}{warn}", flush=True)
     return df, fold_nll
 
 
