@@ -25,6 +25,20 @@ into the existing WFO + tick-exact backtest pipeline (meta_label_straddle.py):
                      held-out (y, preds) slice, using the exact same formula as
                      the underlying Rust family's nll() — used as an OOS
                      diagnostic fit-quality metric independent of trading P&L.
+  algorithm       — which boostlss boosting engine to use ("cyclic" or
+                     "noncyclic"). Gaussian stays on "cyclic" (the default,
+                     and what every historical baseline in this repo was
+                     produced with — switching it would break comparability).
+                     Merton and SHASH use "noncyclic": boostlss's default
+                     "cyclic" engine has open upstream bugs where both
+                     families fail to converge (diverge to NaN, or saturate
+                     at a floor/ceiling instead of fitting) — see
+                     github.com/dnf0/boostlss issues #53, #56, #62.
+                     "noncyclic" is verified clean for both. This is a
+                     genuinely different optimization procedure (greedy
+                     per-round joint-NLL parameter selection vs. round-robin
+                     fixed-step updates), not just a bug workaround, so it's
+                     scoped per-family rather than applied globally.
 """
 from __future__ import annotations
 
@@ -32,6 +46,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 import numpy as np
+from scipy.special import gammaln
 
 
 @dataclass
@@ -42,6 +57,7 @@ class DistSpec:
     sizing_param: str
     extra_features: list[str]
     nll_fn: Callable[[np.ndarray, dict[str, np.ndarray]], float]
+    algorithm: str = "cyclic"
 
 
 def _gaussian_nll(y: np.ndarray, preds: dict[str, np.ndarray]) -> float:
@@ -101,6 +117,35 @@ def _shash_nll(y: np.ndarray, preds: dict[str, np.ndarray]) -> float:
     return float(np.mean(-ll))
 
 
+def _studentt_nll(y: np.ndarray, preds: dict[str, np.ndarray]) -> float:
+    mu = preds["mu"]
+    sigma = np.maximum(preds["sigma"], 1e-10)
+    nu = np.maximum(preds["nu"], 1e-10)
+
+    diff = y - mu
+    term1 = -gammaln((nu + 1) / 2)
+    term2 = gammaln(nu / 2)
+    term3 = 0.5 * np.log(nu * np.pi)
+    term4 = np.log(sigma)
+    z2 = (diff / sigma) ** 2
+    term5 = 0.5 * (nu + 1) * np.log(1 + z2 / nu)
+    nll_i = term1 + term2 + term3 + term4 + term5
+    return float(np.mean(nll_i))
+
+
+def _logistic_nll(y: np.ndarray, preds: dict[str, np.ndarray]) -> float:
+    mu = preds["mu"]
+    s = np.maximum(preds["s"], 1e-10)
+    z = (y - mu) / s
+    softplus_neg_z = np.where(
+        -z > 0,
+        -z + np.log1p(np.exp(z)),
+        np.log1p(np.exp(-z)),
+    )
+    nll_i = z + np.log(s) + 2 * softplus_neg_z
+    return float(np.mean(nll_i))
+
+
 def _make_gaussian():
     from boostlss_py import PyFamily  # type: ignore[import]
     return PyFamily("GaussianLSS")
@@ -114,6 +159,16 @@ def _make_merton():
 def _make_shash():
     from boostlss_py import SHASHLss  # type: ignore[import]
     return SHASHLss()
+
+
+def _make_studentt():
+    from boostlss_py import PyFamily  # type: ignore[import]
+    return PyFamily("StudentTLss")
+
+
+def _make_logistic():
+    from boostlss_py import LogisticLss  # type: ignore[import]
+    return LogisticLss()
 
 
 REGISTRY: dict[str, DistSpec] = {
@@ -132,6 +187,7 @@ REGISTRY: dict[str, DistSpec] = {
         sizing_param="sigma",
         extra_features=["lam"],
         nll_fn=_merton_nll,
+        algorithm="noncyclic",
     ),
     "shash": DistSpec(
         name="shash",
@@ -140,6 +196,25 @@ REGISTRY: dict[str, DistSpec] = {
         sizing_param="sigma",
         extra_features=["nu", "tau"],
         nll_fn=_shash_nll,
+        algorithm="noncyclic",
+    ),
+    "studentt": DistSpec(
+        name="studentt",
+        make_family=_make_studentt,
+        param_names=["mu", "sigma", "nu"],
+        sizing_param="sigma",
+        extra_features=["nu"],
+        nll_fn=_studentt_nll,
+        algorithm="cyclic",
+    ),
+    "logistic": DistSpec(
+        name="logistic",
+        make_family=_make_logistic,
+        param_names=["mu", "s"],
+        sizing_param="s",
+        extra_features=[],
+        nll_fn=_logistic_nll,
+        algorithm="cyclic",
     ),
 }
 
