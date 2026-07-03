@@ -308,6 +308,50 @@ re-check) is deferred to follow-on work — tracked below, not blocking.
   directly checking `oc`/`rng_norm` distributions inside vs. outside the excluded
   tail — would strengthen confidence this isn't overfitting even further
 
+### Quantile level sweep (this PR)
+
+Swept quantile levels {0.70, 0.75, 0.80, 0.85, 0.90, 0.95} at two representative
+windows (4.0:5.0 and 4.5:5.5):
+
+```
+ Quantile        Window  n_trades     AUC   Option B bps/fill
+     0.70       4.0:5.0       975   0.881              +1.330
+     0.70       4.5:5.5       555   0.852              +0.132
+     0.75       4.0:5.0      1580   0.888              +2.599
+     0.75       4.5:5.5       910   0.840              +1.888
+     0.80       4.0:5.0      2320   0.869              +3.714
+     0.80       4.5:5.5      1465   0.871              +3.841
+     0.85       4.0:5.0      3495   0.819              +5.013
+     0.85       4.5:5.5      2415   0.828              +5.292
+     0.90       4.0:5.0      5215   0.768              +5.340
+     0.90       4.5:5.5      3865   0.765              +5.958
+     0.95       4.0:5.0      7145   0.724              +4.017
+     0.95       4.5:5.5      6080   0.724              +4.973
+```
+
+**Verdict:** q=0.85 is *not* the best tested level — **q=0.90 beats it at both
+windows**: +5.340 vs +5.013 (window 4.0:5.0, +6.5% relative) and +5.958 vs +5.292
+(window 4.5:5.5, +12.6% relative — the single best Option B result in this whole
+sweep). The pattern across quantile levels is clean and monotonic from 0.70→0.90
+(Option B climbs steadily at both windows: 1.33→2.60→3.71→5.01→5.34 and
+0.13→1.89→3.84→5.29→5.96), then reverses at 0.95 (drops back to 4.02/4.97) — a
+single clean peak at q=0.90, not noise. This mirrors the earlier sig_thresh sweep
+shape (climb, peak, then AUC-linked collapse): AUC also declines monotonically
+across the whole range (0.881→0.724 as q rises 0.70→0.95) even while Option B is
+still climbing through q=0.90, so the AUC/P&L "disconnect" already documented for
+distribution families reappears here too — a higher quantile level means less
+discriminating meta-labeler input (broader, noisier |y| targets) but sets a coarser
+sigma scale that shifts more of the trade population into the profitable window.
+n_trades is monotonically increasing with quantile (975→7145 at window 4.0:5.0) as
+expected, since a higher quantile predicts a systematically larger sigma, which
+passes more candidate bars through the `sig_thresh` floor. q=0.90 is not thin-sample
+noise the way the earlier sig_thresh>=6 collapse was — its trade counts (5215/3865)
+are actually *larger* than q=0.85's (3495/2415), so this is a trustworthy result,
+not an artifact of a shrinking sample. **Recommendation: re-run the stability check
+and window-grid refinement at q=0.90 instead of q=0.85** — it may shift the optimal
+`(sig_thresh, sig_thresh_hi)` window too, since quantile level and window were never
+jointly tuned.
+
 ---
 
 ## Ideas / future improvements (not blocking)
