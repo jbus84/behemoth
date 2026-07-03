@@ -98,6 +98,121 @@ Status: `[ ]` open · `[x]` done · `[~]` investigated / no change needed
 
 ---
 
+## Distribution comparison (2026-07-03)
+
+**Question:** does swapping GaussianLSS for a distribution family that better matches
+the fat-tailed/jump-prone shape of FX hourly returns improve the sigma signal this
+strategy is built on? Tried Merton Jump-Diffusion, SHASH, StudentT, Logistic — plus,
+after those all lost, a from-scratch test of whether the BoostLSS/LSS framework is
+even necessary at all.
+
+### 5-family comparison (full 8yr history, 4 pairs, threshold=0.55, per-family algorithm)
+
+| Family | n_trades | Meta AUC | TP% | Option B bps/fill |
+|---|---|---|---|---|
+| **Gaussian** (baseline) | 8,540 | 0.820 | 69.1% | **+0.896** |
+| StudentT | 8,020 | 0.866 | 64.6% | +0.455 |
+| SHASH | 7,645 | 0.858 | 56.3% | −0.301 |
+| Logistic | 4,870 | 0.900 | 39.1% | −1.084 |
+| Merton | 1,265 | 0.857 | 30.8% | −1.484 |
+
+**Verdict: Gaussian wins clearly.** Every alternative lost money despite several having
+*higher* meta-labeler AUC (Logistic 0.900, SHASH 0.858, Merton 0.857, StudentT 0.866
+all beat Gaussian's 0.820) — a real and recurring AUC/P&L disconnect: more
+distributional parameters give the meta-labeler more ranking information without that
+information being economically real at this trade-count scale (hundreds-to-low-
+thousands per pair). More parameters = more overfitting surface, not better signal.
+
+Empirical check on "is the data actually Gaussian" (it is not): full-sample excess
+kurtosis is +15 to +45 across pairs (a true Gaussian is 0), with meaningful negative
+skew on GBPJPY/USDJPY (−1.15/−1.55). But trimming just the most extreme 0.5% of bars
+collapses excess kurtosis to +2.4/+2.6 — the extreme tail is driven by a small
+(~4.6%) minority of genuine jump/news-event bars, not a broadly fat-tailed
+distribution. Gaussian likely wins because its role here is narrow (a quasi-MLE scale
+estimate, robust to that kind of contamination by construction — see any GARCH/QMLE
+econometrics reference) not because the data matches its assumptions.
+
+### boostlss upstream bugs found + fixed during this comparison
+
+Filed and tracked at github.com/dnf0/boostlss:
+- **#53** (closed by #54): fixed-eps finite-difference `ngradient` for Merton/SHASH
+  catastrophically cancels once boosting rounds push `eta` large, diverging to NaN
+  past ~10 rounds. Fixed with a proper Dual-number analytical gradient — but only for
+  the `noncyclic`/`noncyclic_outer` engines.
+- **#56**: the *default* `algorithm="cyclic"` engine still diverges (Merton) or
+  saturates the wrong direction (SHASH pegs at `1e6` ceiling instead of NaN) even
+  after #54/#57. Root cause per #57's own writeup: unbounded parameter growth under
+  Cyclic's unconditional per-round updates (no NLL-improvement gate, unlike NonCyclic).
+- **#62** (open as of writing): #57's `eta_bounds` fix still doesn't fully resolve
+  either family under `cyclic` — verified directly against the fix PR's branch.
+  `noncyclic` remains the only verified-clean algorithm for Merton/SHASH; this
+  project pins `spec.algorithm` per-family (`gaussian`→`cyclic`, `merton`/`shash`→
+  `noncyclic`) rather than switching everything, since switching Gaussian's own
+  algorithm changes its economics too (verified: +0.921→−0.207 bps/fill sign flip on
+  the same data, cyclic vs noncyclic) — this is a genuinely different optimization
+  procedure, not a drop-in bug workaround.
+- Checked for **censoring support** (right-censored observations, e.g. for TB/time-
+  barrier trades) — not implemented for Gaussian in the Rust crate, and not exposed
+  through the Python bindings for *any* family. Would need an upstream feature
+  request; not pursued further since our current target isn't naturally censored
+  anyway (a TB-trade-duration reformulation would be a different project).
+
+### Is the BoostLSS/LSS framework itself adding value? (tested, not just argued)
+
+We only ever consume `sigma` from BoostLSS's output — `mu` is fit (required by the
+joint likelihood) but never read downstream. So the real question isn't "is
+GaussianLSS good" but "does distributional-regression machinery beat plain boosted
+regression for this specific sigma signal." Tested directly:
+
+- **GaussianLSS's own sigma is a *worse* pure volatility forecast** than a plain
+  `HistGradientBoostingRegressor` fit to `y**2` — 2-7x lower correlation with realized
+  squared returns on held-out data, across all 4 pairs (same WFO folds, same clip).
+- Yet at Gaussian's own tuned `sig_thresh=1.5`, GaussianLSS still narrowly wins
+  economically (+0.896 vs +0.774 bps/fill) — evidence that much of "Gaussian wins" is
+  inherited from every other strategy hyperparameter having been implicitly tuned
+  around its specific sigma scale over years of prior work (PR #367 onward), not a
+  fundamental statistical advantage.
+- **Confirmed by re-tuning the threshold**: sweeping `sig_thresh` for the plain
+  squared-error regressor (untested at 1.5) takes it from *worse* than Gaussian
+  (+0.774) to *beating* it (+1.409 bps/fill at sig_thresh=3.0).
+- **A more jump-robust regression variant is the best signal found so far**: quantile
+  regression (`loss="quantile"`, q=0.85) predicting `|y|` directly — far less
+  sensitive to the ~4.6% jump-bar contamination than squaring returns — reaches
+  **+3.715 bps/fill at sig_thresh=3.0** (4x Gaussian's tuned baseline), with high TP%
+  (79.1%) and decent AUC (0.783), not just a threshold-tuning artifact.
+- **Caution**: neither sweep had peaked as of sig_thresh=3.0 (Option B still climbing),
+  and trade count falls as threshold rises (down to ~3.7k/6.7k at the top of the
+  tested range) — extend the sweep to find the actual peak/plateau before trusting
+  the very top of the curve; fewer trades means more sampling noise.
+
+**Bottom line**: BoostLSS's actual distinguishing feature (joint multi-parameter
+distributional modeling) has not helped once, in five attempts. What's actually
+working is "gradient-boosted regression for conditional sigma" — which doesn't
+require the LSS framework at all, and a plain regressor with a properly-chosen loss
+function (quantile, not squared-error) and a properly re-tuned threshold currently
+beats every distribution family tried, including Gaussian, by a wide margin. Meta-
+labeling untouched throughout this whole investigation — the gains so far are purely
+from a better upstream signal, before the second stage even gets involved.
+
+**Scripts**: `distributions.py` (registry: gaussian/merton/shash/studentt/logistic),
+`compare_distributions.py` (per-family comparison harness), `plain_regression_baseline.py`
+(squared-error/quantile regression variants, run through the identical pipeline via
+`run_tick_backtest`'s `sigma_override`), `regression_threshold_sweep.py` (sig_thresh
+sweep per variant).
+
+**Next steps** (not yet done):
+- [ ] Extend the sig_thresh sweep past 3.0 to find where quantile-robust regression's
+  Option B actually peaks/plateaus, watching trade count for small-sample noise
+- [ ] Try other quantile levels (currently only q=0.85 tested) and other robust losses
+  (Huber) for the sigma regressor
+- [ ] Re-tune `entry_k`/`sl_k` jointly with `sig_thresh` for the winning signal, since
+  those were also implicitly tuned around Gaussian's scale
+- [ ] Once a threshold/signal combo is chosen, re-verify meta-labeler feature
+  importance and calibration on the new candidate population (different population →
+  potentially different optimal meta-labeler features, untested so far)
+
+---
+
 ## Ideas / future improvements (not blocking)
 
 - [ ] Dynamic hold_hours: exit earlier if sigma decays — currently hard-capped at 8h

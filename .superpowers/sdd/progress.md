@@ -1,13 +1,11 @@
-# BoostLSS XS Anomaly Detection + Meta-Labeler — SDD progress
+# BoostLSS Jump-Diffusion & SHASH Distribution Comparison — SDD progress
 
-Base: ff6a910096e704cb67dc543f2a2fda9ac5dbb1ed
-Plan: docs/superpowers/plans/2026-06-29-boostlss-xs-anomaly-meta-labeler.md
+Base: 18637d03867cf17b1c383c7180b7c6ace6b1c4e0
+Plan: docs/superpowers/plans/2026-07-02-boostlss-jump-distributions.md
 
-- Task 1: complete (commits ff6a9100..9b5f6b46, review clean; minor: tests lack module-scoped fixture + no CI skip guard)
-- Task 2: complete (commit bef1fe60, review clean; note: tail_count_100 uses mad20[i] as threshold across window — causal but current-vol-standard interpretation; consider mad20[j] if feature proves uninformative)
-- Task 3: complete (commits e16067bc..4689d5c9, review clean; fixed: dead _SYMBOL_CODES dict removed, xs_rank NaN guard added)
-- Task 4: complete (commits a57b9087..e44ccc3d, review clean; StudentTLSS→GaussianLSS substitution; fold split is index-based not timestamp-based)
-- Task 5: complete (commit d1861953, review clean; zero-MAD guard added; GaussianLSS no-nu path returns NaN)
-- Task 6: complete (commit 5c37dd94, review clean; datetime64 compat fix; NaN train rows correctly propagated)
-- Task 7: complete (commits b07ca056..323b3747, smoke test verified 2100 trade rows; fixed: meta_labeler KeyError on subset horizons + NaN-poisoned valid_mask)
-- Final review fixes: complete (commits 4f091349..HEAD; C1 time-sort, C2 per-symbol targets, I1 per-fold thresholds, I2 embargo, dead StudentTLSS branch removed; 26 tests pass)
+Prior plan (BoostLSS XS Anomaly Detection + Meta-Labeler) completed and merged;
+its ledger history is preserved in git log if needed.
+
+- Task 1: complete (commit 6a81ccd7, review clean; boostlss bumped 6b9924ea..5b22552f, Merton/SHASH import+fit+predict verified)
+- Task 2: complete (commit b6c0e7b4, review clean; NLL formulas for merton+shash independently verified numerically by reviewer; correct import style for Task 3 confirmed by controller as bare `from distributions import ...` (sibling import, sys.path auto-includes script dir under `uv run python scripts/boostlss_xs/X.py` invocation) — implementer's report claim of `scripts.boostlss_xs.distributions` prefix does NOT apply)
+- Task 3: complete (commit 9d9eb343, review clean; EURUSD gaussian smoke test +1.381 bps/fill matches PR #374 reference; sizing sigma clip untouched/behavior-preserving confirmed by reviewer; KNOWN ISSUE for Task 4: oos_nll can be `inf` on early WFO folds (unclipped sigma overflow, pre-existing, non-regressive) — Task 4 must filter non-finite fold_nll values before averaging, or the comparison table's gaussian NLL column will show inf)
