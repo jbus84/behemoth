@@ -398,6 +398,72 @@ classification inputs.
 
 ---
 
+## mljar-supervised meta-labeler comparison (2026-07-04)
+
+Ran `mljar_meta_labeler_compare.py` on EURUSD only, at the current best trade
+population config (q=0.90 quantile regression, window 4.5:5.5, tail_ratio
+feature), comparing the existing HistGradientBoostingClassifier meta-labeler
+against mljar-supervised's AutoML (mode="Explain", algorithms restricted to
+LightGBM/Xgboost/CatBoost/Random Forest/Extra Trees, 90s/fold budget):
+
+```
+  EURUSD: fitting high (q=0.9) + low (q=0.5) quantile WFO...
+  EURUSD: building features + WFO (gaussian)...
+  EURUSD: 1614 candidates → streaming tick data month-by-month...
+  EURUSD: 1358 trades  gross=+4.469  maker_net=+3.699  TP%=80.5%  spread_fallback=0.0%  oos_nll=nan
+  EURUSD: running WFO comparison (automl_time_limit=90s/fold)...
+
+======================================================================
+BASELINE vs MLJAR COMPARISON
+======================================================================
+baseline (HistGradientBoostingClassifier)   n= 1130  AUC=0.739  TP%=80.4%  Option B=+4.340 bps/fill
+mljar (AutoML ensemble)                     n= 1130  AUC=0.795  TP%=80.4%  Option B=+4.689 bps/fill
+
+======================================================================
+LEADERBOARD (one row per fold that mljar completed)
+======================================================================
+
+  EURUSD fold 0:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.463348        0.88
+     2_Default_Xgboost       Xgboost     logloss      0.430846        0.77
+    3_Default_CatBoost      CatBoost     logloss      0.481695        0.78
+4_Default_RandomForest Random Forest     logloss      0.414853        0.80
+  5_Default_ExtraTrees   Extra Trees     logloss      0.464784        0.78
+              Ensemble      Ensemble     logloss      0.411229        0.37
+
+  EURUSD fold 1:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.405607        1.21
+     2_Default_Xgboost       Xgboost     logloss      0.389028        0.95
+    3_Default_CatBoost      CatBoost     logloss      0.377162        0.93
+4_Default_RandomForest Random Forest     logloss      0.376087        1.16
+  5_Default_ExtraTrees   Extra Trees     logloss      0.384687        1.09
+              Ensemble      Ensemble     logloss      0.367432        0.59
+```
+
+**Verdict:** mljar's AutoML ensemble beat the baseline on both metrics at
+EURUSD-only scope: AUC 0.739→0.795 (+0.056, +7.6% relative) and Option B
++4.340→+4.689 bps/fill (+0.349 bps/fill, +8.0% relative), on identical n=1130
+OOS rows and identical WFO fold splits. All 5 folds completed for mljar (0
+failures), so this is not a thin-sample artifact from partial fold coverage.
+Looking at the leaderboard, the "Ensemble" row wins every fold, but only
+narrowly over **Random Forest**, which is consistently the single best base
+model in all 5 folds (e.g. fold 0: RF logloss 0.4149 vs Ensemble 0.4112; fold
+2: RF 0.2995 vs Ensemble 0.2948; fold 4: RF 0.3468 vs Ensemble 0.3444) — the
+other four families (LightGBM, Xgboost, CatBoost, Extra Trees) never top a
+single fold. The practical takeaway is not "ensembling helps" in the abstract;
+it is that **Random Forest specifically outperforms HistGradientBoosting on
+this feature set**, and mljar's ensemble mostly just re-discovers and lightly
+blends around that. This is EURUSD-only (n=1130 OOS rows / 1358 raw trades,
+consistent with EURUSD's ~1358-trade contribution to the pooled 4-pair
++6.014 bps/fill result recorded above) — scaling this comparison to the full
+4-pair set, and specifically trying a plain `RandomForestClassifier` as a
+lighter-weight non-ephemeral replacement for `HistGradientBoostingClassifier`,
+is a follow-up decision, not yet done.
+
+---
+
 ## Ideas / future improvements (not blocking)
 
 - [ ] Dynamic hold_hours: exit earlier if sigma decays — currently hard-capped at 8h
