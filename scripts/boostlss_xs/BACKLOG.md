@@ -356,6 +356,46 @@ jointly tuned.
 
 ---
 
+### Tail-shape meta-labeler feature (this PR)
+
+Added `tail_ratio` (ratio of a high and low quantile regression's predicted
+`|return|`) as a new meta-labeler feature, purely additive (sigma sizing
+unchanged). Run at the winning config identified in the quantile-sweep
+subsection above (q=0.90 high quantile, window sig_thresh=4.5:5.5,
+q=0.5 low quantile, threshold=0.55, pairs EURUSD/GBPJPY/AUDUSD/USDJPY):
+
+```
+  EURUSD: 1358 trades  gross=+4.469  maker_net=+3.699  TP%=80.5%  spread_fallback=0.0%  oos_nll=nan
+  GBPJPY: 1166 trades  gross=+7.145  maker_net=+6.171  TP%=84.1%  spread_fallback=0.0%  oos_nll=nan
+  AUDUSD:  879 trades  gross=+5.341  maker_net=+4.208  TP%=77.6%  spread_fallback=0.0%  oos_nll=nan
+  USDJPY: 1242 trades  gross=+5.451  maker_net=+4.648  TP%=82.4%  spread_fallback=0.0%  oos_nll=nan
+
+baseline (no tail_ratio)      n= 3865  AUC=0.765  TP%=82.0%  Option B=+5.958 bps/fill
+with tail_ratio               n= 3865  AUC=0.773  TP%=82.0%  Option B=+6.014 bps/fill
+```
+
+**Verdict:** `tail_ratio` gives a small, consistent improvement, not a
+transformative one. AUC rises 0.765→0.773 (+0.008) and Option B rises
++5.958→+6.014 bps/fill (+0.056 bps/fill, ~+0.9% relative) with TP% unchanged
+at 82.0%. n_trades is identical between the two rows (3865 each) — in this run
+the low-quantile (q=0.5) regression's OOS predictions were defined everywhere
+the high-quantile ones were, so the dropna row-count caveat documented in the
+script's docstring did not materialize here; this is a coincidence of this
+particular config, not a guarantee for other windows/pairs. The baseline row
+here (n=3865, Option B=+5.958) matches Task 2's recorded q=0.90/window-4.5:5.5
+result exactly, confirming this script reproduces the established best
+configuration correctly before the additive `tail_ratio` test is layered on.
+Overall: the tail-shape signal is real but modest — worth keeping as a
+low-cost additive feature, not a headline result on its own. Unlike Merton's
+jump-intensity or SHASH's skew/kurtosis (which added similar tail information
+to first-stage sigma sizing and made things worse per the distribution
+comparison), exposing tail shape to the *meta-labeler* directly (rather than
+baking it into sigma) is mildly net-positive — consistent with the earlier
+finding that features which fail as sigma inputs can still work as
+classification inputs.
+
+---
+
 ## Ideas / future improvements (not blocking)
 
 - [ ] Dynamic hold_hours: exit earlier if sigma decays — currently hard-capped at 8h
