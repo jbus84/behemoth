@@ -103,6 +103,8 @@ def fit_meta_label_wfo_compare(
     df: pd.DataFrame,
     feat_cols: list[str],
     automl_time_limit: int,
+    mode: str = "Explain",
+    n_jobs: int = 0,
 ) -> tuple[pd.DataFrame, list[tuple[int, pd.DataFrame]]]:
     """
     Fits BOTH the baseline HistGradientBoostingClassifier and mljar's AutoML
@@ -145,12 +147,13 @@ def fit_meta_label_wfo_compare(
         results_path = tempfile.mkdtemp(prefix=f"mljar_meta_compare_fold{fi}_")
         try:
             automl = AutoML(
-                mode="Explain",
+                mode=mode,
                 ml_task="binary_classification",
                 total_time_limit=automl_time_limit,
                 algorithms=_ALGORITHMS,
                 explain_level=0,
                 results_path=results_path,
+                n_jobs=n_jobs,
                 verbose=0,
             )
             automl.fit(
@@ -189,6 +192,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--sig-thresh-hi",     type=float, default=5.5)
     p.add_argument("--threshold",         type=float, default=0.55)
     p.add_argument("--automl-time-limit", type=int, default=90)
+    p.add_argument("--mode",              default="Explain",
+                   choices=["Explain", "Perform", "Compete"],
+                   help="mljar AutoML mode (Compete = most thorough tuning + stacked ensemble)")
+    p.add_argument("--n-jobs",            type=int, default=0,
+                   help="mljar/joblib parallel workers (0=auto/-1=all cores). Use 1 to "
+                        "serialize and avoid joblib memmap/fork pressure under Compete.")
     p.add_argument("--tail-rows",         type=int, default=None)
     return p.parse_args()
 
@@ -209,10 +218,11 @@ if __name__ == "__main__":
     all_leaderboards: list[tuple[str, int, pd.DataFrame]] = []
     for sym, g in all_raw.groupby("sym"):
         print(f"  {sym}: running WFO comparison "
-              f"(automl_time_limit={args.automl_time_limit}s/fold)...", flush=True)
+              f"(mode={args.mode}, automl_time_limit={args.automl_time_limit}s/fold)...", flush=True)
         try:
             df_oos, leaderboards = fit_meta_label_wfo_compare(
                 g.copy(), feat_cols=feat_cols, automl_time_limit=args.automl_time_limit,
+                mode=args.mode, n_jobs=args.n_jobs,
             )
             oos_dfs.append(df_oos)
             for fi, lb in leaderboards:

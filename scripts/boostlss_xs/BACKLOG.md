@@ -653,6 +653,57 @@ simpler explanation, but `sigma_bps`'s near-zero is redundancy with the
 selection conditioning rather than uselessness. Either way, dropping the
 near-zero features from the meta-labeler is safe.
 
+### Compete mode (this PR)
+
+Hypothesis: mljar's `mode="Compete"` (more hyperparameter tuning, stacked
+ensembling, feature engineering — GoldenFeatures/KMeansFeatures/
+SelectedFeatures/BoostOnErrors) might extract more value from the features the
+Explain run left underused (the permutation run showed 12 of 15 features
+contribute ~0). Re-ran the identical 4-pair WFO comparison with `--mode Compete`,
+180s/fold, same 5 tree algorithms (isolates the mode change), `--n-jobs 1`.
+
+```
+baseline (HistGradientBoostingClassifier)   n= 3865  AUC=0.773  TP%=82.0%  Option B=+6.014 bps/fill
+mljar Compete (AutoML ensemble)             n= 3865  AUC=0.810  TP%=82.0%  Option B=+6.443 bps/fill
+mljar Explain (prior run, for reference)    n= 3865  AUC=0.805  TP%=82.0%  Option B=+6.430 bps/fill
+```
+
+**Verdict: Compete barely improves on Explain — +0.005 AUC, +0.013 bps/fill,
+within noise.** The hypothesis is not confirmed: Compete's thorough search did
+not pull meaningful extra value from the underused features. The signal ceiling
+is `rng_norm`/`oc`; there is no hidden value in the noise features for Compete to
+find. 0/20 fold failures (n=3865 is the full OOS count, so every fold produced
+both classifiers' predictions).
+
+The leaderboards are independently informative. Compete tries ~60 models per fold
+(Default, tuned iterations, GoldenFeatures, KMeansFeatures, SelectedFeatures,
+BoostOnErrors, then a stacked Ensemble). The consistent pattern (AUDUSD fold 0,
+representative): **`SelectedFeatures` variants beat their `Default` counterparts**
+— e.g. `25_CatBoost_SelectedFeatures` logloss 0.439 vs `3_Default_CatBoost`
+0.497; `22_LightGBM_SelectedFeatures` 0.456 vs `1_Default_LightGBM` 0.518.
+Compete's own feature selection independently confirms the permutation finding:
+dropping features helps, because most are noise. `GoldenFeatures`/`KMeansFeatures`
+are mixed (some help, some hurt); `BoostOnErrors` slightly *hurt* here
+(`25_CatBoost_SelectedFeatures_BoostOnErrors` 0.454 vs the non-boost 0.439). The
+final Ensemble (0.423) edges out the best single SelectedFeatures model but
+cannot break the rng_norm/oc ceiling.
+
+**Why the gain is negligible:** Explain's ensemble already effectively ignored
+the noise features (permutation run). Compete makes that ignoring *explicit*
+(via selection) but the OOS ranking power was already concentrated in the two
+shape signals, so explicit selection adds almost nothing. The +0.013 bps/fill is
+consistent with Compete fitting the same two signals marginally better, not
+with discovering new signal.
+
+**Operational note:** the first Compete attempt (default `n_jobs=0`/auto,
+joblib `n_jobs=-1` parallel workers) was killed mid-run (after AUDUSD + EURUSD,
+during GBPJPY) with a flood of joblib `resource_tracker FileNotFoundError`
+warnings — Compete spawns parallel workers with memmap forking that the two
+completed Explain runs (no joblib parallelism) never hit. Re-running with
+`--n-jobs 1` (serialize joblib, remove fork/memmap pressure) completed cleanly.
+`--mode` and `--n-jobs` args were added to `mljar_meta_labeler_compare.py` for
+this; defaults preserve the original Explain behavior.
+
 ---
 
 ## Ideas / future improvements (not blocking)
