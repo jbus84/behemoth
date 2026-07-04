@@ -398,6 +398,314 @@ classification inputs.
 
 ---
 
+## mljar-supervised meta-labeler comparison (2026-07-04)
+
+Ran `mljar_meta_labeler_compare.py` on EURUSD only, at the current best trade
+population config (q=0.90 quantile regression, window 4.5:5.5, tail_ratio
+feature), comparing the existing HistGradientBoostingClassifier meta-labeler
+against mljar-supervised's AutoML (mode="Explain", algorithms restricted to
+LightGBM/Xgboost/CatBoost/Random Forest/Extra Trees, 90s/fold budget):
+
+```
+  EURUSD: fitting high (q=0.9) + low (q=0.5) quantile WFO...
+  EURUSD: building features + WFO (gaussian)...
+  EURUSD: 1614 candidates → streaming tick data month-by-month...
+  EURUSD: 1358 trades  gross=+4.469  maker_net=+3.699  TP%=80.5%  spread_fallback=0.0%  oos_nll=nan
+  EURUSD: running WFO comparison (automl_time_limit=90s/fold)...
+
+======================================================================
+BASELINE vs MLJAR COMPARISON
+======================================================================
+baseline (HistGradientBoostingClassifier)   n= 1130  AUC=0.739  TP%=80.4%  Option B=+4.340 bps/fill
+mljar (AutoML ensemble)                     n= 1130  AUC=0.795  TP%=80.4%  Option B=+4.689 bps/fill
+
+======================================================================
+LEADERBOARD (one row per fold that mljar completed)
+======================================================================
+
+  EURUSD fold 0:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.463348        0.88
+     2_Default_Xgboost       Xgboost     logloss      0.430846        0.77
+    3_Default_CatBoost      CatBoost     logloss      0.481695        0.78
+4_Default_RandomForest Random Forest     logloss      0.414853        0.80
+  5_Default_ExtraTrees   Extra Trees     logloss      0.464784        0.78
+              Ensemble      Ensemble     logloss      0.411229        0.37
+
+  EURUSD fold 1:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.405607        1.21
+     2_Default_Xgboost       Xgboost     logloss      0.389028        0.95
+    3_Default_CatBoost      CatBoost     logloss      0.377162        0.93
+4_Default_RandomForest Random Forest     logloss      0.376087        1.16
+  5_Default_ExtraTrees   Extra Trees     logloss      0.384687        1.09
+              Ensemble      Ensemble     logloss      0.367432        0.59
+
+  EURUSD fold 2:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.321335        1.38
+     2_Default_Xgboost       Xgboost     logloss      0.307026        1.01
+    3_Default_CatBoost      CatBoost     logloss      0.314786        0.98
+4_Default_RandomForest Random Forest     logloss      0.299494        1.09
+  5_Default_ExtraTrees   Extra Trees     logloss      0.360407        1.07
+              Ensemble      Ensemble     logloss      0.294834        0.59
+
+  EURUSD fold 3:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.333656        1.57
+     2_Default_Xgboost       Xgboost     logloss      0.357865        0.99
+    3_Default_CatBoost      CatBoost     logloss      0.346913        0.98
+4_Default_RandomForest Random Forest     logloss      0.343149        1.29
+  5_Default_ExtraTrees   Extra Trees     logloss      0.369426        1.09
+              Ensemble      Ensemble     logloss      0.327270        0.59
+
+  EURUSD fold 4:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.376516        1.52
+     2_Default_Xgboost       Xgboost     logloss      0.358092        1.01
+    3_Default_CatBoost      CatBoost     logloss      0.359601        0.99
+4_Default_RandomForest Random Forest     logloss      0.346760        1.15
+  5_Default_ExtraTrees   Extra Trees     logloss      0.378250        1.10
+              Ensemble      Ensemble     logloss      0.344436        0.66
+```
+
+**Verdict:** mljar's AutoML ensemble beat the baseline on both metrics at
+EURUSD-only scope: AUC 0.739→0.795 (+0.056, +7.6% relative) and Option B
++4.340→+4.689 bps/fill (+0.349 bps/fill, +8.0% relative), on identical n=1130
+OOS rows and identical WFO fold splits. All 5 folds completed for mljar (0
+failures), so this is not a thin-sample artifact from partial fold coverage.
+Looking at the leaderboard, the "Ensemble" row wins every fold, but only
+narrowly over **Random Forest**, which is consistently the single best base
+model in all 5 folds (e.g. fold 0: RF logloss 0.4149 vs Ensemble 0.4112; fold
+2: RF 0.2995 vs Ensemble 0.2948; fold 4: RF 0.3468 vs Ensemble 0.3444) — the
+other four families (LightGBM, Xgboost, CatBoost, Extra Trees) never top a
+single fold. The practical takeaway is not "ensembling helps" in the abstract;
+it is that **Random Forest specifically outperforms HistGradientBoosting on
+this feature set**, and mljar's ensemble mostly just re-discovers and lightly
+blends around that. This is EURUSD-only (n=1130 OOS rows / 1358 raw trades,
+consistent with EURUSD's ~1358-trade contribution to the pooled 4-pair
++6.014 bps/fill result recorded above) — scaling this comparison to the full
+4-pair set, and specifically trying a plain `RandomForestClassifier` as a
+lighter-weight non-ephemeral replacement for `HistGradientBoostingClassifier`,
+is a follow-up decision, not yet done.
+
+### 4-pair scale-up (this PR)
+
+Re-ran `mljar_meta_labeler_compare.py --pairs EURUSD GBPJPY AUDUSD USDJPY`
+(same config: q=0.90 quantile, window 4.5:5.5, tail_ratio feature, 90s/fold
+AutoML budget). All 4 trade populations reproduce the established per-pair
+raw numbers exactly (EURUSD 1358/+4.469, GBPJPY 1166/+7.145, AUDUSD
+879/+5.341, USDJPY 1242/+5.451 bps gross), and the baseline row reproduces
+the established 4-pair `tail_ratio` result exactly (+6.014 bps/fill, n=3865,
+AUC=0.773) — so this is a clean apples-to-apples on identical OOS rows.
+
+```
+baseline (HistGradientBoostingClassifier)   n= 3865  AUC=0.773  TP%=82.0%  Option B=+6.014 bps/fill
+mljar (AutoML ensemble)                     n= 3865  AUC=0.805  TP%=82.0%  Option B=+6.430 bps/fill
+```
+
+**Verdict:** mljar's AutoML ensemble beats the baseline on the full 4-pair
+set on both metrics: AUC 0.773→0.805 (+0.032, +4.1% relative) and Option B
++6.014→+6.430 bps/fill (+0.416, +6.9% relative), on identical n=3865 OOS
+rows and identical WFO fold splits, with 0/20 fold failures (all 5 folds
+completed for every pair). The gain is modest in absolute terms but
+consistent and zero-fold-failure — a real OOS improvement, not a thin-
+sample artifact. Both classifiers are evaluated on the same held-out fold
+rows; mljar's internal model selection sees only each fold's training
+partition, so there is no leakage.
+
+The EURUSD-only leaderboard finding ("Random Forest is the single best
+base model in every fold") does **not** generalize cleanly to all 4 pairs.
+Across the 20 folds the Ensemble wins or ties for best logloss in every
+single fold (20/20), but the best *individual* base model varies by pair:
+
+- **EURUSD**: RF is the clear #2 base in all 5 folds, ~0.003–0.016 logloss
+  behind the Ensemble (matches the EURUSD-only finding).
+- **GBPJPY**: RF is strong (ties Ensemble in fold 0 at 0.2402, narrow #2 in
+  folds 1/3) but CatBoost beats it in folds 2 and 4.
+- **USDJPY**: RF is strong (ties Ensemble in fold 0 at 0.1949, narrow #2 in
+  folds 1–3) but CatBoost/Xgboost beat it in fold 4.
+- **AUDUSD**: RF is *mid-pack*, not the standout — Extra Trees wins base in
+  fold 0 (0.477 vs RF 0.496), LightGBM ties Ensemble in fold 2 (0.2499),
+  CatBoost/Xgboost lead RF in folds 3/4.
+
+So the practical takeaway shifts from the EURUSD-only reading. The real,
+robust-across-pairs improvement is **mljar's AutoML ensemble itself**, not a
+swap to plain `RandomForestClassifier` — RF is not reliably the best base
+model across pairs (it is mid-pack on AUDUSD), so the ensemble's blending
+genuinely contributes more than the EURUSD-only view suggested. The
+lighter-weight "just use RandomForestClassifier" follow-up is weakened by
+this; the ensemble's per-fold model-mixing is doing real work.
+
+**Caveats:**
+- mljar's `AutoML` is not seeded in this script (only the baseline
+  `HistGradientBoostingClassifier` uses `random_state=42`), so the AutoML
+  model-selection path is nondeterministic run-to-run within its 90s/fold
+  budget; the pooled Option B may vary slightly on re-run. The OOS
+  evaluation itself remains honest (each fold's predictions are on held-out
+  rows regardless of which models AutoML selected).
+- mljar-supervised remains an EPHEMERAL dependency (`uv run --with`), not
+  added to pyproject.toml/uv.lock — adopting it as the production meta-
+  labeler would require pinning it and accepting the heavier install.
+- `fit_meta_label_wfo` (the production path) is still untouched; this is a
+  comparison only, no shared code changed.
+
+### Feature importance — OOS permutation (this PR)
+
+The comparison run used `explain_level=0` and deleted each fold's
+`results_path`, so no mljar explain artifacts persisted. To answer "which
+features drive the OOS edge," `scripts/boostlss_xs/mljar_feature_importance.py`
+instead measures **OOS permutation importance**: for each of the 20 WFO folds,
+fit the AutoML ensemble on the training partition (identical fold logic), then
+on the held-out partition shuffle each feature in turn (5 repeats) and record
+the drop in OOS AUC. Positive drop = the model relies on that feature for OOS
+ranking; ~0/negative = unused or noise. This is model-agnostic (treats the
+ensemble's `predict_proba` as a black box) and tied directly to the OOS result,
+unlike in-sample SHAP which only shows what the model fit to. Mean OOS AUC
+reproduces the comparison run closely (AUDUSD 0.842, EURUSD 0.795, GBPJPY
+0.828, USDJPY 0.770; pooled ~0.81 vs the comparison's 0.805).
+
+```
+POOLED  OOS permutation importance  (all pairs, all folds, 5 repeats)
+feature         mean_auc_drop      std  mean/std
+rng_norm              +0.1182   0.0623      1.90
+oc                    +0.1019   0.0519      1.96
+ret_norm              +0.0208   0.0246      0.85
+nt_norm               +0.0072   0.0179      0.40
+direction             +0.0067   0.0112      0.60
+tail_ratio            +0.0047   0.0102      0.46
+rv                    +0.0038   0.0156      0.24
+live_spread           +0.0028   0.0066      0.42
+mom_24                +0.0027   0.0077      0.35
+mom_1                 +0.0010   0.0058      0.18
+mom_4                 +0.0010   0.0084      0.11
+hour                  +0.0009   0.0107      0.09
+dow                   -0.0003   0.0078     -0.04
+sigma_bps             -0.0009   0.0097     -0.09
+```
+
+Per-pair top-3 (mean_auc_drop, mean/std):
+
+| pair | #1 | #2 | #3 |
+|---|---|---|---|
+| AUDUSD (AUC 0.842) | rng_norm +0.118 (1.72) | oc +0.113 (2.85) | ret_norm +0.011 (0.64) |
+| EURUSD (AUC 0.795) | rng_norm +0.125 (3.60) | oc +0.117 (2.92) | ret_norm +0.015 (1.02) |
+| GBPJPY (AUC 0.828) | rng_norm +0.116 (2.38) | oc +0.098 (1.88) | ret_norm +0.050 (2.04) |
+| USDJPY (AUC 0.770) | rng_norm +0.113 (1.34) | oc +0.079 (1.26) | nt_norm +0.019 (0.72) |
+
+**Verdict — the edge is concentrated in two bar-shape features:**
+
+1. **`rng_norm` and `oc` are the only features doing real work.** They rank #1
+   and #2 in every pair, pooled +0.118 and +0.102 AUC drop — an order of
+   magnitude above everything else, and the only two features with mean/std
+   near 2 (1.90 / 1.96). These are the trigger-bar shape signals: `oc` =
+   open-to-close (directional body), `rng_norm` = normalized range (volatility /
+   indecision shape). This is exactly the strategy thesis — indecision bars
+   (high range relative to body) revert, strong directional bars (large |oc|)
+   fail. The meta-labeler's entire OOS edge comes from these two shape signals.
+
+2. **`ret_norm` is a distant, pair-dependent #3** — pooled +0.021 (mean/std
+   0.85); meaningful only on GBPJPY (+0.050, mean/std 2.04, the higher-vol
+   pair). Modest secondary signal.
+
+3. **`tail_ratio` (the PR #377 feature) contributes essentially nothing.**
+   Pooled +0.0047 ± 0.0102 (mean/std 0.46). Per pair: AUDUSD +0.006 (0.55),
+   EURUSD +0.001 (0.09), GBPJPY +0.003 (0.30), USDJPY +0.009 (1.51). Only
+   USDJPY shows a faint signal and even there the absolute drop is +0.009. The
+   +0.056 bps/fill attributed to `tail_ratio` in PR #377 is not reflected in
+   OOS ranking power — the feature is economically marginal and the ensemble
+   mostly ignores it. Its small P&L bump was within noise / on a path that
+   doesn't surface in permutation AUC.
+
+4. **`sigma_bps` is unused or slightly harmful** — pooled -0.0009, negative on
+   AUDUSD (-0.0022) and EURUSD (-0.0056). This is expected, not a bug:
+   `sigma_bps` is the first-stage signal that *selects* the trade population
+   (the quantile-regression sigma threshold), so within the selected population
+   its exact value carries little additional TP-prediction information — the
+   selection is already conditioned on. It is redundant inside the meta-labeler.
+
+5. **All time/momentum features (`hour`, `dow`, `mom_1`, `mom_4`, `mom_24`)
+   are noise** — pooled mean/std all < 0.2, several negative. Entry timing and
+   recent momentum carry no OOS ranking power for TP prediction once bar-shape
+   is in the model.
+
+**What this means for the +0.416 bps/fill ensemble gain:** the mljar ensemble
+beats the baseline NOT by discovering new features — both classifiers see all
+15 — but by fitting the same two real signals (`rng_norm`, `oc`) more
+effectively and ignoring the noise features better. This also explains why
+Random Forest was competitive on EURUSD: RF is a strong nonparametric fitter of
+tabular interactions and naturally captures the `rng_norm`×`oc` interaction;
+the ensemble's edge over it is small because the signal is concentrated in two
+features RF already fits well.
+
+**Testable simplification:** a leaner meta-labeler on just `rng_norm`, `oc`
+(and `ret_norm` for GBPJPY) would likely match most of the ensemble's OOS AUC —
+12 of the 15 features are noise or redundant. Dropping `tail_ratio` and
+`sigma_bps` from the meta-labeler feature set should not hurt OOS AUC. This is
+a concrete follow-up, not yet done.
+
+**Caveat:** permutation importance measures marginal AUC drop when a feature is
+shuffled *given the other features are present*, so a near-zero value can mean
+either "noise" or "redundant with another feature." `rng_norm`/`oc` are
+correlated (both bar-shape) yet each drops AUC ~0.10 when shuffled, so each
+carries unique information; the near-zero features being genuine noise is the
+simpler explanation, but `sigma_bps`'s near-zero is redundancy with the
+selection conditioning rather than uselessness. Either way, dropping the
+near-zero features from the meta-labeler is safe.
+
+### Compete mode (this PR)
+
+Hypothesis: mljar's `mode="Compete"` (more hyperparameter tuning, stacked
+ensembling, feature engineering — GoldenFeatures/KMeansFeatures/
+SelectedFeatures/BoostOnErrors) might extract more value from the features the
+Explain run left underused (the permutation run showed 12 of 15 features
+contribute ~0). Re-ran the identical 4-pair WFO comparison with `--mode Compete`,
+180s/fold, same 5 tree algorithms (isolates the mode change), `--n-jobs 1`.
+
+```
+baseline (HistGradientBoostingClassifier)   n= 3865  AUC=0.773  TP%=82.0%  Option B=+6.014 bps/fill
+mljar Compete (AutoML ensemble)             n= 3865  AUC=0.810  TP%=82.0%  Option B=+6.443 bps/fill
+mljar Explain (prior run, for reference)    n= 3865  AUC=0.805  TP%=82.0%  Option B=+6.430 bps/fill
+```
+
+**Verdict: Compete barely improves on Explain — +0.005 AUC, +0.013 bps/fill,
+within noise.** The hypothesis is not confirmed: Compete's thorough search did
+not pull meaningful extra value from the underused features. The signal ceiling
+is `rng_norm`/`oc`; there is no hidden value in the noise features for Compete to
+find. 0/20 fold failures (n=3865 is the full OOS count, so every fold produced
+both classifiers' predictions).
+
+The leaderboards are independently informative. Compete tries ~60 models per fold
+(Default, tuned iterations, GoldenFeatures, KMeansFeatures, SelectedFeatures,
+BoostOnErrors, then a stacked Ensemble). The consistent pattern (AUDUSD fold 0,
+representative): **`SelectedFeatures` variants beat their `Default` counterparts**
+— e.g. `25_CatBoost_SelectedFeatures` logloss 0.439 vs `3_Default_CatBoost`
+0.497; `22_LightGBM_SelectedFeatures` 0.456 vs `1_Default_LightGBM` 0.518.
+Compete's own feature selection independently confirms the permutation finding:
+dropping features helps, because most are noise. `GoldenFeatures`/`KMeansFeatures`
+are mixed (some help, some hurt); `BoostOnErrors` slightly *hurt* here
+(`25_CatBoost_SelectedFeatures_BoostOnErrors` 0.454 vs the non-boost 0.439). The
+final Ensemble (0.423) edges out the best single SelectedFeatures model but
+cannot break the rng_norm/oc ceiling.
+
+**Why the gain is negligible:** Explain's ensemble already effectively ignored
+the noise features (permutation run). Compete makes that ignoring *explicit*
+(via selection) but the OOS ranking power was already concentrated in the two
+shape signals, so explicit selection adds almost nothing. The +0.013 bps/fill is
+consistent with Compete fitting the same two signals marginally better, not
+with discovering new signal.
+
+**Operational note:** the first Compete attempt (default `n_jobs=0`/auto,
+joblib `n_jobs=-1` parallel workers) was killed mid-run (after AUDUSD + EURUSD,
+during GBPJPY) with a flood of joblib `resource_tracker FileNotFoundError`
+warnings — Compete spawns parallel workers with memmap forking that the two
+completed Explain runs (no joblib parallelism) never hit. Re-running with
+`--n-jobs 1` (serialize joblib, remove fork/memmap pressure) completed cleanly.
+`--mode` and `--n-jobs` args were added to `mljar_meta_labeler_compare.py` for
+this; defaults preserve the original Explain behavior.
+
+---
+
 ## Ideas / future improvements (not blocking)
 
 - [ ] Dynamic hold_hours: exit earlier if sigma decays — currently hard-capped at 8h
