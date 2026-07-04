@@ -440,6 +440,33 @@ LEADERBOARD (one row per fold that mljar completed)
 4_Default_RandomForest Random Forest     logloss      0.376087        1.16
   5_Default_ExtraTrees   Extra Trees     logloss      0.384687        1.09
               Ensemble      Ensemble     logloss      0.367432        0.59
+
+  EURUSD fold 2:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.321335        1.38
+     2_Default_Xgboost       Xgboost     logloss      0.307026        1.01
+    3_Default_CatBoost      CatBoost     logloss      0.314786        0.98
+4_Default_RandomForest Random Forest     logloss      0.299494        1.09
+  5_Default_ExtraTrees   Extra Trees     logloss      0.360407        1.07
+              Ensemble      Ensemble     logloss      0.294834        0.59
+
+  EURUSD fold 3:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.333656        1.57
+     2_Default_Xgboost       Xgboost     logloss      0.357865        0.99
+    3_Default_CatBoost      CatBoost     logloss      0.346913        0.98
+4_Default_RandomForest Random Forest     logloss      0.343149        1.29
+  5_Default_ExtraTrees   Extra Trees     logloss      0.369426        1.09
+              Ensemble      Ensemble     logloss      0.327270        0.59
+
+  EURUSD fold 4:
+                  name    model_type metric_type  metric_value  train_time
+    1_Default_LightGBM      LightGBM     logloss      0.376516        1.52
+     2_Default_Xgboost       Xgboost     logloss      0.358092        1.01
+    3_Default_CatBoost      CatBoost     logloss      0.359601        0.99
+4_Default_RandomForest Random Forest     logloss      0.346760        1.15
+  5_Default_ExtraTrees   Extra Trees     logloss      0.378250        1.10
+              Ensemble      Ensemble     logloss      0.344436        0.66
 ```
 
 **Verdict:** mljar's AutoML ensemble beat the baseline on both metrics at
