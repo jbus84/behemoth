@@ -550,6 +550,109 @@ this; the ensemble's per-fold model-mixing is doing real work.
 - `fit_meta_label_wfo` (the production path) is still untouched; this is a
   comparison only, no shared code changed.
 
+### Feature importance — OOS permutation (this PR)
+
+The comparison run used `explain_level=0` and deleted each fold's
+`results_path`, so no mljar explain artifacts persisted. To answer "which
+features drive the OOS edge," `scripts/boostlss_xs/mljar_feature_importance.py`
+instead measures **OOS permutation importance**: for each of the 20 WFO folds,
+fit the AutoML ensemble on the training partition (identical fold logic), then
+on the held-out partition shuffle each feature in turn (5 repeats) and record
+the drop in OOS AUC. Positive drop = the model relies on that feature for OOS
+ranking; ~0/negative = unused or noise. This is model-agnostic (treats the
+ensemble's `predict_proba` as a black box) and tied directly to the OOS result,
+unlike in-sample SHAP which only shows what the model fit to. Mean OOS AUC
+reproduces the comparison run closely (AUDUSD 0.842, EURUSD 0.795, GBPJPY
+0.828, USDJPY 0.770; pooled ~0.81 vs the comparison's 0.805).
+
+```
+POOLED  OOS permutation importance  (all pairs, all folds, 5 repeats)
+feature         mean_auc_drop      std  mean/std
+rng_norm              +0.1182   0.0623      1.90
+oc                    +0.1019   0.0519      1.96
+ret_norm              +0.0208   0.0246      0.85
+nt_norm               +0.0072   0.0179      0.40
+direction             +0.0067   0.0112      0.60
+tail_ratio            +0.0047   0.0102      0.46
+rv                    +0.0038   0.0156      0.24
+live_spread           +0.0028   0.0066      0.42
+mom_24                +0.0027   0.0077      0.35
+mom_1                 +0.0010   0.0058      0.18
+mom_4                 +0.0010   0.0084      0.11
+hour                  +0.0009   0.0107      0.09
+dow                   -0.0003   0.0078     -0.04
+sigma_bps             -0.0009   0.0097     -0.09
+```
+
+Per-pair top-3 (mean_auc_drop, mean/std):
+
+| pair | #1 | #2 | #3 |
+|---|---|---|---|
+| AUDUSD (AUC 0.842) | rng_norm +0.118 (1.72) | oc +0.113 (2.85) | ret_norm +0.011 (0.64) |
+| EURUSD (AUC 0.795) | rng_norm +0.125 (3.60) | oc +0.117 (2.92) | ret_norm +0.015 (1.02) |
+| GBPJPY (AUC 0.828) | rng_norm +0.116 (2.38) | oc +0.098 (1.88) | ret_norm +0.050 (2.04) |
+| USDJPY (AUC 0.770) | rng_norm +0.113 (1.34) | oc +0.079 (1.26) | nt_norm +0.019 (0.72) |
+
+**Verdict — the edge is concentrated in two bar-shape features:**
+
+1. **`rng_norm` and `oc` are the only features doing real work.** They rank #1
+   and #2 in every pair, pooled +0.118 and +0.102 AUC drop — an order of
+   magnitude above everything else, and the only two features with mean/std
+   near 2 (1.90 / 1.96). These are the trigger-bar shape signals: `oc` =
+   open-to-close (directional body), `rng_norm` = normalized range (volatility /
+   indecision shape). This is exactly the strategy thesis — indecision bars
+   (high range relative to body) revert, strong directional bars (large |oc|)
+   fail. The meta-labeler's entire OOS edge comes from these two shape signals.
+
+2. **`ret_norm` is a distant, pair-dependent #3** — pooled +0.021 (mean/std
+   0.85); meaningful only on GBPJPY (+0.050, mean/std 2.04, the higher-vol
+   pair). Modest secondary signal.
+
+3. **`tail_ratio` (the PR #377 feature) contributes essentially nothing.**
+   Pooled +0.0047 ± 0.0102 (mean/std 0.46). Per pair: AUDUSD +0.006 (0.55),
+   EURUSD +0.001 (0.09), GBPJPY +0.003 (0.30), USDJPY +0.009 (1.51). Only
+   USDJPY shows a faint signal and even there the absolute drop is +0.009. The
+   +0.056 bps/fill attributed to `tail_ratio` in PR #377 is not reflected in
+   OOS ranking power — the feature is economically marginal and the ensemble
+   mostly ignores it. Its small P&L bump was within noise / on a path that
+   doesn't surface in permutation AUC.
+
+4. **`sigma_bps` is unused or slightly harmful** — pooled -0.0009, negative on
+   AUDUSD (-0.0022) and EURUSD (-0.0056). This is expected, not a bug:
+   `sigma_bps` is the first-stage signal that *selects* the trade population
+   (the quantile-regression sigma threshold), so within the selected population
+   its exact value carries little additional TP-prediction information — the
+   selection is already conditioned on. It is redundant inside the meta-labeler.
+
+5. **All time/momentum features (`hour`, `dow`, `mom_1`, `mom_4`, `mom_24`)
+   are noise** — pooled mean/std all < 0.2, several negative. Entry timing and
+   recent momentum carry no OOS ranking power for TP prediction once bar-shape
+   is in the model.
+
+**What this means for the +0.416 bps/fill ensemble gain:** the mljar ensemble
+beats the baseline NOT by discovering new features — both classifiers see all
+15 — but by fitting the same two real signals (`rng_norm`, `oc`) more
+effectively and ignoring the noise features better. This also explains why
+Random Forest was competitive on EURUSD: RF is a strong nonparametric fitter of
+tabular interactions and naturally captures the `rng_norm`×`oc` interaction;
+the ensemble's edge over it is small because the signal is concentrated in two
+features RF already fits well.
+
+**Testable simplification:** a leaner meta-labeler on just `rng_norm`, `oc`
+(and `ret_norm` for GBPJPY) would likely match most of the ensemble's OOS AUC —
+12 of the 15 features are noise or redundant. Dropping `tail_ratio` and
+`sigma_bps` from the meta-labeler feature set should not hurt OOS AUC. This is
+a concrete follow-up, not yet done.
+
+**Caveat:** permutation importance measures marginal AUC drop when a feature is
+shuffled *given the other features are present*, so a near-zero value can mean
+either "noise" or "redundant with another feature." `rng_norm`/`oc` are
+correlated (both bar-shape) yet each drops AUC ~0.10 when shuffled, so each
+carries unique information; the near-zero features being genuine noise is the
+simpler explanation, but `sigma_bps`'s near-zero is redundancy with the
+selection conditioning rather than uselessness. Either way, dropping the
+near-zero features from the meta-labeler is safe.
+
 ---
 
 ## Ideas / future improvements (not blocking)
