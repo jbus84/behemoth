@@ -370,6 +370,8 @@ q=0.5 low quantile, threshold=0.55, pairs EURUSD/GBPJPY/AUDUSD/USDJPY):
   AUDUSD:  879 trades  gross=+5.341  maker_net=+4.208  TP%=77.6%  spread_fallback=0.0%  oos_nll=nan
   USDJPY: 1242 trades  gross=+5.451  maker_net=+4.648  TP%=82.4%  spread_fallback=0.0%  oos_nll=nan
 
+*(Per-pair counts above are raw pre-meta-label trades from run_tick_backtest; the summary rows below are post-meta-labeling OOS counts, which are fewer — not a discrepancy.)*
+
 baseline (no tail_ratio)      n= 3865  AUC=0.765  TP%=82.0%  Option B=+5.958 bps/fill
 with tail_ratio               n= 3865  AUC=0.773  TP%=82.0%  Option B=+6.014 bps/fill
 ```

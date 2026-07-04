@@ -19,7 +19,6 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import contextlib
 
 import numpy as np
 import pandas as pd
@@ -61,8 +60,10 @@ def run_window(
     all_raw = pd.concat(tick_dfs, ignore_index=True)
     oos_dfs: list[pd.DataFrame] = []
     for _sym, g in all_raw.groupby("sym"):
-        with contextlib.suppress(Exception):
+        try:
             oos_dfs.append(fit_meta_label_wfo(g.copy(), feat_cols=_FEAT_COLS))
+        except Exception as e:
+            print(f"  {_sym}: meta-label failed — {e}")
     if not oos_dfs:
         return None
     result = pd.concat(oos_dfs, ignore_index=True)
