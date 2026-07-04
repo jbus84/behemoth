@@ -489,6 +489,67 @@ consistent with EURUSD's ~1358-trade contribution to the pooled 4-pair
 lighter-weight non-ephemeral replacement for `HistGradientBoostingClassifier`,
 is a follow-up decision, not yet done.
 
+### 4-pair scale-up (this PR)
+
+Re-ran `mljar_meta_labeler_compare.py --pairs EURUSD GBPJPY AUDUSD USDJPY`
+(same config: q=0.90 quantile, window 4.5:5.5, tail_ratio feature, 90s/fold
+AutoML budget). All 4 trade populations reproduce the established per-pair
+raw numbers exactly (EURUSD 1358/+4.469, GBPJPY 1166/+7.145, AUDUSD
+879/+5.341, USDJPY 1242/+5.451 bps gross), and the baseline row reproduces
+the established 4-pair `tail_ratio` result exactly (+6.014 bps/fill, n=3865,
+AUC=0.773) — so this is a clean apples-to-apples on identical OOS rows.
+
+```
+baseline (HistGradientBoostingClassifier)   n= 3865  AUC=0.773  TP%=82.0%  Option B=+6.014 bps/fill
+mljar (AutoML ensemble)                     n= 3865  AUC=0.805  TP%=82.0%  Option B=+6.430 bps/fill
+```
+
+**Verdict:** mljar's AutoML ensemble beats the baseline on the full 4-pair
+set on both metrics: AUC 0.773→0.805 (+0.032, +4.1% relative) and Option B
++6.014→+6.430 bps/fill (+0.416, +6.9% relative), on identical n=3865 OOS
+rows and identical WFO fold splits, with 0/20 fold failures (all 5 folds
+completed for every pair). The gain is modest in absolute terms but
+consistent and zero-fold-failure — a real OOS improvement, not a thin-
+sample artifact. Both classifiers are evaluated on the same held-out fold
+rows; mljar's internal model selection sees only each fold's training
+partition, so there is no leakage.
+
+The EURUSD-only leaderboard finding ("Random Forest is the single best
+base model in every fold") does **not** generalize cleanly to all 4 pairs.
+Across the 20 folds the Ensemble wins or ties for best logloss in every
+single fold (20/20), but the best *individual* base model varies by pair:
+
+- **EURUSD**: RF is the clear #2 base in all 5 folds, ~0.003–0.016 logloss
+  behind the Ensemble (matches the EURUSD-only finding).
+- **GBPJPY**: RF is strong (ties Ensemble in fold 0 at 0.2402, narrow #2 in
+  folds 1/3) but CatBoost beats it in folds 2 and 4.
+- **USDJPY**: RF is strong (ties Ensemble in fold 0 at 0.1949, narrow #2 in
+  folds 1–3) but CatBoost/Xgboost beat it in fold 4.
+- **AUDUSD**: RF is *mid-pack*, not the standout — Extra Trees wins base in
+  fold 0 (0.477 vs RF 0.496), LightGBM ties Ensemble in fold 2 (0.2499),
+  CatBoost/Xgboost lead RF in folds 3/4.
+
+So the practical takeaway shifts from the EURUSD-only reading. The real,
+robust-across-pairs improvement is **mljar's AutoML ensemble itself**, not a
+swap to plain `RandomForestClassifier` — RF is not reliably the best base
+model across pairs (it is mid-pack on AUDUSD), so the ensemble's blending
+genuinely contributes more than the EURUSD-only view suggested. The
+lighter-weight "just use RandomForestClassifier" follow-up is weakened by
+this; the ensemble's per-fold model-mixing is doing real work.
+
+**Caveats:**
+- mljar's `AutoML` is not seeded in this script (only the baseline
+  `HistGradientBoostingClassifier` uses `random_state=42`), so the AutoML
+  model-selection path is nondeterministic run-to-run within its 90s/fold
+  budget; the pooled Option B may vary slightly on re-run. The OOS
+  evaluation itself remains honest (each fold's predictions are on held-out
+  rows regardless of which models AutoML selected).
+- mljar-supervised remains an EPHEMERAL dependency (`uv run --with`), not
+  added to pyproject.toml/uv.lock — adopting it as the production meta-
+  labeler would require pinning it and accepting the heavier install.
+- `fit_meta_label_wfo` (the production path) is still untouched; this is a
+  comparison only, no shared code changed.
+
 ---
 
 ## Ideas / future improvements (not blocking)

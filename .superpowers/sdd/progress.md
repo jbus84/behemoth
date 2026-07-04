@@ -1,11 +1,11 @@
-# BoostLSS Jump-Diffusion & SHASH Distribution Comparison — SDD progress
+# mljar-supervised Meta-Labeler Comparison — SDD progress
 
-Base: 18637d03867cf17b1c383c7180b7c6ace6b1c4e0
-Plan: docs/superpowers/plans/2026-07-02-boostlss-jump-distributions.md
+Base: 8abbd4aee04a00782d18e83bc1c39642606407ce
+Plan: docs/superpowers/plans/2026-07-04-mljar-meta-labeler-comparison.md
 
-Prior plan (BoostLSS XS Anomaly Detection + Meta-Labeler) completed and merged;
-its ledger history is preserved in git log if needed.
+Prior plans (BoostLSS XS Anomaly Detection, Jump-Diffusion/SHASH comparison,
+Signal Improvements) completed and merged (PR #376, PR #377); their ledger
+history is preserved in git log if needed.
 
-- Task 1: complete (commit 6a81ccd7, review clean; boostlss bumped 6b9924ea..5b22552f, Merton/SHASH import+fit+predict verified)
-- Task 2: complete (commit b6c0e7b4, review clean; NLL formulas for merton+shash independently verified numerically by reviewer; correct import style for Task 3 confirmed by controller as bare `from distributions import ...` (sibling import, sys.path auto-includes script dir under `uv run python scripts/boostlss_xs/X.py` invocation) — implementer's report claim of `scripts.boostlss_xs.distributions` prefix does NOT apply)
-- Task 3: complete (commit 9d9eb343, review clean; EURUSD gaussian smoke test +1.381 bps/fill matches PR #374 reference; sizing sigma clip untouched/behavior-preserving confirmed by reviewer; KNOWN ISSUE for Task 4: oos_nll can be `inf` on early WFO folds (unclipped sigma overflow, pre-existing, non-regressive) — Task 4 must filter non-finite fold_nll values before averaging, or the comparison table's gaussian NLL column will show inf)
+- Task 1: complete (commits 8f8c68fa..db3a8d53, review clean after 1 fix; MAJOR FINDING: mljar's AutoML ensemble beats the baseline HistGradientBoostingClassifier on EURUSD — AUC 0.739->0.795, Option B +4.340->+4.689 bps/fill, n=1130 identical OOS rows, all 5 WFO folds succeeded 0 failures; SURPRISE: leaderboard shows Random Forest (not any boosting family) is the actual best individual base model in all 5 folds, Ensemble only narrowly beats it — all verified by reviewer directly against the diff's WFO fold logic (byte-identical to fit_meta_label_wfo), the paired OOS mask (symmetric, doesn't favor either classifier), and the pasted leaderboard numbers; fix: BACKLOG cited fold 2/4 numbers not shown in pasted leaderboards — added; EURUSD-only, scaling to 4 pairs is a follow-up decision; make quality clean)
+- Task 2: 4-pair scale-up complete (run only, no new code — script already supported `--pairs` with a list). Re-ran `mljar_meta_labeler_compare.py --pairs EURUSD GBPJPY AUDUSD USDJPY` (q=0.90, window 4.5:5.5, tail_ratio, 90s/fold). All 4 raw trade populations reproduce established per-pair numbers exactly; baseline row reproduces the 4-pair tail_ratio result exactly (n=3865, AUC=0.773, +6.014 bps/fill) → clean apples-to-apples on identical OOS rows. RESULT: mljar ensemble beats baseline on full 4-pair set — AUC 0.773->0.805, Option B +6.014->+6.430 bps/fill (+0.416, +6.9%), 0/20 fold failures. EURUSD-only "RF is best base in every fold" finding does NOT generalize: RF is the standout base on EURUSD/GBPJPY/USDJPY but mid-pack on AUDUSD (ExtraTrees/LightGBM/CatBoost each take a fold); what generalizes is "Ensemble wins or ties every fold" (20/20). Practical takeaway shifts: the robust improvement is the AutoML ensemble itself, NOT a swap to plain RandomForestClassifier — the EURUSD-suggested lighter-weight follow-up is weakened. Caveats noted in BACKLOG: AutoML unseeded (nondeterministic model selection within 90s/fold budget, OOS eval still honest), mljar remains ephemeral dep, production fit_meta_label_wfo untouched. Results + verdict written to BACKLOG.md "4-pair scale-up" subsection.
