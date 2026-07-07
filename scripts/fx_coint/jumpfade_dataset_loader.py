@@ -33,6 +33,15 @@ H = 24  # 120min horizon, the validated default throughout this investigation
 BIPOWER_WINDOW = 24
 COMMISSION_BPS = 0.60  # $6/100k RT, the default used throughout; override per broker
 JUMP_Z_THRESH = 4.0
+# NY-close / FX-day rollover: 20:00-22:00 UTC, the thinnest-liquidity window of the
+# 24h cycle. Root cause of the original "hardened 14 pairs" collapse -- the
+# Lee-Mykland detector mis-flags rollover noise as jumps since it can't anticipate
+# the sudden liquidity vacuum. This exclusion lived in scratch scripts during the
+# investigation and was NOT carried into this consolidated loader until found
+# missing (2026-07-07) -- callers must filter `pl.col("hh").is_in(ROLLOVER_HH)`
+# explicitly; not applied automatically since some cuts (e.g. session2) already
+# have zero overlap and some analyses want the full population for comparison.
+ROLLOVER_HH = list(range(40, 44))  # hh 40-43 = 20:00-22:00 UTC (hh = hour*2 + minute>=30)
 CUSUM_K = 0.5
 TREND_WINDOW = 12  # ~1h trailing window for trend_z
 MOM_WINDOW = 12  # ~1h trailing window for momentum-into-jump
