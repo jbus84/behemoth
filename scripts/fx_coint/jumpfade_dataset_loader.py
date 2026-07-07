@@ -248,7 +248,7 @@ def build_expanded_realtick_dataset(
             net_bps = gross - cost
             out_rows.append({
                 "bucket": t0, "year": r["year"], "hh": r["hh"], "session_q": r["session_q"],
-                "dow": r["dow"], "n_ticks": r["n_ticks"],
+                "dow": r["dow"], "n_ticks": r["n_ticks"], "jump_sign": int(sgn),
                 "abs_z": r["abs_z"], "idio_share": r["idio_share"], "diurnal_scale": r["diurnal_scale"],
                 "cusum_mag": r["cusum_mag"], "trend_z": r["trend_z"], "mom_ret": r["mom_ret"],
                 "recent_jump_count": r["recent_jump_count"],
