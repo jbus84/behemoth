@@ -32,6 +32,22 @@ from scripts.fx_coint.eurusd_cusum_probe import load_5m
 H = 24  # 120min horizon, the validated default throughout this investigation
 BIPOWER_WINDOW = 24
 COMMISSION_BPS = 0.60  # $6/100k RT, the default used throughout; override per broker
+JUMP_Z_THRESH = 4.0
+CUSUM_K = 0.5
+TREND_WINDOW = 12  # ~1h trailing window for trend_z
+MOM_WINDOW = 12  # ~1h trailing window for momentum-into-jump
+JUMP_CLUSTER_WINDOW = 24  # ~2h trailing window for recent jump clustering
+
+# all features available from build_full_idio_population, for callers building
+# feature matrices -- deliberately includes the lagged/liquidity features added
+# 2026-07-07 in response to "do we even have lags?" (we didn't; cusum_mag and
+# trend_z were built in eurusd_cusum_probe.py at the very start of this
+# investigation and never wired into the metamodel until now)
+ALL_FEATURE_COLS = [
+    "abs_z", "idio_share", "diurnal_scale", "session_q", "hh", "dow",
+    "n_ticks", "cusum_mag", "trend_z", "mom_ret", "recent_jump_count",
+    "abs_z_lag1", "abs_z_lag2", "abs_z_lag3",
+]
 
 USD_QUOTE = {"EUR", "GBP", "AUD", "NZD"}  # quoted as XXXUSD (X price in USD directly)
 USD_BASE = {"JPY", "CHF", "CAD"}  # quoted as USDXXX (USD price in X)
@@ -110,6 +126,34 @@ def build_full_idio_population(symbol: str) -> pl.DataFrame:
         bp_sigma[i] = np.sqrt(bp) if bp > 0 else np.nan
     df = df.with_columns(pl.Series("bp_sigma", bp_sigma))
     df = df.with_columns((pl.col("ret") / pl.col("bp_sigma")).alias("lm_z"))
+
+    # --- lagged / liquidity / clustering features, computed on the FULL continuous
+    # bar sequence (before idio filtering) so lags reference genuine calendar-
+    # adjacent bars, not idio-filtered event history ---
+    df = df.with_columns(
+        (pl.col("ret") / pl.col("diurnal_scale") / 0.7979).alias("z"),  # 0.7979 = E|Z| standard normal
+        (pl.col("lm_z").abs() > JUMP_Z_THRESH).alias("is_jump_flag"),
+        pl.col("bucket").dt.weekday().alias("dow"),
+    )
+    z_arr = df["z"].fill_null(0.0).to_numpy()
+    nz = len(z_arr)
+    s_pos = np.zeros(nz)
+    s_neg = np.zeros(nz)
+    for i in range(1, nz):
+        s_pos[i] = max(0.0, s_pos[i - 1] + z_arr[i] - CUSUM_K)
+        s_neg[i] = min(0.0, s_neg[i - 1] + z_arr[i] + CUSUM_K)
+    df = df.with_columns(pl.Series("cusum_mag", np.maximum(s_pos, -s_neg)))
+
+    df = df.with_columns(
+        pl.col("z").shift(1).rolling_mean(window_size=TREND_WINDOW, min_samples=6).alias("trend_z"),
+        pl.col("ret").shift(1).rolling_sum(window_size=MOM_WINDOW, min_samples=6).alias("mom_ret"),
+        pl.col("is_jump_flag").cast(pl.Int32).shift(1)
+        .rolling_sum(window_size=JUMP_CLUSTER_WINDOW, min_samples=6).alias("recent_jump_count"),
+        pl.col("lm_z").abs().shift(1).alias("abs_z_lag1"),
+        pl.col("lm_z").abs().shift(2).alias("abs_z_lag2"),
+        pl.col("lm_z").abs().shift(3).alias("abs_z_lag3"),
+    )
+
     df = df.with_columns((pl.col("mid").log().shift(-H) - pl.col("mid").log()).alias(f"fwd_{H}"))
 
     valid = df.filter(pl.col("bp_sigma").is_not_null() & pl.col(f"fwd_{H}").is_not_null())
@@ -130,7 +174,10 @@ def build_full_idio_population(symbol: str) -> pl.DataFrame:
         (pl.col("idio").abs() / (pl.col("idio").abs() + pl.col("common").abs() + 1e-12)).alias("idio_share"),
         (pl.col("bucket").dt.hour() // 6).alias("session_q"),
     )
-    return v
+    return v.filter(
+        pl.col("trend_z").is_not_null() & pl.col("mom_ret").is_not_null()
+        & pl.col("recent_jump_count").is_not_null() & pl.col("abs_z_lag3").is_not_null()
+    )
 
 
 def _month_tick_paths(tick_root: str, sym: str, year: int, month: int) -> list[str]:
@@ -156,8 +203,9 @@ def build_expanded_realtick_dataset(
     scripts/download_mt5_ticks.py) to use real IC Markets spread data instead of
     HistData -- no other code changes needed.
 
-    Returns columns: bucket, year, hh, session_q, abs_z, idio_share, diurnal_scale,
-    gross_bps, cost_bps, net_bps, win.
+    Returns columns: bucket, year, hh, session_q, dow, n_ticks, abs_z, idio_share,
+    diurnal_scale, cusum_mag, trend_z, mom_ret, recent_jump_count, abs_z_lag1-3,
+    gross_bps, cost_bps, net_bps, win. See ALL_FEATURE_COLS for the model-ready list.
     """
     idio = build_full_idio_population(symbol)
     idio = idio.filter(pl.col("abs_z") > z_min)
@@ -175,7 +223,9 @@ def build_expanded_realtick_dataset(
         mids = ticks["mid"].to_numpy()
 
         month_events = idio.filter((pl.col("year") == y) & (pl.col("month") == m))
-        cols = ["bucket", "ret", "abs_z", "idio_share", "diurnal_scale", "hh", "session_q", "year"]
+        cols = ["bucket", "ret", "abs_z", "idio_share", "diurnal_scale", "hh", "session_q", "year",
+                "dow", "n_ticks", "cusum_mag", "trend_z", "mom_ret", "recent_jump_count",
+                "abs_z_lag1", "abs_z_lag2", "abs_z_lag3"]
         for r in month_events.select(cols).to_dicts():
             t0 = r["bucket"]
             if t0.tzinfo is None:
@@ -198,7 +248,11 @@ def build_expanded_realtick_dataset(
             net_bps = gross - cost
             out_rows.append({
                 "bucket": t0, "year": r["year"], "hh": r["hh"], "session_q": r["session_q"],
+                "dow": r["dow"], "n_ticks": r["n_ticks"],
                 "abs_z": r["abs_z"], "idio_share": r["idio_share"], "diurnal_scale": r["diurnal_scale"],
+                "cusum_mag": r["cusum_mag"], "trend_z": r["trend_z"], "mom_ret": r["mom_ret"],
+                "recent_jump_count": r["recent_jump_count"],
+                "abs_z_lag1": r["abs_z_lag1"], "abs_z_lag2": r["abs_z_lag2"], "abs_z_lag3": r["abs_z_lag3"],
                 "gross_bps": gross, "cost_bps": cost, "net_bps": net_bps, "win": net_bps > 0,
             })
         del ticks, ts, spreads, mids
