@@ -31,7 +31,12 @@ USD_MAJORS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUS
 USD_SIGN = {"EURUSD": -1, "GBPUSD": -1, "AUDUSD": -1, "NZDUSD": -1, "USDJPY": +1, "USDCHF": +1, "USDCAD": +1}
 
 CROSS_LEGS = {
-    "AUDCAD": [("AUDUSD", +1), ("USDCAD", -1)],
+    # AUDCAD = AUDUSD * USDCAD (AUD-in-USD times USD-in-CAD), so both legs are +1 --
+    # this was previously miscoded as -1 on USDCAD (found in a 2026-07-07 red-team
+    # pass); AUDCAD is UNCONDITIONED_VALIDATED so the bug never affected which trades
+    # were included, only corrupted the idio_share FEATURE value fed to the model for
+    # AUDCAD's rows.
+    "AUDCAD": [("AUDUSD", +1), ("USDCAD", +1)],
     "AUDNZD": [("AUDUSD", +1), ("NZDUSD", -1)],
     "GBPJPY": [("GBPUSD", +1), ("USDJPY", +1)],
     "CHFJPY": [("USDCHF", -1), ("USDJPY", +1)],
