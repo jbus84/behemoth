@@ -30,6 +30,7 @@ alertmanager.yml
 .gradle/
 src/jforex/build/
 .worktrees/
+.mcp.json
 
 # Build output
 site/
